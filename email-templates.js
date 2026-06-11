@@ -14,6 +14,79 @@ const emailTemplatesModule = {
   /** @type {Object} Pagination state */
   _pagination: { page: 1, totalPages: 1, count: 0, pageSize: 100 },
 
+  /** @type {string} Current search filter applied to the template list */
+  _searchQuery: '',
+
+  /** Human-readable description of when each template type is triggered */
+  _autoTriggerDescriptions: {
+    confirmation: 'Sent automatically when an entry is submitted via the public entry form',
+    nomination_confirmation: 'Sent automatically when a peer nomination is submitted',
+    reminder: 'Sent to entrants who have not yet uploaded supporting documents',
+    revision_request: 'Sent when an admin requests changes to a submitted entry',
+    payment_confirmation: 'Sent automatically after a successful payment is processed',
+    payment_failed: 'Sent automatically when a payment attempt fails',
+    refund_confirmation: 'Sent automatically when a refund is issued',
+    payment_reminder: 'Sent to entrants with outstanding unpaid entry fees',
+    approval: 'Sent when an admin marks an entry as shortlisted',
+    rejection: 'Sent when an admin marks an entry as not shortlisted',
+    winner_announcement: 'Sent when an admin designates an entry as a winner',
+    judge_assignment: 'Sent to judges when new entries are assigned to them',
+    judge_reminder: 'Sent to judges as they approach their scoring deadline',
+    event_invitation: 'Sent when an admin invites a contact to an event',
+    ticket_issued: 'Sent when an attendee\'s event ticket is issued',
+    deadline_reminder: 'Sent by the automated scheduler as key dates approach',
+    sponsor_enquiry_confirmation: 'Sent automatically when someone submits the sponsorship enquiry form',
+    general: 'Used manually — send from Email Builder or automation workflows',
+    notification: 'Used manually or by automation workflows for general alerts',
+    invite: 'Used manually from Email Builder for invitation campaigns',
+  },
+
+  /** Short description of what each placeholder resolves to at send time */
+  _placeholderDescriptions: {
+    ENTRY_NUMBER: 'Entry reference code, e.g. BTA-2026-0001',
+    CONTACT_NAME: "Recipient's full name",
+    COMPANY_NAME: "Entrant's company name",
+    AWARD_NAME: 'Award category name',
+    SECTOR: 'Industry sector',
+    REGION: 'Geographic region',
+    ENTRY_TITLE: 'Title of the entry',
+    UPLOAD_LINK: 'URL to upload supporting documents',
+    DEADLINE_DATE: 'Entry submission deadline',
+    ANNOUNCEMENT_DATE: 'Winners announcement date',
+    CONTACT_EMAIL: 'Awards team contact email',
+    NOMINEE_NAME: 'Name of the person being nominated',
+    PAYMENT_LINK: 'Payment checkout URL',
+    AMOUNT: 'Payment amount in GBP',
+    INVOICE_NUMBER: 'Invoice reference number',
+    JUDGE_NAME: "Judge's name",
+    ENTRY_COUNT: 'Number of entries assigned to this judge',
+    DEADLINE: 'Judging deadline date',
+    JUDGE_PORTAL_LINK: 'URL to the judge portal',
+    SCORED_COUNT: 'Entries scored so far',
+    TOTAL_COUNT: 'Total entries to score',
+    PENDING_COUNT: 'Entries still to score',
+    DAYS_LEFT: 'Days remaining until the deadline',
+    CEREMONY_DATE: 'Awards ceremony date',
+    CEREMONY_VENUE: 'Awards ceremony venue',
+    WINNERS_PORTAL_LINK: "URL to the winner's portal",
+    EVENT_NAME: 'Name of the event',
+    EVENT_DATE: 'Date of the event',
+    VENUE: 'Venue name and location',
+    RSVP_URL: 'RSVP / registration URL',
+    TICKET_NUMBER: "Attendee's ticket reference number",
+    RECIPIENT_NAME: "Recipient's name (generic)",
+    DEADLINE_TYPE: 'Type of deadline, e.g. Entry Submission',
+    ACTION_LINK: 'URL for the call-to-action button',
+    NAME: "Enquirer's full name",
+    COMPANY: "Enquirer's company",
+    PACKAGE: 'Sponsorship package of interest',
+    ROLE: "Enquirer's job title",
+    MESSAGE: 'Message submitted with the enquiry',
+    BRAND_NAME: 'Your organisation / awards brand name',
+    SUPPORT_EMAIL: 'Support contact email address',
+    UNSUBSCRIBE_LINK: 'Unsubscribe link for marketing emails',
+  },
+
   /**
    * Default template content for reverting edits.
    * Keyed by template_name as defined in the database seed data.
@@ -590,115 +663,109 @@ The British Trade Awards Team`,
     this.renderTemplatesList();
   },
 
+  /**
+   * Filter the template list by a search query (client-side, instant)
+   * @param {string} query - Search text
+   */
+  setSearchQuery(query) {
+    this._searchQuery = (query || '').trim();
+    this.renderTemplatesList();
+  },
+
   renderTemplatesList() {
     const container = document.getElementById('templatesList');
+    if (!container) return;
 
-    // Filter out system header/footer templates — those come from branding
-    const visible = this.templates.filter((t) => !['email_header', 'email_footer'].includes(t.template_type));
+    // Wire up search input once (only if not already wired)
+    const searchInput = document.getElementById('tmplSearchInput');
+    if (searchInput && !searchInput.dataset.wired) {
+      searchInput.dataset.wired = '1';
+      searchInput.addEventListener('input', (e) => this.setSearchQuery(e.target.value));
+    }
+
+    // Filter out system header/footer templates
+    const all = this.templates.filter((t) => !['email_header', 'email_footer'].includes(t.template_type));
+
+    // Apply search filter
+    let visible = all;
+    if (this._searchQuery) {
+      const q = this._searchQuery.toLowerCase();
+      visible = all.filter(
+        (t) =>
+          (t.template_name || t.name || '').toLowerCase().includes(q) ||
+          this.getTypeLabel(t.template_type).toLowerCase().includes(q) ||
+          (t.description || '').toLowerCase().includes(q)
+      );
+    }
 
     if (visible.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-5 text-muted">
-          <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
-          <p>No templates found</p>
-        </div>
-      `;
+      const noTemplatesAtAll = all.length === 0;
+      container.innerHTML = noTemplatesAtAll
+        ? `<div class="text-center py-5 px-3 text-muted">
+             <i class="bi bi-envelope-open display-4 d-block mb-3 opacity-25"></i>
+             <p class="fw-semibold mb-1">No templates yet</p>
+             <p class="small mb-3">Templates control the content of every email the system sends — winner notifications, entry confirmations, payment receipts, and more.</p>
+             <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate"><i class="bi bi-plus-lg me-1"></i>Create first template</button>
+           </div>`
+        : `<div class="text-center py-4 px-3 text-muted">
+             <i class="bi bi-search opacity-25 d-block mb-2" style="font-size:1.8rem;"></i>
+             <p class="small mb-0">No templates match <em>"${utils.escapeHtml(this._searchQuery)}"</em></p>
+           </div>`;
       return;
     }
 
     // Group templates by workflow stage
     const grouped = {};
-    visible.forEach((template) => {
-      const group = this.getGroupForType(template.template_type);
+    visible.forEach((t) => {
+      const group = this.getGroupForType(t.template_type);
       if (!grouped[group]) grouped[group] = [];
-      grouped[group].push(template);
+      grouped[group].push(t);
     });
 
-    // Render with group headers in a defined order
-    const groupOrder = [
-      'Entry & Submissions',
-      'Payments',
-      'Judging & Results',
-      'Events & Invitations',
-      'General',
-      'Other',
-    ];
+    const groupOrder = ['Entry & Submissions', 'Payments', 'Judging & Results', 'Events & Invitations', 'General', 'Other'];
     let html = '';
 
     groupOrder.forEach((groupName) => {
       const templates = grouped[groupName];
       if (!templates || templates.length === 0) return;
-
       const config = this.templateGroups[groupName] || { icon: 'bi-folder' };
-      html += `
-        <div class="list-group-item bg-light py-2 px-3" style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; border-bottom: 2px solid #dee2e6;">
-          <i class="${config.icon} me-1"></i>${groupName}
-        </div>
-      `;
 
-      html += templates
-        .map((template) => {
-          const isAuto = this._isAutoTemplate(template.template_type);
-          const descTip = template.description ? ` title="${template.description.replace(/"/g, '&quot;')}"` : '';
-          return `
-        <a href="#" class="list-group-item list-group-item-action ${this.currentTemplate?.id === template.id ? 'active' : ''}"
-           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"${descTip}>
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <strong>${template.template_name || template.name || 'Untitled'}</strong>
-              <br>
-              <small class="${this.currentTemplate?.id === template.id ? 'text-white-50' : 'text-muted'}">${this.getTypeLabel(template.template_type)}</small>
-            </div>
-            <div class="d-flex flex-column align-items-end gap-1">
-              <div>
-                ${template.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}
-              ${template.is_default ? '<span class="badge bg-primary ms-1">Default</span>' : ''}
+      html += `<div class="px-3 pt-3 pb-1" style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#adb5bd;">
+        <i class="${config.icon} me-1"></i>${groupName}
+      </div>`;
+
+      html += templates.map((template) => {
+        const isActive = template.is_active !== false;
+        const isAuto = this._isAutoTemplate(template.template_type) &&
+          !['general', 'notification', 'invite'].includes(template.template_type);
+        const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
+        const isSelected = this.currentTemplate?.id === template.id;
+        const name = utils.escapeHtml(template.template_name || template.name || 'Untitled');
+
+        const autoBadge = isAuto
+          ? `<span class="badge rounded-pill ms-1" style="font-size:0.6rem;background:${isSelected ? 'rgba(255,255,255,0.2)' : '#dff0fa'};color:${isSelected ? '#cce' : '#0a6c8a'};" title="${utils.escapeHtml(triggerDesc)}"><i class="bi bi-lightning-charge-fill"></i> Auto</span>`
+          : '';
+        const inactiveBadge = !isActive
+          ? `<span class="badge bg-secondary rounded-pill ms-1" style="font-size:0.6rem;">Off</span>`
+          : '';
+
+        return `<a href="#" class="list-group-item list-group-item-action border-0 border-bottom py-2 px-3 ${isSelected ? 'active' : ''}"
+           data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}">
+          <div class="d-flex align-items-center gap-1">
+            <div class="flex-grow-1 min-w-0">
+              <div class="d-flex align-items-center flex-wrap" style="line-height:1.3;">
+                <span class="${isSelected ? 'text-white' : ''} fw-semibold text-truncate" style="font-size:0.83rem;">${name}</span>
+                ${autoBadge}${inactiveBadge}
               </div>
-              ${isAuto ? '<span class="badge bg-info bg-opacity-75" style="font-size:0.6rem;">Auto</span>' : ''}
+              <div class="text-truncate mt-1" style="font-size:0.72rem;color:${isSelected ? 'rgba(255,255,255,0.65)' : '#6c757d'};">${utils.escapeHtml(this.getTypeLabel(template.template_type))}</div>
             </div>
+            <i class="bi bi-chevron-right flex-shrink-0" style="font-size:0.7rem;color:${isSelected ? 'rgba(255,255,255,0.5)' : '#ced4da'};"></i>
           </div>
-        </a>
-      `;
-        })
-        .join('');
+        </a>`;
+      }).join('');
     });
-
-    if (this._viewMode === 'grid') {
-      // M10: Card grid view
-      let gridHtml = '<div class="row g-3 p-2">';
-      visible.forEach((template) => {
-        const preview = (template.body || '').replace(/<[^>]*>/g, '').slice(0, 120);
-        const modified = template.updated_at ? utils.formatRelativeTime(template.updated_at) : '';
-        gridHtml += `
-          <div class="col-12">
-            <div class="card border ${this.currentTemplate?.id === template.id ? 'border-primary' : ''}">
-              <div class="card-body py-2 px-3">
-                <div class="fw-semibold small">${utils.escapeHtml(template.template_name || 'Untitled')}</div>
-                <div class="text-muted" style="font-size:0.7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${utils.escapeHtml(preview)}">${utils.escapeHtml(preview) || '(no content)'}</div>
-                ${modified ? `<div class="text-muted mt-1" style="font-size:0.65rem;">${modified}</div>` : ''}
-                <div class="d-flex gap-1 mt-2">
-                  <button class="btn btn-xs btn-outline-primary py-0 px-1" style="font-size:0.7rem;" data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}"><i class="bi bi-pencil"></i> Edit</button>
-                  <button class="btn btn-xs btn-outline-success py-0 px-1" style="font-size:0.7rem;" data-action="emailTemplatesModule.selectTemplate" data-id="${template.id}" title="Select and use this template"><i class="bi bi-send"></i> Use</button>
-                </div>
-              </div>
-            </div>
-          </div>`;
-      });
-      gridHtml += '</div>';
-      container.innerHTML = gridHtml;
-      return;
-    }
 
     container.innerHTML = html;
-
-    // Attach delegated click handler for template selection
-    container.addEventListener('click', (e) => {
-      const actionEl = e.target.closest('[data-action="emailTemplatesModule.selectTemplate"]');
-      if (actionEl) {
-        e.preventDefault();
-        this.selectTemplate(actionEl.getAttribute('data-id'));
-      }
-    });
   },
 
   /**
@@ -747,146 +814,199 @@ The British Trade Awards Team`,
    * Render template editor
    */
   renderTemplateEditor(template) {
-    document.getElementById('editorTitle').textContent = template.template_name;
+    document.getElementById('editorTitle').textContent = template.template_name || template.name || 'Edit Template';
 
-    const placeholdersList =
-      template.available_placeholders && template.available_placeholders.length > 0
-        ? `
-        <div class="alert alert-info">
-          <strong><i class="bi bi-info-circle me-2"></i>Available Placeholders:</strong>
-          <div class="mt-2">
-            ${template.available_placeholders
-              .map(
-                (p) => `
-              <span class="badge bg-light text-dark me-1 mb-1" style="cursor: pointer;"
-                    data-action="emailTemplatesModule.insertPlaceholder" data-placeholder="{${p}}"
-                    title="Click to insert">
-                {${p}}
-              </span>
-            `
-              )
-              .join('')}
-          </div>
-          <small class="text-muted d-block mt-2">Click a placeholder to insert it at the cursor position</small>
-        </div>
-      `
-        : '';
+    const isAuto = this._isAutoTemplate(template.template_type) &&
+      !['general', 'notification', 'invite'].includes(template.template_type);
+    const triggerDesc = this._autoTriggerDescriptions[template.template_type] || '';
+
+    // Context banner: tells user when/how this email fires
+    const contextBanner = isAuto
+      ? `<div class="d-flex align-items-start gap-2 rounded px-3 py-2 mb-3" style="background:#e8f4f8;border-left:3px solid #0ea5c7;">
+           <i class="bi bi-lightning-charge-fill mt-1 flex-shrink-0" style="color:#0a6c8a;font-size:0.85rem;"></i>
+           <div style="font-size:0.82rem;color:#0a4d62;">
+             <strong>Sent automatically</strong> — ${utils.escapeHtml(triggerDesc)}.
+             Changes you save here take effect on the next send.
+           </div>
+         </div>`
+      : `<div class="d-flex align-items-start gap-2 rounded px-3 py-2 mb-3" style="background:#f0f4f8;border-left:3px solid #9aabbc;">
+           <i class="bi bi-hand-index-thumb mt-1 flex-shrink-0" style="color:#5a7080;font-size:0.85rem;"></i>
+           <div style="font-size:0.82rem;color:#3d5060;">
+             <strong>Used manually</strong> — ${utils.escapeHtml(triggerDesc || 'Send this from the Email Builder tab or trigger it from an automation workflow')}.
+           </div>
+         </div>`;
+
+    // Build placeholder panel
+    const placeholders = template.available_placeholders && template.available_placeholders.length > 0
+      ? template.available_placeholders
+      : [];
+
+    const placeholderPanel = placeholders.length > 0
+      ? `<div class="mb-3">
+           <label class="form-label d-flex align-items-center gap-1 mb-1">
+             <i class="bi bi-braces text-muted" style="font-size:0.85rem;"></i>
+             <span>Available placeholders</span>
+             <span class="text-muted fw-normal ms-1" style="font-size:0.78rem;">— click to insert at cursor</span>
+           </label>
+           <div class="rounded border p-2" style="background:#f8f9fa;">
+             <div class="d-flex flex-wrap gap-1">
+               ${placeholders.map((p) => {
+                 const key = p.replace(/^\{|\}$/g, '');
+                 const desc = this._placeholderDescriptions[key] || '';
+                 return `<span class="badge border text-dark d-inline-flex align-items-center gap-1 px-2 py-1"
+                   style="cursor:pointer;font-size:0.75rem;background:#fff;font-family:monospace;"
+                   data-action="emailTemplatesModule.insertPlaceholder"
+                   data-placeholder="${p.startsWith('{') ? p : '{' + p + '}'}"
+                   title="${desc ? utils.escapeHtml(desc) : 'Click to insert'}">{${key}}</span>`;
+               }).join('')}
+             </div>
+             <p class="text-muted mb-0 mt-2" style="font-size:0.72rem;"><i class="bi bi-info-circle me-1"></i>Hover a placeholder to see what it becomes. These are replaced with real data when the email is sent.</p>
+           </div>
+         </div>`
+      : '';
+
+    const hasDefault = !!this._defaultTemplates[template.template_name];
 
     const editor = document.getElementById('templateEditor');
     editor.innerHTML = `
+      ${contextBanner}
       <form id="templateForm">
-        <!-- Template Info -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label class="form-label">Template Name</label>
-            <input type="text" class="form-control" id="templateName" value="${template.template_name}" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Template Type</label>
-            <select class="form-select" id="templateType" required>
-              <optgroup label="Entry & Submissions">
-                <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
-                <option value="nomination_confirmation" ${template.template_type === 'nomination_confirmation' ? 'selected' : ''}>Nomination Confirmation</option>
-                <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
-                <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
-              </optgroup>
-              <optgroup label="Payments">
-                <option value="payment_confirmation" ${template.template_type === 'payment_confirmation' ? 'selected' : ''}>Payment Confirmation</option>
-                <option value="payment_failed" ${template.template_type === 'payment_failed' ? 'selected' : ''}>Payment Failed</option>
-                <option value="refund_confirmation" ${template.template_type === 'refund_confirmation' ? 'selected' : ''}>Refund Confirmation</option>
-                <option value="payment_reminder" ${template.template_type === 'payment_reminder' ? 'selected' : ''}>Payment Reminder</option>
-              </optgroup>
-              <optgroup label="Judging & Results">
-                <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approved / Shortlisted</option>
-                <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Not Shortlisted</option>
-                <option value="winner_announcement" ${template.template_type === 'winner_announcement' ? 'selected' : ''}>Winner Announcement</option>
-                <option value="judge_assignment" ${template.template_type === 'judge_assignment' ? 'selected' : ''}>Judge Assignment</option>
-                <option value="judge_reminder" ${template.template_type === 'judge_reminder' ? 'selected' : ''}>Judge Reminder</option>
-              </optgroup>
-              <optgroup label="Events & Invitations">
-                <option value="event_invitation" ${template.template_type === 'event_invitation' ? 'selected' : ''}>Event Invitation</option>
-                <option value="ticket_issued" ${template.template_type === 'ticket_issued' ? 'selected' : ''}>Ticket Issued</option>
-                <option value="deadline_reminder" ${template.template_type === 'deadline_reminder' ? 'selected' : ''}>Deadline Reminder</option>
-              </optgroup>
-              <optgroup label="General">
-                <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
-                <option value="notification" ${template.template_type === 'notification' ? 'selected' : ''}>Notification</option>
-                <option value="invite" ${template.template_type === 'invite' ? 'selected' : ''}>Invitation</option>
-              </optgroup>
-            </select>
+
+        <!-- Subject line — most important field, at top -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="templateSubject">Subject line <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="templateSubject" value="${utils.escapeHtml(template.subject || '')}" required maxlength="200"
+                 placeholder="e.g. Your entry has been received — {ENTRY_NUMBER}">
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">Aim for 40–60 characters. Placeholders in {CURLY_BRACES} are replaced with real data.</small>
+            <small class="text-muted" id="subjectCharCount">${(template.subject || '').length}/200</small>
           </div>
         </div>
 
-        <!-- Description -->
+        <!-- Placeholder panel (if available) -->
+        ${placeholderPanel}
+
+        <!-- Email body -->
         <div class="mb-3">
-          <label class="form-label">Description</label>
-          <input type="text" class="form-control" id="templateDescription" value="${template.description || ''}"
-                 placeholder="Brief description of when this template is used">
+          <label class="form-label fw-semibold" for="templateBody">Email body <span class="text-danger">*</span>
+            <span class="badge bg-light text-muted border ms-1 fw-normal" style="font-size:0.7rem;">HTML or plain text</span>
+          </label>
+          <textarea class="form-control font-monospace" id="templateBody" rows="16" required
+                    style="font-size:0.82rem;line-height:1.5;">${utils.escapeHtml(template.body || '')}</textarea>
+          <small class="text-muted">You can write plain text paragraphs, or paste full HTML for a custom layout. Use {PLACEHOLDER} variables anywhere in the body.</small>
         </div>
 
-        <!-- Subject Line -->
-        <div class="mb-3">
-          <label class="form-label">Subject Line</label>
-          <input type="text" class="form-control" id="templateSubject" value="${template.subject}" required>
-        </div>
-
-        <!-- Placeholders Info -->
-        ${placeholdersList}
-
-        <!-- Email Body -->
-        <div class="mb-3">
-          <label class="form-label">Email Body</label>
-          <textarea class="form-control" id="templateBody" rows="15" required style="font-family: monospace;">${template.body}</textarea>
-        </div>
-
-        <!-- Template Settings -->
-        <div class="row mb-4">
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="templateActive" ${template.is_active ? 'checked' : ''}>
-              <label class="form-check-label" for="templateActive">
-                Active (can be used for sending)
-              </label>
+        <!-- Collapsible template settings -->
+        <details class="mb-4" id="tmplSettingsDetails">
+          <summary class="text-muted" style="cursor:pointer;font-size:0.85rem;user-select:none;">
+            <i class="bi bi-sliders2 me-1"></i>Template settings
+            <span class="ms-1 badge bg-light text-muted border fw-normal" style="font-size:0.7rem;">${utils.escapeHtml(template.template_name || '')}</span>
+          </summary>
+          <div class="mt-3 pt-3 border-top">
+            <div class="row mb-3">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label form-label-sm">Template name</label>
+                <input type="text" class="form-control form-control-sm" id="templateName" value="${utils.escapeHtml(template.template_name || '')}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label form-label-sm">Template type</label>
+                <select class="form-select form-select-sm" id="templateType" required>
+                  <optgroup label="Entry &amp; Submissions">
+                    <option value="confirmation" ${template.template_type === 'confirmation' ? 'selected' : ''}>Entry Confirmation</option>
+                    <option value="nomination_confirmation" ${template.template_type === 'nomination_confirmation' ? 'selected' : ''}>Nomination Confirmation</option>
+                    <option value="reminder" ${template.template_type === 'reminder' ? 'selected' : ''}>Upload Reminder</option>
+                    <option value="revision_request" ${template.template_type === 'revision_request' ? 'selected' : ''}>Changes Requested</option>
+                  </optgroup>
+                  <optgroup label="Payments">
+                    <option value="payment_confirmation" ${template.template_type === 'payment_confirmation' ? 'selected' : ''}>Payment Confirmation</option>
+                    <option value="payment_failed" ${template.template_type === 'payment_failed' ? 'selected' : ''}>Payment Failed</option>
+                    <option value="refund_confirmation" ${template.template_type === 'refund_confirmation' ? 'selected' : ''}>Refund Confirmation</option>
+                    <option value="payment_reminder" ${template.template_type === 'payment_reminder' ? 'selected' : ''}>Payment Reminder</option>
+                  </optgroup>
+                  <optgroup label="Judging &amp; Results">
+                    <option value="approval" ${template.template_type === 'approval' ? 'selected' : ''}>Approved / Shortlisted</option>
+                    <option value="rejection" ${template.template_type === 'rejection' ? 'selected' : ''}>Not Shortlisted</option>
+                    <option value="winner_announcement" ${template.template_type === 'winner_announcement' ? 'selected' : ''}>Winner Announcement</option>
+                    <option value="judge_assignment" ${template.template_type === 'judge_assignment' ? 'selected' : ''}>Judge Assignment</option>
+                    <option value="judge_reminder" ${template.template_type === 'judge_reminder' ? 'selected' : ''}>Judge Reminder</option>
+                  </optgroup>
+                  <optgroup label="Events &amp; Invitations">
+                    <option value="event_invitation" ${template.template_type === 'event_invitation' ? 'selected' : ''}>Event Invitation</option>
+                    <option value="ticket_issued" ${template.template_type === 'ticket_issued' ? 'selected' : ''}>Ticket Issued</option>
+                    <option value="deadline_reminder" ${template.template_type === 'deadline_reminder' ? 'selected' : ''}>Deadline Reminder</option>
+                  </optgroup>
+                  <optgroup label="General">
+                    <option value="general" ${template.template_type === 'general' ? 'selected' : ''}>General</option>
+                    <option value="notification" ${template.template_type === 'notification' ? 'selected' : ''}>Notification</option>
+                    <option value="invite" ${template.template_type === 'invite' ? 'selected' : ''}>Invitation</option>
+                    <option value="sponsor_enquiry_confirmation" ${template.template_type === 'sponsor_enquiry_confirmation' ? 'selected' : ''}>Sponsorship Enquiry Confirmation</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label form-label-sm">Internal notes <span class="text-muted fw-normal">(optional — only you can see this)</span></label>
+              <input type="text" class="form-control form-control-sm" id="templateDescription" value="${utils.escapeHtml(template.description || '')}"
+                     placeholder="e.g. Sent to UK entrants only — last reviewed March 2026">
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-2 mb-md-0">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="templateActive" ${template.is_active !== false ? 'checked' : ''}>
+                  <label class="form-check-label small" for="templateActive">
+                    <strong>Active</strong> — this template can be sent
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="templateDefault" ${template.is_default ? 'checked' : ''}>
+                  <label class="form-check-label small" for="templateDefault">
+                    <strong>Default</strong> — use this when multiple templates share the same type
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="col-md-6">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="templateDefault" ${template.is_default ? 'checked' : ''}>
-              <label class="form-check-label" for="templateDefault">
-                Default template for this type
-              </label>
-            </div>
-          </div>
-        </div>
+        </details>
 
-        <!-- Action Buttons -->
-        <div class="d-flex gap-2 flex-wrap">
+        <!-- Action bar -->
+        <div class="d-flex align-items-center gap-2 flex-wrap pt-3 border-top">
           <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveTemplate">
-            <i class="bi bi-save me-2"></i>Save Template
+            <i class="bi bi-check-lg me-1"></i>Save changes
           </button>
           <button type="button" class="btn btn-outline-secondary" data-action="emailTemplatesModule.previewTemplate">
-            <i class="bi bi-eye me-2"></i>Preview
+            <i class="bi bi-eye me-1"></i>Preview
           </button>
-          <button type="button" class="btn btn-outline-info" data-action="emailTemplatesModule.sendTestEmail">
-            <i class="bi bi-envelope me-2"></i>Send Test
+          <button type="button" class="btn btn-outline-secondary" data-action="emailTemplatesModule.sendTestEmail">
+            <i class="bi bi-send me-1"></i>Send test
           </button>
-          ${
-            this._defaultTemplates[template.template_name]
-              ? `
-            <button type="button" class="btn btn-outline-warning" data-action="emailTemplatesModule.revertToDefault">
-              <i class="bi bi-arrow-counterclockwise me-2"></i>Revert to Default
+          <div class="ms-auto dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="More options">
+              <i class="bi bi-three-dots"></i>
             </button>
-          `
-              : ''
-          }
-          <button type="button" class="btn btn-outline-danger ms-auto" data-action="emailTemplatesModule.deleteTemplate" data-id="${template.id}">
-            <i class="bi bi-trash me-2"></i>Delete
-          </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              ${hasDefault ? `<li><a class="dropdown-item" href="#" data-action="emailTemplatesModule.revertToDefault"><i class="bi bi-arrow-counterclockwise me-2"></i>Revert to default</a></li>` : ''}
+              ${hasDefault ? `<li><hr class="dropdown-divider"></li>` : ''}
+              <li><a class="dropdown-item text-danger" href="#" data-action="emailTemplatesModule.deleteTemplate" data-id="${template.id}"><i class="bi bi-trash me-2"></i>Delete template</a></li>
+            </ul>
+          </div>
         </div>
       </form>
     `;
 
-    // Attach delegated click handler for editor action buttons
+    // Live subject character counter
+    const subjectInput = editor.querySelector('#templateSubject');
+    const charCount = editor.querySelector('#subjectCharCount');
+    if (subjectInput && charCount) {
+      subjectInput.addEventListener('input', () => {
+        const len = subjectInput.value.length;
+        charCount.textContent = `${len}/200`;
+        charCount.className = len > 80 ? 'text-warning small' : len > 100 ? 'text-danger small' : 'text-muted small';
+      });
+    }
+
+    // Delegated click handler for editor action buttons
     editor.addEventListener('click', (e) => {
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;
@@ -894,24 +1014,12 @@ The British Trade Awards Team`,
       const action = actionEl.getAttribute('data-action');
       const id = actionEl.getAttribute('data-id');
       switch (action) {
-        case 'emailTemplatesModule.saveTemplate':
-          this.saveTemplate();
-          break;
-        case 'emailTemplatesModule.previewTemplate':
-          this.previewTemplate();
-          break;
-        case 'emailTemplatesModule.sendTestEmail':
-          this.sendTestEmail();
-          break;
-        case 'emailTemplatesModule.revertToDefault':
-          this.revertToDefault();
-          break;
-        case 'emailTemplatesModule.deleteTemplate':
-          this.deleteTemplate(id);
-          break;
-        case 'emailTemplatesModule.insertPlaceholder':
-          this.insertPlaceholder(actionEl.getAttribute('data-placeholder'));
-          break;
+        case 'emailTemplatesModule.saveTemplate': this.saveTemplate(); break;
+        case 'emailTemplatesModule.previewTemplate': this.previewTemplate(); break;
+        case 'emailTemplatesModule.sendTestEmail': this.sendTestEmail(); break;
+        case 'emailTemplatesModule.revertToDefault': this.revertToDefault(); break;
+        case 'emailTemplatesModule.deleteTemplate': this.deleteTemplate(id); break;
+        case 'emailTemplatesModule.insertPlaceholder': this.insertPlaceholder(actionEl.getAttribute('data-placeholder')); break;
       }
     });
   },
@@ -1088,13 +1196,71 @@ The British Trade Awards Team`,
       return;
     }
 
-    const email = prompt('Enter email address to send test to:');
-    if (!email || !email.includes('@')) return;
+    const existing = document.getElementById('testEmailModal');
+    if (existing) existing.remove();
 
+    const lastEmail = localStorage.getItem('bta_test_email_addr') || '';
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="modal fade" id="testEmailModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+          <div class="modal-content">
+            <div class="modal-header py-2">
+              <h6 class="modal-title fw-semibold"><i class="bi bi-send me-2"></i>Send test email</h6>
+              <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pb-2">
+              <p class="text-muted small mb-3">Sends the template with sample data so you can preview it in a real inbox before it goes live.</p>
+              <label class="form-label form-label-sm fw-semibold">Send to</label>
+              <input type="email" class="form-control form-control-sm" id="testEmailAddress"
+                     value="${utils.escapeHtml(lastEmail)}" placeholder="you@example.com" autocomplete="email">
+              <div id="testEmailError" class="invalid-feedback">Please enter a valid email address.</div>
+            </div>
+            <div class="modal-footer py-2">
+              <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-sm btn-primary" id="testEmailSendBtn">
+                <i class="bi bi-send me-1"></i>Send test
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+
+    const modalEl = document.getElementById('testEmailModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    modalEl.addEventListener('shown.bs.modal', () => {
+      const inp = document.getElementById('testEmailAddress');
+      inp?.focus();
+      inp?.select();
+    });
+
+    const sendBtn = document.getElementById('testEmailSendBtn');
+    sendBtn.addEventListener('click', async () => {
+      const inp = document.getElementById('testEmailAddress');
+      const addr = inp?.value?.trim();
+      if (!addr || !addr.includes('@')) {
+        inp?.classList.add('is-invalid');
+        return;
+      }
+      inp?.classList.remove('is-invalid');
+      localStorage.setItem('bta_test_email_addr', addr);
+      modal.hide();
+      await this._doSendTestEmail(addr);
+    });
+
+    document.getElementById('testEmailAddress')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
+  },
+
+  async _doSendTestEmail(email) {
     const subject = document.getElementById('templateSubject')?.value || this.currentTemplate.subject;
     const body = document.getElementById('templateBody')?.value || this.currentTemplate.body;
 
-    // Load saved placeholder defaults and branding
     const sampleData = await this._getSampleData();
     const branding = await this._getBrandingConfig();
 
@@ -1106,7 +1272,6 @@ The British Trade Awards Team`,
       testBody = testBody.replace(regex, sampleData[key]);
     });
 
-    // Wrap with branded header/footer (subtitle matches template type)
     const templateType = document.getElementById('templateType')?.value || this.currentTemplate?.template_type;
     const subtitle = this._headerSubtitles[templateType] || '';
     if (typeof brandingModule !== 'undefined' && branding && Object.keys(branding).length) {
@@ -1114,14 +1279,12 @@ The British Trade Awards Team`,
       testBody = `<style>${styles.css}</style>${styles.header}<div style="padding:24px 32px">${testBody}</div>${styles.footer}`;
     }
 
-    // Use branding email settings with fallbacks
     const fromName = branding?.company_name || 'British Trade Awards';
     const fromEmail = branding?.email_from || 'awards@britishtradeawards.com';
     const replyTo = branding?.email_reply_to || branding?.email_from || 'awards@britishtradeawards.com';
 
     try {
-      utils.showToast('Sending test email...', 'info');
-
+      utils.showToast('Sending test email…', 'info');
       const result = await apiClient.rpc('send_test_email', {
         p_to: email,
         p_subject: testSubject,
@@ -1130,10 +1293,8 @@ The British Trade Awards Team`,
         p_from_email: fromEmail,
         p_reply_to: replyTo,
       });
-
       if (result.data && !result.data.success) throw new Error(result.data.error || 'Send failed');
-
-      utils.showToast(`Test email sent to ${email}!`, 'success');
+      utils.showToast(`Test email sent to ${email}`, 'success');
     } catch (error) {
       console.error('Error sending test email:', error);
       utils.showToast('Failed to send test email: ' + error.message, 'error');
@@ -1168,12 +1329,13 @@ The British Trade Awards Team`,
       utils.showToast('Template deleted successfully', 'success');
       this.currentTemplate = null;
       document.getElementById('templateEditor').innerHTML = `
-        <div class="text-center py-5 text-muted">
+        <div class="text-center py-5 text-muted px-4">
           <i class="bi bi-envelope display-1 opacity-25 d-block mb-3"></i>
-          <p>Select a template from the list to edit</p>
+          <p class="fw-semibold mb-1">Select a template to edit</p>
+          <p class="small">Choose one from the list on the left, or create a new one.</p>
         </div>
       `;
-      document.getElementById('editorTitle').textContent = 'Select a template';
+      document.getElementById('editorTitle').textContent = 'Email Templates';
 
       await this.loadTemplates();
     } catch (error) {
@@ -1187,116 +1349,144 @@ The British Trade Awards Team`,
    * @returns {void}
    */
   newTemplate() {
-    const modalHtml = `
+    const existing = document.getElementById('newTemplateModal');
+    if (existing) existing.remove();
+
+    // Build type options with descriptions
+    const typeOptions = [
+      { group: 'Entry & Submissions', options: [
+        { value: 'confirmation', label: 'Entry Confirmation', desc: 'Sent automatically when an entry is submitted' },
+        { value: 'nomination_confirmation', label: 'Nomination Confirmation', desc: 'Sent automatically when a peer nomination is submitted' },
+        { value: 'reminder', label: 'Upload Reminder', desc: 'Prompt entrants to upload supporting documents' },
+        { value: 'revision_request', label: 'Changes Requested', desc: 'Sent when an admin requests entry changes' },
+      ]},
+      { group: 'Payments', options: [
+        { value: 'payment_confirmation', label: 'Payment Confirmation', desc: 'Sent automatically after a successful payment' },
+        { value: 'payment_failed', label: 'Payment Failed', desc: 'Sent automatically when a payment fails' },
+        { value: 'refund_confirmation', label: 'Refund Confirmation', desc: 'Sent automatically when a refund is issued' },
+        { value: 'payment_reminder', label: 'Payment Reminder', desc: 'Sent to entrants with outstanding fees' },
+      ]},
+      { group: 'Judging & Results', options: [
+        { value: 'approval', label: 'Approved / Shortlisted', desc: 'Sent when an entry is shortlisted' },
+        { value: 'rejection', label: 'Not Shortlisted', desc: 'Sent when an entry is not shortlisted' },
+        { value: 'winner_announcement', label: 'Winner Announcement', desc: 'Sent when an entry wins' },
+        { value: 'judge_assignment', label: 'Judge Assignment', desc: 'Sent to judges when entries are assigned' },
+        { value: 'judge_reminder', label: 'Judge Reminder', desc: 'Sent to judges as deadlines approach' },
+      ]},
+      { group: 'Events & Invitations', options: [
+        { value: 'event_invitation', label: 'Event Invitation', desc: 'Invite contacts to an event' },
+        { value: 'ticket_issued', label: 'Ticket Issued', desc: 'Sent when an event ticket is issued' },
+        { value: 'deadline_reminder', label: 'Deadline Reminder', desc: 'Sent as key dates approach' },
+      ]},
+      { group: 'General', options: [
+        { value: 'general', label: 'General', desc: 'All-purpose — use from Email Builder for one-off sends' },
+        { value: 'notification', label: 'Notification', desc: 'General alerts and status updates' },
+        { value: 'invite', label: 'Invitation', desc: 'Invitation campaigns sent from Email Builder' },
+      ]},
+    ];
+
+    const typeSelectHtml = typeOptions.map(({ group, options }) =>
+      `<optgroup label="${group}">${options.map(o => `<option value="${o.value}" data-desc="${o.desc}">${o.label}</option>`).join('')}</optgroup>`
+    ).join('');
+
+    document.body.insertAdjacentHTML('beforeend', `
       <div class="modal fade" id="newTemplateModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create New Template</h5>
+            <div class="modal-header py-2">
+              <div>
+                <h5 class="modal-title mb-0"><i class="bi bi-plus-circle me-2"></i>New template</h5>
+                <p class="text-muted small mb-0">Fill in the subject and body below — you can tweak everything after saving.</p>
+              </div>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
               <form id="newTemplateForm">
+
                 <div class="row mb-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Template Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="newTemplateName" required placeholder="e.g., Welcome Email">
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Template Type <span class="text-danger">*</span></label>
+                  <div class="col-md-6 mb-3 mb-md-0">
+                    <label class="form-label fw-semibold">What type of email is this? <span class="text-danger">*</span></label>
                     <select class="form-select" id="newTemplateType" required>
-                      <optgroup label="Entry & Submissions">
-                        <option value="confirmation">Entry Confirmation</option>
-                        <option value="nomination_confirmation">Nomination Confirmation</option>
-                        <option value="reminder">Upload Reminder</option>
-                        <option value="revision_request">Changes Requested</option>
-                      </optgroup>
-                      <optgroup label="Payments">
-                        <option value="payment_confirmation">Payment Confirmation</option>
-                        <option value="payment_failed">Payment Failed</option>
-                        <option value="refund_confirmation">Refund Confirmation</option>
-                        <option value="payment_reminder">Payment Reminder</option>
-                      </optgroup>
-                      <optgroup label="Judging & Results">
-                        <option value="approval">Approved / Shortlisted</option>
-                        <option value="rejection">Not Shortlisted</option>
-                        <option value="winner_announcement">Winner Announcement</option>
-                        <option value="judge_assignment">Judge Assignment</option>
-                        <option value="judge_reminder">Judge Reminder</option>
-                      </optgroup>
-                      <optgroup label="Events & Invitations">
-                        <option value="event_invitation">Event Invitation</option>
-                        <option value="ticket_issued">Ticket Issued</option>
-                        <option value="deadline_reminder">Deadline Reminder</option>
-                      </optgroup>
-                      <optgroup label="General">
-                        <option value="general" selected>General</option>
-                        <option value="notification">Notification</option>
-                        <option value="invite">Invitation</option>
-                      </optgroup>
+                      <option value="" disabled selected>Choose a type…</option>
+                      ${typeSelectHtml}
                     </select>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Description</label>
-                  <input type="text" class="form-control" id="newTemplateDescription" placeholder="Brief description of when this template is used">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Subject Line <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="newTemplateSubject" required placeholder="e.g., Welcome to the British Trade Awards, {CONTACT_NAME}">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Email Body <span class="text-danger">*</span></label>
-                  <textarea class="form-control" id="newTemplateBody" rows="12" required style="font-family: monospace;" placeholder="Write your email body here. Use placeholders like {CONTACT_NAME}, {COMPANY_NAME}, etc."></textarea>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label">Available Placeholders <small class="text-muted">(comma-separated)</small></label>
-                  <input type="text" class="form-control" id="newTemplatePlaceholders" placeholder="e.g., CONTACT_NAME, COMPANY_NAME, AWARD_NAME">
-                  <small class="text-muted">These will be shown to users when editing the template</small>
-                </div>
-                <div class="row">
-                  <div class="col-md-6">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="newTemplateActive" checked>
-                      <label class="form-check-label" for="newTemplateActive">Active</label>
-                    </div>
+                    <div id="newTypeDesc" class="form-text mt-1" style="min-height:1.2em;"></div>
                   </div>
                   <div class="col-md-6">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="newTemplateDefault">
-                      <label class="form-check-label" for="newTemplateDefault">Default for this type</label>
-                    </div>
+                    <label class="form-label fw-semibold">Template name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="newTemplateName" required placeholder="e.g. Winner Notification 2026">
+                    <div class="form-text">A short internal name so you can find it later.</div>
                   </div>
                 </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Subject line <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="newTemplateSubject" required placeholder="e.g. Congratulations — you've been shortlisted! 🏆">
+                  <div class="form-text">Aim for 40–60 characters. Use {PLACEHOLDER} variables like {CONTACT_NAME} or {AWARD_NAME}.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-semibold">Email body <span class="text-danger">*</span></label>
+                  <textarea class="form-control font-monospace" id="newTemplateBody" rows="10" required
+                            style="font-size:0.82rem;line-height:1.5;"
+                            placeholder="Dear {CONTACT_NAME},&#10;&#10;Write your message here...&#10;&#10;Kind regards,&#10;The British Trade Awards Team"></textarea>
+                  <div class="form-text">Plain text or HTML. Use {PLACEHOLDER} variables — they are replaced with real data when the email is sent.</div>
+                </div>
+
+                <details class="mb-2">
+                  <summary class="text-muted small" style="cursor:pointer;user-select:none;">
+                    <i class="bi bi-sliders2 me-1"></i>Advanced options
+                  </summary>
+                  <div class="mt-3 pt-3 border-top">
+                    <div class="mb-3">
+                      <label class="form-label form-label-sm">Internal notes <span class="text-muted fw-normal">(optional)</span></label>
+                      <input type="text" class="form-control form-control-sm" id="newTemplateDescription" placeholder="e.g. UK region only — reviewed March 2026">
+                    </div>
+                    <div class="row">
+                      <div class="col-md-6 mb-2 mb-md-0">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="newTemplateActive" checked>
+                          <label class="form-check-label small" for="newTemplateActive"><strong>Active</strong> — ready to send</label>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="newTemplateDefault">
+                          <label class="form-check-label small" for="newTemplateDefault"><strong>Default</strong> for this type</label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </details>
+
               </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer py-2">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-              <button type="button" class="btn btn-primary" data-action="emailTemplatesModule.saveNewTemplate">
-                <i class="bi bi-save me-2"></i>Create Template
+              <button type="button" class="btn btn-primary" id="saveNewTemplateBtn">
+                <i class="bi bi-check-lg me-1"></i>Create template
               </button>
             </div>
           </div>
         </div>
       </div>
-    `;
-
-    const existing = document.getElementById('newTemplateModal');
-    if (existing) existing.remove();
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    `);
 
     const modalEl = document.getElementById('newTemplateModal');
-    modalEl.addEventListener('click', (e) => {
-      const actionEl = e.target.closest('[data-action="emailTemplatesModule.saveNewTemplate"]');
-      if (actionEl) {
-        e.preventDefault();
-        this.saveNewTemplate();
-      }
+
+    // Show type description when type changes
+    modalEl.querySelector('#newTemplateType').addEventListener('change', function () {
+      const selected = this.options[this.selectedIndex];
+      const desc = selected?.dataset?.desc || '';
+      const descEl = document.getElementById('newTypeDesc');
+      if (descEl) descEl.textContent = desc;
     });
+
+    modalEl.querySelector('#saveNewTemplateBtn').addEventListener('click', () => this.saveNewTemplate());
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
+    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
   },
 
   /**
@@ -1310,13 +1500,10 @@ The British Trade Awards Team`,
       return;
     }
 
-    const placeholdersRaw = document.getElementById('newTemplatePlaceholders').value;
-    const placeholders = placeholdersRaw
-      ? placeholdersRaw
-          .split(',')
-          .map((p) => p.trim())
-          .filter((p) => p)
-      : [];
+    // Derive available placeholders from common {PLACEHOLDER} patterns in the body
+    const bodyVal = document.getElementById('newTemplateBody').value || '';
+    const foundPlaceholders = [...new Set((bodyVal.match(/\{([A-Z_]+)\}/g) || []))];
+    const placeholders = foundPlaceholders;
 
     const templateData = {
       template_name: document.getElementById('newTemplateName').value,

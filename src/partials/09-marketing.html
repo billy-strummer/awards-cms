@@ -868,30 +868,27 @@
 
             <!-- Email Templates Sub-Tab -->
             <div class="tab-pane fade" id="email-templates-content" role="tabpanel">
-              <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <h4 class="mb-1"><i class="bi bi-envelope-paper me-2"></i>Template Library</h4>
-                  <p class="text-muted mb-0 small">Store and edit reusable email layouts (Winner Announcement, Nominee Notification, etc.). To compose and send a campaign to a list, use the <strong>Email Builder</strong> tab.</p>
+                  <h4 class="mb-1"><i class="bi bi-envelope-paper me-2"></i>Email Templates</h4>
+                  <p class="text-muted mb-0 small">Edit the text and content of every email the system sends. Templates marked <strong><i class="bi bi-lightning-charge-fill text-info"></i> Auto</strong> are sent automatically — changes take effect immediately. Use the <strong>Email Builder</strong> tab to compose one-off campaigns.</p>
                 </div>
-              </div>
-              <div class="alert alert-light border py-2 px-3 mb-3 small" role="note">
-                <i class="bi bi-lightbulb text-warning me-1"></i><strong>Template Library vs Email Builder:</strong> Edit your reusable templates here. When you're ready to send an email campaign, go to the <strong>Email Builder</strong> tab — it uses these templates as a starting point.
               </div>
 
               <!-- Template List + Editor -->
               <div class="row">
                 <div class="col-md-4">
                   <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <h5 class="mb-0">Templates</h5>
-                      <div class="d-flex gap-1">
-                        <div class="btn-group btn-group-sm">
-                          <button class="btn btn-outline-secondary active" id="tmplListViewBtn" title="List view" data-action="emailTemplatesModule.setView" data-id="list"><i class="bi bi-list-ul"></i></button>
-                          <button class="btn btn-outline-secondary" id="tmplGridViewBtn" title="Grid view" data-action="emailTemplatesModule.setView" data-id="grid"><i class="bi bi-grid-3x3-gap"></i></button>
-                        </div>
+                    <div class="card-header py-2">
+                      <div class="d-flex align-items-center gap-2 mb-2">
+                        <h6 class="mb-0 fw-semibold flex-grow-1">Templates</h6>
                         <button class="btn btn-sm btn-primary" data-action="emailTemplatesModule.newTemplate">
                           <i class="bi bi-plus-lg me-1"></i>New
                         </button>
+                      </div>
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted" style="font-size:0.75rem;"></i></span>
+                        <input type="search" class="form-control border-start-0 ps-0" id="tmplSearchInput" placeholder="Search templates…" style="font-size:0.8rem;">
                       </div>
                     </div>
                     <div class="list-group list-group-flush" id="templatesList">

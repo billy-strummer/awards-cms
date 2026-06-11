@@ -215,36 +215,45 @@ async function handleSponsorEnquiry(req, res) {
   }
 
   // 3. Send branded confirmation to the enquirer (non-blocking — never fail the request)
-  // Try DB template first (editable from CMS Email Templates tab).
+  // Try DB template first (editable from CMS Email Templates tab — full HTML body).
   // Falls back to the rich hardcoded HTML body if no DB record exists.
   const dbTpl = await loadDbEmailTemplate('sponsor_enquiry_confirmation').catch(() => null);
-  const confirmSubject = dbTpl
-    ? dbTpl.subject
-        .replace(/\{NAME\}/gi, safeName)
-        .replace(/\{COMPANY\}/gi, safeCompany)
-        .replace(/\{PACKAGE\}/gi, safePkg)
-    : `Sponsorship enquiry received — British Trade Awards 2026`;
-
+  let confirmSubject;
   let confirmHtml;
+
   if (dbTpl) {
-    // DB template body uses {KEY} placeholders — substitute and wrap with branded template
+    // DB body is treated as raw HTML — the template is admin-authored, so it is trusted.
+    // Only the user-supplied values are HTML-escaped before substitution.
     const escH = (s) =>
       String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-    const bodyText = dbTpl.body
+
+    confirmSubject = dbTpl.subject
+      .replace(/\{NAME\}/gi, safeName)
+      .replace(/\{COMPANY\}/gi, safeCompany)
+      .replace(/\{PACKAGE\}/gi, safePkg);
+
+    // {ROLE_ROW} and {MESSAGE_ROW} expand to full HTML table rows (or empty string),
+    // so absent fields leave no empty rows in the email.
+    const roleRow = safeRole
+      ? `<tr style="background:#1a1a1a;"><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.07);"><span style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:block;margin-bottom:4px;">Your Role</span><span style="font-family:Arial,sans-serif;font-size:15px;color:#ffffff;">${escH(safeRole)}</span></td></tr>`
+      : '';
+    const msgRow = safeMsg
+      ? `<tr style="background:#161616;"><td style="padding:14px 20px;"><span style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);display:block;margin-bottom:4px;">Your Message</span><span style="font-family:Arial,sans-serif;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.65;">${escH(safeMsg).replace(/\n/g, '<br>')}</span></td></tr>`
+      : '';
+
+    const bodyHtml = dbTpl.body
       .replace(/\{NAME\}/gi, escH(safeName))
       .replace(/\{COMPANY\}/gi, escH(safeCompany))
       .replace(/\{PACKAGE\}/gi, escH(safePkg))
-      .replace(/\{ROLE\}/gi, escH(safeRole))
-      .replace(/\{MESSAGE\}/gi, escH(safeMsg));
-    const bodyHtml = `<div style="padding:30px 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#333;line-height:1.7;"><p style="margin:0 0 16px 0;">${bodyText
-      .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
-      .replace(/\n/g, '<br>')}</p></div>`;
+      .replace(/\{ROLE_ROW\}/gi, roleRow)
+      .replace(/\{MESSAGE_ROW\}/gi, msgRow);
+
     confirmHtml = wrapEmail(
       bodyHtml,
-      {},
+      { primary_color: '#0a0a0a', secondary_color: '#111111', accent_color: '#C9A227' },
       {
         subject: confirmSubject,
         subtitle: 'Sponsorship Enquiry Received',
@@ -252,6 +261,7 @@ async function handleSponsorEnquiry(req, res) {
       }
     );
   } else {
+    confirmSubject = `Sponsorship enquiry received — British Trade Awards 2026`;
     const confirmBody = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111;">
 

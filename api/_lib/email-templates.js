@@ -8,6 +8,7 @@
  * sendTemplateEmail() tries to load from the DB first using these types.
  */
 const DB_TEMPLATE_TYPE_MAP = {
+  SPONSOR_ENQUIRY_CONFIRMATION: 'sponsor_enquiry_confirmation',
   ENTRY_CONFIRMATION: 'confirmation',
   NOMINATION_CONFIRMATION: 'nomination_confirmation',
   ENTRY_DEADLINE_REMINDER: 'entry_deadline_reminder',
@@ -30,27 +31,6 @@ const DB_TEMPLATE_TYPE_MAP = {
 };
 
 /**
- * Load an active email template from the database by type.
- * @param {string} templateType - The template type identifier (e.g. 'confirmation', 'winner_announcement').
- * @returns {Promise<{subject: string, body: string}|null>} Template data or null if none found.
- */
-async function loadDbTemplate(templateType) {
-  try {
-    const { data } = await supabase
-      .from('email_templates')
-      .select('subject, body')
-      .eq('template_type', templateType)
-      .eq('is_active', true)
-      .order('is_default', { ascending: false })
-      .limit(1)
-      .single();
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Convert plain-text template body (from CMS) to styled HTML with paragraph wrapping.
  * @param {string} text - Plain text content to convert.
  * @returns {string} HTML string with paragraphs and line breaks.
@@ -63,6 +43,21 @@ async function loadDbTemplate(templateType) {
  * The {{brand_name}} placeholder is replaced with the tenant's company name.
  */
 const EMAIL_TEMPLATES = {
+  SPONSOR_ENQUIRY_CONFIRMATION: {
+    preheader: "We've received your sponsorship enquiry and will be in touch within 2 business days.",
+    subject: 'Sponsorship enquiry received — British Trade Awards 2026',
+    body: `
+      <div style="padding: 30px 40px;">
+        <p>Hi {NAME},</p>
+        <p>Thank you for your interest in sponsoring the <strong>British Trade Awards 2026</strong>. We've received your enquiry and a member of our partnerships team will be in touch within <strong>2 business days</strong>.</p>
+        <p><strong>Package interest:</strong> {PACKAGE}<br>
+        <strong>Company:</strong> {COMPANY}</p>
+        <p>Questions? Simply reply to this email.</p>
+        <p>The British Trade Awards Partnerships Team</p>
+      </div>
+    `,
+  },
+
   ENTRY_DEADLINE_REMINDER: {
     preheader: "Don't miss the deadline — submit your entry today.",
     subject: '⏰ Entry Deadline Approaching - {{award_name}}',

@@ -19,6 +19,23 @@ const { wrapEmail } = require('./_lib/email-header');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// Load an active email template from the DB by type. Returns null if not found.
+async function loadDbEmailTemplate(templateType) {
+  try {
+    const { data } = await supabase
+      .from('email_templates')
+      .select('subject, body')
+      .eq('template_type', templateType)
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .limit(1)
+      .single();
+    return data || null;
+  } catch {
+    return null;
+  }
+}
+
 // ────────────────────────────────────────────
 // CORS helpers
 // ────────────────────────────────────────────
@@ -198,8 +215,44 @@ async function handleSponsorEnquiry(req, res) {
   }
 
   // 3. Send branded confirmation to the enquirer (non-blocking — never fail the request)
-  const confirmSubject = `Sponsorship enquiry received — British Trade Awards 2026`;
-  const confirmBody = `
+  // Try DB template first (editable from CMS Email Templates tab).
+  // Falls back to the rich hardcoded HTML body if no DB record exists.
+  const dbTpl = await loadDbEmailTemplate('sponsor_enquiry_confirmation').catch(() => null);
+  const confirmSubject = dbTpl
+    ? dbTpl.subject
+        .replace(/\{NAME\}/gi, safeName)
+        .replace(/\{COMPANY\}/gi, safeCompany)
+        .replace(/\{PACKAGE\}/gi, safePkg)
+    : `Sponsorship enquiry received — British Trade Awards 2026`;
+
+  let confirmHtml;
+  if (dbTpl) {
+    // DB template body uses {KEY} placeholders — substitute and wrap with branded template
+    const escH = (s) =>
+      String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    const bodyText = dbTpl.body
+      .replace(/\{NAME\}/gi, escH(safeName))
+      .replace(/\{COMPANY\}/gi, escH(safeCompany))
+      .replace(/\{PACKAGE\}/gi, escH(safePkg))
+      .replace(/\{ROLE\}/gi, escH(safeRole))
+      .replace(/\{MESSAGE\}/gi, escH(safeMsg));
+    const bodyHtml = `<div style="padding:30px 40px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#333;line-height:1.7;"><p style="margin:0 0 16px 0;">${bodyText
+      .replace(/\n\n/g, '</p><p style="margin:0 0 16px 0;">')
+      .replace(/\n/g, '<br>')}</p></div>`;
+    confirmHtml = wrapEmail(
+      bodyHtml,
+      {},
+      {
+        subject: confirmSubject,
+        subtitle: 'Sponsorship Enquiry Received',
+        preheader: `Hi ${safeName}, we've received your enquiry and will be in touch within 2 business days.`,
+      }
+    );
+  } else {
+    const confirmBody = `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111111;">
 
   <!-- Greeting -->
@@ -338,19 +391,20 @@ async function handleSponsorEnquiry(req, res) {
 
 </table>`;
 
-  const confirmHtml = wrapEmail(
-    confirmBody,
-    {
-      primary_color: '#0a0a0a',
-      secondary_color: '#111111',
-      accent_color: '#C9A227',
-    },
-    {
-      subject: confirmSubject,
-      subtitle: 'Sponsorship Enquiry Received',
-      preheader: `Hi ${safeName}, we've received your enquiry and will be in touch within 2 business days.`,
-    }
-  );
+    confirmHtml = wrapEmail(
+      confirmBody,
+      {
+        primary_color: '#0a0a0a',
+        secondary_color: '#111111',
+        accent_color: '#C9A227',
+      },
+      {
+        subject: confirmSubject,
+        subtitle: 'Sponsorship Enquiry Received',
+        preheader: `Hi ${safeName}, we've received your enquiry and will be in touch within 2 business days.`,
+      }
+    );
+  }
 
   sendEmail({ to: safeEmail, subject: confirmSubject, html: confirmHtml }).catch((err) => {
     console.error('[entry-proxy] Sponsor confirmation email failed (non-fatal):', err.message);

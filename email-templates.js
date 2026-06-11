@@ -406,6 +406,19 @@ Deadline: {DEADLINE_DATE}
 Kind regards,
 The British Trade Awards Team`,
     },
+    'Sponsorship Enquiry Confirmation': {
+      subject: 'Sponsorship enquiry received — British Trade Awards 2026',
+      body: `Hi {NAME},
+
+Thank you for your interest in sponsoring the British Trade Awards 2026. We've received your enquiry and a member of our partnerships team will be in touch within 2 business days.
+
+Package interest: {PACKAGE}
+Company: {COMPANY}
+
+If you have any questions in the meantime, simply reply to this email.
+
+The British Trade Awards Partnerships Team`,
+    },
   },
 
   /**
@@ -606,7 +619,7 @@ The British Trade Awards Team`,
       types: ['event_invitation', 'ticket_issued', 'deadline_reminder'],
       icon: 'bi-calendar-event',
     },
-    General: { types: ['general', 'notification', 'invite'], icon: 'bi-megaphone' },
+    General: { types: ['general', 'notification', 'invite', 'sponsor_enquiry_confirmation'], icon: 'bi-megaphone' },
   },
 
   /**
@@ -811,6 +824,7 @@ The British Trade Awards Team`,
       general: 'General',
       notification: 'Notification',
       invite: 'Invitation',
+      sponsor_enquiry_confirmation: 'Sponsorship Enquiry Confirmation',
     };
     return labels[type] || type || '';
   },

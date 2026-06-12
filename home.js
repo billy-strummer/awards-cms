@@ -32,14 +32,6 @@
       function renderGrid(catMap, metaMap) {
         const sectors = Object.keys(catMap);
         const delays = ['', ' reveal-delay-1', ' reveal-delay-2', ' reveal-delay-3'];
-        const sub = document.getElementById('categories-sub');
-        if (sub)
-          sub.textContent =
-            sectors.length +
-            ' award categor' +
-            (sectors.length === 1 ? 'y' : 'ies') +
-            " spanning the full breadth of Britain's skilled trades industry";
-
         grid.innerHTML = sectors
           .map(function (sector, idx) {
             const m = metaMap[sector] || {};

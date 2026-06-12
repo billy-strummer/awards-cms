@@ -45,7 +45,7 @@
       --transition-slow:   0.5s ease;
 
       --header-h: 90px;
-      --section-pad: clamp(64px, 8vw, 120px);
+      --section-pad: clamp(40px, 5vw, 72px);
     }
 
     /* ============================================================
@@ -1686,7 +1686,7 @@
 
       #video-wrapper {
         order: 2;
-        width: calc(100% - 32px);
+        width: calc(100% - 24px);
         margin: 0 auto;
         aspect-ratio: 16 / 9;
       }
@@ -1719,7 +1719,7 @@
       /* CTA block: flows below the video */
       .hero-cta-group {
         order: 3;
-        padding: 32px clamp(20px, 5vw, 40px);
+        padding: 20px clamp(20px, 5vw, 40px);
         background: var(--bg-primary);
       }
 
@@ -1796,10 +1796,10 @@
 
     /* Mobile: ≤ 480px */
     @media (max-width: 480px) {
-      :root { --section-pad: 48px; }
+      :root { --section-pad: 32px; }
 
       /* Hero — content block (sits below video on mobile) */
-      .hero-content { padding: 48px 20px 36px; }
+      .hero-content { padding: 32px 20px 20px; }
       #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
       .hero-sub { font-size: 0.95rem; margin-bottom: 18px; }
       .hero-cta-group {
@@ -1865,7 +1865,7 @@
 
     /* Large screens: ≥ 1920px */
     @media (min-width: 1920px) {
-      :root { --section-pad: 140px; }
+      :root { --section-pad: 96px; }
 
       .container {
         max-width: 1440px;
@@ -2040,7 +2040,7 @@
     #stats-bar {
       background: #0d0d0d;
       border-top: 2px solid var(--gold);
-      padding: 28px 0;
+      padding: 20px 0;
     }
 
     .stats-bar-inner {
@@ -2420,8 +2420,8 @@
 
       #video-wrapper {
         order: 2;
-        width: calc(100% - clamp(48px, 10vw, 160px));
-        max-width: 1000px;
+        width: calc(100% - clamp(24px, 4vw, 48px));
+        max-width: none;
         margin: 0 auto;
         aspect-ratio: 16 / 9;
       }
@@ -2440,13 +2440,13 @@
         position: relative;
         max-width: 100%;
         background: var(--bg-primary);
-        padding: calc(var(--header-h) + 48px) clamp(20px, 6vw, 80px) 40px;
+        padding: calc(var(--header-h) + 28px) clamp(20px, 6vw, 80px) 24px;
       }
 
       .hero-cta-group {
         order: 3;
         background: var(--bg-primary);
-        padding: 48px clamp(20px, 6vw, 80px);
+        padding: 28px clamp(20px, 6vw, 80px);
         justify-content: center;
         border-top: 1px solid var(--border-subtle);
       }

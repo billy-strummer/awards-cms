@@ -423,19 +423,19 @@
     <div class="preview-fields">
       <div class="pf">
         <label>Company / Winner Name</label>
-        <input type="text" id="companyInput" placeholder="e.g. Smith &amp; Sons Electrical Ltd" oninput="updateCert()">
+        <input type="text" id="companyInput" placeholder="e.g. Smith &amp; Sons Electrical Ltd">
       </div>
       <div class="pf">
         <label>Award Name</label>
-        <input type="text" id="awardInput" placeholder="e.g. Electrical Contractor of the Year" oninput="updateCert()">
+        <input type="text" id="awardInput" placeholder="e.g. Electrical Contractor of the Year">
       </div>
       <div class="pf">
         <label>Year</label>
-        <input type="text" id="yearInput" value="2026" class="narrow" oninput="updateCert()">
+        <input type="text" id="yearInput" value="2026" class="narrow">
       </div>
     </div>
     <span class="preview-hint">URL params: ?company=…&amp;award=…&amp;year=…</span>
-    <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
+    <button class="btn-print" id="printBtn">Print / Save as PDF</button>
   </div>
 
   <!-- Certificate -->
@@ -518,39 +518,7 @@
     </div>
   </div>
 
-  <script>
-    function updateCert() {
-      const company = document.getElementById('companyInput').value.trim() || 'Company Name';
-      const award   = document.getElementById('awardInput').value.trim()   || 'Award Name';
-      const year    = document.getElementById('yearInput').value.trim()     || '2026';
-
-      document.getElementById('certCompany').textContent = company;
-      document.getElementById('certAward').textContent   = award;
-      document.getElementById('certYear').textContent    = year;
-      document.title = company !== 'Company Name'
-        ? `BTA Certificate – ${company}`
-        : 'BTA Winner Certificate';
-    }
-
-    (function init() {
-      const p = new URLSearchParams(window.location.search);
-      const company = p.get('company') || '';
-      const award   = p.get('award')   || '';
-      const year    = p.get('year')    || '2026';
-      const date    = p.get('date')    || '';
-
-      if (company) document.getElementById('companyInput').value = company;
-      if (award)   document.getElementById('awardInput').value   = award;
-      if (year)    document.getElementById('yearInput').value    = year;
-
-      const dateEl = document.getElementById('certDate');
-      dateEl.textContent = date
-        ? date
-        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-
-      updateCert();
-    })();
-  </script>
+  <script src="winner-certificate.js"></script>
 
 </body>
 </html>

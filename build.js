@@ -302,6 +302,7 @@ async function build() {
     'upload-documents.html',
     'nominate.html',
     'industry-leader.html',
+    'winner-certificate.html',
     'public-winners.html',
     'privacy-policy.html',
     'terms-and-conditions.html',

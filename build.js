@@ -351,6 +351,7 @@ async function build() {
     'submit-entry-payment.js',
     'nominate.js',
     'industry-leader.js',
+    'winner-certificate.js',
     'public-winners-app.js',
     'public-utils.js',
     'footer-year.js',

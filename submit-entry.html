@@ -692,6 +692,48 @@
       animation: fadeSlideIn 0.2s ease;
     }
 
+    /* ── Entry type chooser ── */
+    .entry-type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .entry-type-card {
+      background: #111;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .entry-type-card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: #fff;
+      margin: 0;
+    }
+    .entry-type-card p {
+      color: rgba(255,255,255,0.6);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      flex: 1;
+    }
+    .btn-gold-entry {
+      background: #C9A227;
+      color: #000;
+      font-weight: 700;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 100px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      align-self: flex-start;
+    }
+    .btn-gold-entry:hover { background: #e0b93a; }
+    @media (max-width: 600px) { .entry-type-grid { grid-template-columns: 1fr; } }
+
     /* ── Tablet ── */
     @media (max-width: 768px) {
       .progress-step-wrap { min-width: 0; flex: 1; }
@@ -773,11 +815,31 @@
         <!-- Honeypot: bots fill this, humans don't see it -->
         <input type="text" name="website" id="hp_website" style="display:none;position:absolute;left:-9999px;" autocomplete="off" tabindex="-1" aria-hidden="true">
 
+        <!-- Step 0: Entry type chooser -->
+        <div class="form-step active" id="step0">
+          <div class="form-section">
+            <h2 class="step-question">How would you like to enter?</h2>
+            <p class="step-subtitle">Choose your entry type below</p>
+            <div class="entry-type-grid">
+              <div class="entry-type-card">
+                <h3>Nomination</h3>
+                <p>If a company or trade professional impressed you, put their name forward. Anyone can nominate: homeowners, landlords, commercial clients, main contractors.</p>
+                <a href="nominate.html" class="btn btn-next" style="text-decoration:none;display:inline-flex;align-items:center;gap:8px;">Nomination <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></a>
+              </div>
+              <div class="entry-type-card">
+                <h3>Self Nomination</h3>
+                <p>Companies and sole traders can also nominate themselves. Size doesn't matter – a sole trader can stand alongside a national contractor. What counts is the quality of your work and happy customers. Entry is free and takes under 3 minutes.</p>
+                <button type="button" class="btn btn-gold-entry" id="selfNominateBtn" style="display:inline-flex;align-items:center;gap:8px;">Self Nomination <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Step 1: Region -->
-        <div class="form-step active" id="step1">
+        <div class="form-step" id="step1">
           <div class="form-section">
             <h2 class="step-question">Where are you based?</h2>
-            <p class="step-subtitle">Select your country, then region, then town or borough.</p>
+            <p class="step-subtitle">Select your country, then your county or city.</p>
 
             <!-- 1. Country flag cards -->
             <div class="country-picker" id="country_picker" role="group" aria-label="Select your country">
@@ -806,9 +868,9 @@
 
             <!-- 3. County / City / Borough select (slides in after region) -->
             <div id="county_city_wrapper" style="display:none;" aria-live="polite">
-              <label class="visually-hidden" for="county_city">County, city or borough</label>
-              <select class="form-select form-select-lg" id="county_city" required aria-label="Select your county, city or borough">
-                <option value="">Select your county, city or borough</option>
+              <label class="visually-hidden" for="county_city">County or city</label>
+              <select class="form-select form-select-lg" id="county_city" required aria-label="Select your county or city">
+                <option value="">Select your county or city</option>
               </select>
             </div>
 
@@ -919,13 +981,6 @@
                 placeholder="Describe your business, the services you offer, and what sets you apart..." maxlength="1000"></textarea>
               <div class="char-count" id="descCharCount" aria-live="polite">0 / 1,000</div>
             </div>
-            <div class="mb-3">
-              <label class="form-label" for="whyShouldWin">Why should you win this award? <span class="required-star">*</span></label>
-              <textarea class="form-control form-control-lg" id="whyShouldWin" rows="4"
-                placeholder="Tell us about your achievements, quality of work, customer satisfaction, community impact..." maxlength="2000"></textarea>
-              <div class="char-count" id="whyCharCount" aria-live="polite">0 / 2,000</div>
-              <div class="field-hint"><i class="bi bi-lightbulb me-1" aria-hidden="true"></i>Consider mentioning notable projects, customer feedback, certifications, or awards.</div>
-            </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[5]">
               Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
@@ -939,7 +994,14 @@
         <div class="form-step" id="step6">
           <div class="form-section">
             <h2 class="step-question">Supporting information</h2>
-            <p class="step-subtitle">Optional details that strengthen your entry</p>
+            <p class="step-subtitle">Tell us more about your entry</p>
+            <div class="mb-3">
+              <label class="form-label" for="whyShouldWin">Why should you win this award? <span class="required-star">*</span></label>
+              <textarea class="form-control form-control-lg" id="whyShouldWin" rows="4"
+                placeholder="Tell us about your achievements, quality of work, customer satisfaction, community impact..." maxlength="2000"></textarea>
+              <div class="char-count" id="whyCharCount" aria-live="polite">0 / 2,000</div>
+              <div class="field-hint"><i class="bi bi-lightbulb me-1" aria-hidden="true"></i>Consider mentioning notable projects, customer feedback, certifications, or awards.</div>
+            </div>
             <div class="mb-3">
               <label class="form-label" for="supportingInfo">Additional information <small class="text-muted">(optional)</small></label>
               <textarea class="form-control form-control-lg" id="supportingInfo" rows="3"
@@ -989,9 +1051,9 @@
                 <small class="field-hint-text">e.g. name@company.co.uk</small>
               </div>
               <div class="mb-3">
-                <label class="form-label" for="contactPhone">Phone number <span class="text-muted small">(optional)</span></label>
+                <label class="form-label" for="contactPhone">Phone number <span class="required-star">*</span></label>
                 <input type="tel" class="form-control form-control-lg" id="contactPhone"
-                  placeholder="e.g. 07700 900000" autocomplete="tel">
+                  placeholder="e.g. 07700 900000" required autocomplete="tel">
               </div>
             </fieldset>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[7]">
@@ -1013,7 +1075,7 @@
             <div class="terms-check" id="termsWrap">
               <input type="checkbox" id="termsCheckbox">
               <label for="termsCheckbox">
-                I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this entry and related awards activities. I understand my entry will be reviewed by the judging panel. My personal data will be stored and processed in accordance with the <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>. I understand I can request access, correction, or deletion of my data at any time by emailing <a href="mailto:privacy@britishtradeawards.com">privacy@britishtradeawards.com</a>.
+                I confirm the information provided is accurate and I consent to being contacted by the British Trade Awards regarding this entry and related awards activities. I understand my entry will be reviewed by the judging panel. My personal data will be stored and processed in accordance with the <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and <a href="/terms-and-conditions.html" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>. I understand I can request access, correction, or deletion of my data at any time by emailing <a href="mailto:privacy@britishtradeawards.com">privacy@britishtradeawards.com</a>.
               </label>
             </div>
             <p class="text-muted small mt-2">

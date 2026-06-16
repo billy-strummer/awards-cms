@@ -50,7 +50,7 @@
       'Staircase Specialist',
       'Timber Windows Installer',
     ],
-    'INTERIOR FIT-OUT & FINISHING': [
+    'FIT-OUT & FINISHING': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Curtains & Blinds Installer',
@@ -122,7 +122,7 @@
       'Plumbing & Heating Company',
     ],
     'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
-    'INTERIOR FIT-OUT & FINISHING': [
+    'FIT-OUT & FINISHING': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Flooring Installer',
@@ -198,7 +198,7 @@
   // NOTE: This is a public-facing page that runs outside the main CMS app and does
   // not load ModuleRegistry. Direct window.* assignment is intentional here.
   window.entryFormApp = {
-    currentStep: 1,
+    currentStep: 0,
     totalSteps: 8,
     formData: {},
     selectedAwardCategory: null,
@@ -216,9 +216,14 @@
       this.populateSectors();
       this.setupCharCounters();
       this.setupTermsCheckbox();
-      this.updateProgressIndicator(1);
+      this.updateProgressIndicator(0);
       this._checkDraftRestore();
       this._applyUrlParams();
+
+      // Wire step 0 self-nominate button
+      document.getElementById('selfNominateBtn')?.addEventListener('click', () => {
+        this.goToStep(1);
+      });
     },
 
     // Pre-populate form from URL params (deep links from home.html chips/category cards)
@@ -365,7 +370,7 @@
       }
     },
 
-    // Country card clicked → show region select for that country
+    // Country card clicked → populate county/city select directly with optgroups
     handleCountrySelect(country) {
       document.querySelectorAll('#country_picker .country-pick-btn').forEach((btn) => {
         const active = btn.dataset.country === country;
@@ -383,33 +388,46 @@
         if (fb && fb.classList.contains('invalid-feedback')) fb.style.display = 'none';
       }
 
-      const regionSelect = document.getElementById('region_group');
-      const regionWrapper = document.getElementById('region_wrapper');
-      const countyWrapper = document.getElementById('county_city_wrapper');
       const countySelect = document.getElementById('county_city');
-      if (!regionSelect || !regionWrapper) return;
+      const countyWrapper = document.getElementById('county_city_wrapper');
+      const regionWrapper = document.getElementById('region_wrapper');
 
-      // Populate region options for this country
+      // Always hide the region group picker (we go direct to county/city)
+      if (regionWrapper) regionWrapper.style.display = 'none';
+
+      if (!countySelect || !countyWrapper) return;
+
       const regions = (window.REGION_DATA || {})[country] || {};
-      regionSelect.innerHTML = '<option value="">Select your region</option>';
-      Object.keys(regions).forEach((r) => {
-        const opt = document.createElement('option');
-        opt.value = r;
-        opt.textContent = r;
-        regionSelect.appendChild(opt);
+      countySelect.innerHTML = '<option value="">Select your county or city</option>';
+
+      Object.keys(regions).forEach((groupName) => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = groupName;
+        (regions[groupName] || []).forEach((val) => {
+          const el = document.createElement('option');
+          el.value = val;
+          el.textContent = val;
+          optgroup.appendChild(el);
+        });
+        countySelect.appendChild(optgroup);
       });
-      regionSelect.value = '';
-      regionWrapper.style.display = 'block';
 
-      // Reset county picker and borough picker
-      if (countyWrapper) countyWrapper.style.display = 'none';
-      if (countySelect) {
-        countySelect.value = '';
-        countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
+      // For England, add London Boroughs as an additional group
+      if (country === 'england') {
+        const boroughGroup = document.createElement('optgroup');
+        boroughGroup.label = 'London Boroughs';
+        (window.LONDON_BOROUGHS || []).forEach((b) => {
+          const el = document.createElement('option');
+          el.value = b;
+          el.textContent = b;
+          boroughGroup.appendChild(el);
+        });
+        countySelect.appendChild(boroughGroup);
       }
-      this._hideBoroughPicker();
 
-      setTimeout(() => regionSelect.focus(), 50);
+      countyWrapper.style.display = 'block';
+      this._hideBoroughPicker?.();
+      setTimeout(() => countySelect.focus(), 50);
     },
 
     // Region selected → show county/city/borough select
@@ -487,6 +505,7 @@
         { field: 'entryDescription', display: 'descCharCount', max: 1000 },
         { field: 'whyShouldWin', display: 'whyCharCount', max: 2000 },
         { field: 'supportingInfo', display: 'supportCharCount', max: 1500 },
+        { field: 'nomineeWorkDesc', display: 'workDescCharCount', max: 1000 },
       ];
 
       counters.forEach(({ field, display, max }) => {
@@ -678,6 +697,11 @@
       }
       this.updateProgressIndicator(stepNum);
       this.currentStep = stepNum;
+      // Hide progress bar on step 0 (entry type chooser)
+      const progressWrapper = document.getElementById('progressWrapper');
+      if (progressWrapper) {
+        progressWrapper.style.display = stepNum === 0 ? 'none' : '';
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
@@ -711,10 +735,10 @@
         track.style.width = pct + '%';
       }
 
-      // Hide progress on success
+      // Hide progress on step 0 (chooser) and on success
       const wrapper = document.getElementById('progressWrapper');
       if (wrapper) {
-        wrapper.style.display = stepNum > this.totalSteps ? 'none' : '';
+        wrapper.style.display = stepNum === 0 || stepNum > this.totalSteps ? 'none' : '';
       }
     },
 
@@ -758,14 +782,9 @@
             }
             return false;
           }
-          const regionGroup = document.getElementById('region_group');
           const countyCity = document.getElementById('county_city');
-          if (!regionGroup?.value) {
-            this._markInvalid(regionGroup, 'Please select your region');
-            return false;
-          }
           if (!countyCity?.value) {
-            this._markInvalid(countyCity, 'Please select your county, city or borough');
+            this._markInvalid(countyCity, 'Please select your county or city');
             return false;
           }
           if (countyCity?.value === 'London') {
@@ -821,8 +840,11 @@
             this._markInvalid(descEl, 'Please provide a more detailed description (at least 20 characters)');
             return false;
           }
+          return true;
+        }
+        case 6: {
           const whyEl = document.getElementById('whyShouldWin');
-          const why = whyEl.value.trim();
+          const why = whyEl ? whyEl.value.trim() : '';
           if (!why) {
             this._markInvalid(whyEl, 'Please tell us why you should win this award');
             return false;
@@ -831,10 +853,6 @@
             this._markInvalid(whyEl, 'Please provide more detail on why you should win (at least 20 characters)');
             return false;
           }
-          return true;
-        }
-        case 6: {
-          // All fields optional - always valid
           return true;
         }
         case 7: {
@@ -850,6 +868,11 @@
           }
           if (!this.validateEmail(contactEmailEl.value.trim())) {
             this._markInvalid(contactEmailEl, 'Please enter a valid email address');
+            return false;
+          }
+          const phoneEl = document.getElementById('contactPhone');
+          if (!phoneEl?.value.trim()) {
+            this._markInvalid(phoneEl, 'Please enter your phone number');
             return false;
           }
           return true;
@@ -870,9 +893,9 @@
       switch (stepNum) {
         case 1:
           this.formData.selected_country = document.getElementById('selected_country')?.value || '';
-          this.formData.region_group = document.getElementById('region_group')?.value || '';
+          this.formData.region_group = '';
           this.formData.county_city = document.getElementById('county_city')?.value || '';
-          this.formData.london_borough = document.getElementById('london_borough')?.value || '';
+          this.formData.london_borough = '';
           break;
         case 2:
           this.formData.sector = document.getElementById('sector').value;
@@ -888,9 +911,9 @@
           break;
         case 5:
           this.formData.entryDescription = document.getElementById('entryDescription').value.trim();
-          this.formData.whyShouldWin = document.getElementById('whyShouldWin').value.trim();
           break;
         case 6:
+          this.formData.whyShouldWin = document.getElementById('whyShouldWin')?.value.trim() || '';
           this.formData.supportingInfo = document.getElementById('supportingInfo').value.trim();
           this.formData.tradeBodies = document.getElementById('tradeBodies').value.trim();
           this.formData.accreditations = document.getElementById('accreditations').value.trim();

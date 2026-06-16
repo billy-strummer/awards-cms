@@ -819,115 +819,51 @@
           </div>
         </div>
 
-        <!-- Step 3: Nominee Details (Person) -->
+        <!-- Step 3: Nominee Details -->
         <div class="form-step" id="step3">
-          <div class="form-section">
-            <h2 class="step-question" id="step3Title">About the nominee</h2>
-            <p class="step-subtitle" id="step3Subtitle">Tell us about the person you are nominating</p>
-
-            <!-- Person fields (shown for all except New Business) -->
-            <div id="personFields">
-              <div class="mb-3">
-                <label class="form-label" for="nomineeName">Nominee's full name <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="nomineeName"
-                  placeholder="e.g. Jane Smith" required autocomplete="off">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nomineeRole">Their role / job title <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="nomineeRole"
-                  placeholder="e.g. Lead Electrician, Apprentice Plumber, Director" required autocomplete="off">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nomineeCompany">Their company / employer <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="nomineeCompany"
-                  placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nomineeYearsInTrade" id="yearsLabel">Years in the trade <small class="text-muted">(optional)</small></label>
-                <select class="form-select form-select-lg" id="nomineeYearsInTrade">
-                  <option value="">Select...</option>
-                  <option value="Under 1 year">Under 1 year</option>
-                  <option value="1-3 years">1-3 years</option>
-                  <option value="4-9 years">4-9 years</option>
-                  <option value="10-19 years">10-19 years</option>
-                  <option value="20+ years">20+ years</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Business fields (shown for New Business of the Year only) -->
-            <div id="businessFields" style="display: none;">
-              <div class="mb-3">
-                <label class="form-label" for="businessName">Business name <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="businessName"
-                  placeholder="e.g. GreenBuild Solutions Ltd" required autocomplete="off">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="businessOwner">Owner / founder name <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="businessOwner"
-                  placeholder="e.g. John Williams" required autocomplete="off">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="businessDescription">What does the business do? <span class="required-star">*</span></label>
-                <textarea class="form-control form-control-lg" id="businessDescription" rows="2"
-                  placeholder="Briefly describe the services they offer..." maxlength="500"></textarea>
-                <div class="char-count" id="bizDescCharCount">0 / 500</div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="businessWebsite">Website <small class="text-muted">(optional)</small></label>
-                <input type="url" class="form-control form-control-lg" id="businessWebsite"
-                  placeholder="https://www.theirbusiness.co.uk" autocomplete="off">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="businessYearsTrading">Years trading <span class="required-star">*</span></label>
-                <select class="form-select form-select-lg" id="businessYearsTrading" required>
-                  <option value="">Select...</option>
-                  <option value="Under 1 year">Under 1 year</option>
-                  <option value="1-2 years">1-2 years</option>
-                  <option value="2-3 years">2-3 years</option>
-                  <option value="3-5 years">3-5 years</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="businessEmployees">Number of employees <small class="text-muted">(optional)</small></label>
-                <select class="form-select form-select-lg" id="businessEmployees">
-                  <option value="">Select...</option>
-                  <option value="Sole trader">Sole trader</option>
-                  <option value="2-5">2-5</option>
-                  <option value="6-10">6-10</option>
-                  <option value="11-25">11-25</option>
-                  <option value="26-50">26-50</option>
-                  <option value="51+">51+</option>
-                </select>
-              </div>
-            </div>
-
-            <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[3]">
-              Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[3]">
-              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
-            </button>
-          </div>
-        </div>
+  <div class="form-section">
+    <h2 class="step-question">About the nominee</h2>
+    <p class="step-subtitle">Tell us about the company or trade professional you are nominating</p>
+    <div class="mb-3">
+      <label class="form-label" for="nomineeName">Name of company or trade professional <span class="required-star">*</span></label>
+      <input type="text" class="form-control form-control-lg" id="nomineeName"
+        placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="nomineeWebsite">Company website <small class="text-muted">(optional)</small></label>
+      <input type="url" class="form-control form-control-lg" id="nomineeWebsite"
+        placeholder="https://www.theirwebsite.co.uk" autocomplete="off">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="nomineePhone">Business phone number <span class="required-star">*</span></label>
+      <input type="tel" class="form-control form-control-lg" id="nomineePhone"
+        placeholder="e.g. 01234 567890" required autocomplete="off">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="nomineeWorkDesc">Brief description of work <span class="required-star">*</span></label>
+      <textarea class="form-control form-control-lg" id="nomineeWorkDesc" rows="3"
+        placeholder="What job or project did they undertake?" maxlength="1000" required></textarea>
+      <div class="char-count" id="workDescCharCount">0 / 1,000</div>
+    </div>
+    <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[3]">
+      Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[3]">
+      <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
+    </button>
+  </div>
+</div>
 
         <!-- Step 4: Why They Deserve It -->
         <div class="form-step" id="step4">
           <div class="form-section">
-            <h2 class="step-question">Why do they deserve this award?</h2>
+            <h2 class="step-question">Why do they deserve to enter British Trade Awards?</h2>
             <p class="step-subtitle">Tell us what makes this nominee stand out</p>
             <div class="mb-3">
-              <label class="form-label" for="nominationReason">Your nomination reason <span class="required-star">*</span></label>
+              <label class="form-label" for="nominationReason">Why does this company or trade professional deserve to enter British Trade Awards? <span class="required-star">*</span></label>
               <textarea class="form-control form-control-lg" id="nominationReason" rows="5"
-                placeholder="Describe their achievements, skills, impact on the trade, community contribution, or anything else that makes them exceptional..." maxlength="2000"></textarea>
+                placeholder="Tell us why you are nominating this company or trade professional, the quality of their work, and whether they went the extra mile..." maxlength="2000"></textarea>
               <div class="char-count" id="reasonCharCount">0 / 2,000</div>
-              <div class="field-hint"><i class="bi bi-lightbulb me-1" aria-hidden="true"></i>Consider mentioning specific examples, projects, mentoring, community work, or customer impact.</div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label" for="supportingInfo">Supporting information <small class="text-muted">(optional)</small></label>
-              <textarea class="form-control form-control-lg" id="supportingInfo" rows="3"
-                placeholder="Links to reviews, social media, news articles, or any other evidence supporting your nomination..." maxlength="1500"></textarea>
-              <div class="char-count" id="supportCharCount">0 / 1,500</div>
             </div>
             <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[4]">
               Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
@@ -940,54 +876,35 @@
 
         <!-- Step 5: Your Details (Nominator) -->
         <div class="form-step" id="step5">
-          <div class="form-section">
-            <h2 class="step-question">Your details</h2>
-            <p class="step-subtitle">So we can contact you about this nomination</p>
-            <fieldset>
-              <legend class="visually-hidden">Nominator Information</legend>
-              <div class="mb-3">
-                <label class="form-label" for="nominatorName">Your full name <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="nominatorName"
-                  placeholder="Your full name" required autocomplete="name">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nominatorCompany">Your company <small class="text-muted">(optional)</small></label>
-                <input type="text" class="form-control form-control-lg" id="nominatorCompany"
-                  placeholder="e.g. ABC Construction Ltd" autocomplete="organization">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nominatorRelationship">Your relationship to the nominee <span class="required-star">*</span></label>
-                <select class="form-select form-select-lg" id="nominatorRelationship" required>
-                  <option value="">Select...</option>
-                  <option value="Colleague">Colleague</option>
-                  <option value="Employer">Employer</option>
-                  <option value="Employee">Employee</option>
-                  <option value="Client / Customer">Client / Customer</option>
-                  <option value="Supplier">Supplier</option>
-                  <option value="Industry peer">Industry peer</option>
-                  <option value="Friend / Family">Friend / Family</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nominatorEmail">Your email address <span class="required-star">*</span></label>
-                <input type="email" class="form-control form-control-lg" id="nominatorEmail"
-                  placeholder="you@example.co.uk" required autocomplete="email">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="nominatorPhone">Your phone number <span class="required-star">*</span></label>
-                <input type="tel" class="form-control form-control-lg" id="nominatorPhone"
-                  placeholder="e.g. 07700 900000" required autocomplete="tel">
-              </div>
-            </fieldset>
-            <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[5]">
-              Review Nomination <i class="bi bi-arrow-right ms-2"></i>
-            </button>
-            <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[5]">
-              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
-            </button>
-          </div>
-        </div>
+  <div class="form-section">
+    <h2 class="step-question">Your contact details</h2>
+    <p class="step-subtitle">So we can contact you about this nomination</p>
+    <fieldset>
+      <legend class="visually-hidden">Nominator Information</legend>
+      <div class="mb-3">
+        <label class="form-label" for="nominatorName">Full name <span class="required-star">*</span></label>
+        <input type="text" class="form-control form-control-lg" id="nominatorName"
+          placeholder="Your full name" required autocomplete="name">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="nominatorEmail">Email address <span class="required-star">*</span></label>
+        <input type="email" class="form-control form-control-lg" id="nominatorEmail"
+          placeholder="you@example.co.uk" required autocomplete="email">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="nominatorPhone">Phone number <small class="text-muted">(optional)</small></label>
+        <input type="tel" class="form-control form-control-lg" id="nominatorPhone"
+          placeholder="e.g. 07700 900000" autocomplete="tel">
+      </div>
+    </fieldset>
+    <button type="button" class="btn btn-next" data-action="nominateApp.nextStep" data-args="[5]">
+      Review Nomination <i class="bi bi-arrow-right ms-2"></i>
+    </button>
+    <button type="button" class="btn btn-back" data-action="nominateApp.prevStep" data-args="[5]">
+      <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
+    </button>
+  </div>
+</div>
 
         <!-- Step 6: Review & Submit -->
         <div class="form-step" id="step6">

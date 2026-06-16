@@ -50,7 +50,7 @@
       'Staircase Specialist',
       'Timber Windows Installer',
     ],
-    'INTERIOR FIT-OUT & FINISHING': [
+    'FIT-OUT & FINISHING': [
       'Bathroom Installer',
       'Carpet Fitters',
       'Curtains & Blinds Installer',
@@ -129,7 +129,7 @@
       description: 'Bespoke Woodworking: Cabinets, Staircases, Timber Windows & more…',
       ariaLabel: 'Carpentry and Joinery — Bespoke Woodworking: Cabinets, Staircases, Timber Windows & more',
     },
-    'INTERIOR FIT-OUT & FINISHING': {
+    'FIT-OUT & FINISHING': {
       image: 'interior-fitout.jpg',
       displayName: 'Fit-Out & Finishing',
       description: 'Bathrooms, Kitchens, Carpets & Flooring, Painting & Decorating, Plastering, Tiling & more…',
@@ -593,4 +593,7 @@
   ];
   window.SECTORS = Object.keys(SECTOR_CATEGORIES);
   window.STANDARD_CATEGORIES = SECTOR_CATEGORIES;
+
+  // Flat list of London Boroughs used by the direct county/city picker in submit-entry.js
+  window.LONDON_BOROUGHS = (REGION_DATA.england || {})['London Boroughs'] || [];
 })();

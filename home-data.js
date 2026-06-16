@@ -155,7 +155,7 @@
       ariaLabel: 'Specialist Trades — Locksmiths, Pest Control, Scaffolding, Windows & Doors & more',
     },
     'INDUSTRY LEADERSHIP': {
-      image: 'industry-leadership.svg',
+      image: 'industry-leadership.jpg',
       displayName: 'Industry Leadership',
       description: 'Recognising extraordinary individuals',
       ariaLabel: 'Industry Leadership — Recognising extraordinary individuals',

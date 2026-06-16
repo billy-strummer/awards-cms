@@ -3,6 +3,31 @@
 (function () {
   'use strict';
 
+  // A4 landscape natural size in CSS px (96dpi: 1mm = 3.7795px)
+  const CERT_W = Math.round(297 * 3.7795); // ≈ 1122
+  const CERT_H = Math.round(210 * 3.7795); // ≈  794
+
+  function scaleCertificate() {
+    const cert = document.querySelector('.certificate');
+    const wrapper = document.querySelector('.cert-wrapper');
+    if (!cert || !wrapper) return;
+
+    const sidePad = window.innerWidth <= 540 ? 16 : 48;
+    const available = window.innerWidth - sidePad * 2;
+
+    if (available < CERT_W) {
+      const scale = available / CERT_W;
+      cert.style.transform = 'scale(' + scale.toFixed(4) + ')';
+      cert.style.transformOrigin = 'top center';
+      // Compensate for the space transform: scale() vacates
+      cert.style.marginBottom = Math.round(CERT_H * (scale - 1)) + 'px';
+    } else {
+      cert.style.transform = '';
+      cert.style.transformOrigin = '';
+      cert.style.marginBottom = '';
+    }
+  }
+
   function updateCert() {
     const company = (document.getElementById('companyInput').value || '').trim() || 'Company Name';
     const award = (document.getElementById('awardInput').value || '').trim() || 'Award Name';
@@ -33,6 +58,8 @@
     }
 
     updateCert();
+    scaleCertificate();
+    window.addEventListener('resize', scaleCertificate);
 
     document.getElementById('companyInput').addEventListener('input', updateCert);
     document.getElementById('awardInput').addEventListener('input', updateCert);

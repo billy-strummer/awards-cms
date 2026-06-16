@@ -387,34 +387,6 @@
       z-index: 2;
     }
 
-    /* ── Mobile: scale certificate down to fit viewport ── */
-    @media screen and (max-width: 1200px) {
-      .certificate { zoom: 0.88; }
-    }
-    @media screen and (max-width: 1050px) {
-      .certificate { zoom: 0.76; }
-    }
-    @media screen and (max-width: 900px) {
-      .certificate { zoom: 0.65; }
-    }
-    @media screen and (max-width: 780px) {
-      .certificate { zoom: 0.56; }
-      .cert-wrapper { padding: 20px 12px 32px; }
-    }
-    @media screen and (max-width: 650px) {
-      .certificate { zoom: 0.46; }
-    }
-    @media screen and (max-width: 540px) {
-      .certificate { zoom: 0.38; }
-      .cert-wrapper { padding: 16px 8px 24px; }
-    }
-    @media screen and (max-width: 440px) {
-      .certificate { zoom: 0.31; }
-    }
-    @media screen and (max-width: 360px) {
-      .certificate { zoom: 0.26; }
-    }
-
     /* ── Mobile: preview bar ── */
     @media screen and (max-width: 800px) {
       .preview-bar {
@@ -448,7 +420,8 @@
 
       .certificate {
         box-shadow: none;
-        zoom: 1;
+        transform: none !important;
+        margin-bottom: 0 !important;
         width: 297mm;
         height: 210mm;
         page-break-inside: avoid;

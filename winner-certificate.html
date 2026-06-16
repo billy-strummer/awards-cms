@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BTA Winner Certificate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Screen chrome ── */
+    body {
+      background: #111;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Inter', sans-serif;
+      color: #fff;
+    }
+
+    /* ── Preview bar (hidden on print) ── */
+    .preview-bar {
+      width: 100%;
+      background: #0a0a0a;
+      border-bottom: 1px solid #2a2a2a;
+      padding: 14px 24px;
+      display: flex;
+      align-items: flex-end;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .preview-bar-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px;
+      color: #C9A227;
+      white-space: nowrap;
+      padding-bottom: 2px;
+    }
+
+    .preview-fields {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .pf {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .pf label {
+      color: #888;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+    }
+
+    .pf input {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 7px 11px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      min-width: 220px;
+      transition: border-color 0.15s;
+    }
+
+    .pf input.narrow { min-width: 90px; }
+
+    .pf input:focus {
+      outline: none;
+      border-color: #C9A227;
+    }
+
+    .btn-print {
+      background: #C9A227;
+      color: #0a0a0a;
+      border: none;
+      padding: 8px 22px;
+      border-radius: 4px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .btn-print:hover { background: #e0b93a; }
+
+    .preview-hint {
+      color: #555;
+      font-size: 11px;
+      padding-bottom: 3px;
+      white-space: nowrap;
+    }
+
+    /* ── Certificate wrapper ── */
+    .cert-wrapper {
+      padding: 36px 24px 48px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+
+    /* ── Certificate page — A4 landscape ── */
+    .certificate {
+      width: 297mm;
+      height: 210mm;
+      flex-shrink: 0;
+      background: #fdf8ee;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,162,39,0.15);
+    }
+
+    /* Outer border */
+    .cert-border-outer {
+      position: absolute;
+      inset: 8mm;
+      border: 1.5px solid #C9A227;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Inner border */
+    .cert-border-inner {
+      position: absolute;
+      inset: 10.5mm;
+      border: 0.5px solid rgba(201,162,39,0.6);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Corner ornaments */
+    .corner {
+      position: absolute;
+      width: 10mm;
+      height: 10mm;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .corner-tl { top: 5mm; left: 5mm;   border-top: 2px solid #C9A227; border-left: 2px solid #C9A227; }
+    .corner-tr { top: 5mm; right: 5mm;  border-top: 2px solid #C9A227; border-right: 2px solid #C9A227; }
+    .corner-bl { bottom: 5mm; left: 5mm;  border-bottom: 2px solid #C9A227; border-left: 2px solid #C9A227; }
+    .corner-br { bottom: 5mm; right: 5mm; border-bottom: 2px solid #C9A227; border-right: 2px solid #C9A227; }
+
+    /* Subtle background watermark */
+    .cert-watermark {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.04;
+    }
+
+    .cert-watermark img {
+      width: 65%;
+      filter: grayscale(1) contrast(3);
+    }
+
+    /* ── Content ── */
+    .cert-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      padding: 0 22mm;
+    }
+
+    .cert-logo {
+      height: 11mm;
+      margin-bottom: 5mm;
+      object-fit: contain;
+    }
+
+    .cert-supertitle {
+      font-family: 'Cinzel', serif;
+      font-size: 7pt;
+      font-weight: 400;
+      color: #888;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-bottom: 3mm;
+    }
+
+    .cert-headline {
+      font-family: 'Cinzel', serif;
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #C9A227;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 4mm;
+    }
+
+    .cert-rule {
+      display: flex;
+      align-items: center;
+      gap: 4mm;
+      width: 90mm;
+      margin: 0 auto 4mm;
+    }
+
+    .cert-rule-line {
+      flex: 1;
+      height: 0.5px;
+      background: linear-gradient(90deg, transparent, #C9A227);
+    }
+
+    .cert-rule-line.rev {
+      background: linear-gradient(90deg, #C9A227, transparent);
+    }
+
+    .cert-rule-diamond {
+      width: 3px;
+      height: 3px;
+      background: #C9A227;
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+
+    .cert-certifies {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 9.5pt;
+      color: #666;
+      margin-bottom: 3mm;
+    }
+
+    .cert-company {
+      font-family: 'Playfair Display', serif;
+      font-size: 22pt;
+      font-weight: 700;
+      color: #1c1713;
+      line-height: 1.15;
+      margin-bottom: 1mm;
+      letter-spacing: 0.01em;
+    }
+
+    .cert-wide-rule {
+      width: 110mm;
+      height: 0.5px;
+      background: linear-gradient(90deg, transparent 0%, #C9A227 25%, #C9A227 75%, transparent 100%);
+      margin: 3mm auto;
+    }
+
+    .cert-awarded {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 9.5pt;
+      color: #666;
+      margin-bottom: 2.5mm;
+    }
+
+    .cert-award-name {
+      font-family: 'Cinzel', serif;
+      font-size: 13pt;
+      font-weight: 600;
+      color: #C9A227;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+      margin-bottom: 3mm;
+    }
+
+    .cert-event {
+      font-family: 'Playfair Display', serif;
+      font-size: 9pt;
+      color: #555;
+      margin-bottom: 5mm;
+    }
+
+    .cert-event strong {
+      font-weight: 700;
+      color: #333;
+    }
+
+    .cert-year-inline {
+      font-family: 'Cinzel', serif;
+      font-size: 9pt;
+      font-weight: 600;
+      color: #8a6f1e;
+    }
+
+    /* ── Signatures ── */
+    .cert-sig-row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      gap: 6mm;
+    }
+
+    .sig {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .sig-rule {
+      width: 100%;
+      height: 0.5px;
+      background: #bbb;
+      margin-bottom: 2mm;
+    }
+
+    .sig-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 7.5pt;
+      font-weight: 600;
+      color: #222;
+    }
+
+    .sig-role {
+      font-family: 'Inter', sans-serif;
+      font-size: 6.5pt;
+      color: #888;
+      margin-top: 0.8mm;
+      letter-spacing: 0.03em;
+    }
+
+    /* ── Round seal ── */
+    .cert-seal {
+      position: absolute;
+      right: 16mm;
+      bottom: 14mm;
+      width: 22mm;
+      height: 22mm;
+      border-radius: 50%;
+      border: 1px solid rgba(201,162,39,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3;
+      opacity: 0.55;
+    }
+
+    .cert-seal-inner {
+      width: 18mm;
+      height: 18mm;
+      border-radius: 50%;
+      border: 0.5px solid rgba(201,162,39,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cert-seal-text {
+      font-family: 'Cinzel', serif;
+      font-size: 5pt;
+      color: #C9A227;
+      letter-spacing: 0.1em;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── Bottom reference ── */
+    .cert-ref {
+      position: absolute;
+      bottom: 6.5mm;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: 'Cinzel', serif;
+      font-size: 5.5pt;
+      color: rgba(201,162,39,0.45);
+      letter-spacing: 0.2em;
+      z-index: 2;
+    }
+
+    /* ── Print ── */
+    @media print {
+      .preview-bar { display: none !important; }
+
+      body {
+        background: white;
+        display: block;
+      }
+
+      .cert-wrapper {
+        padding: 0;
+        display: block;
+      }
+
+      .certificate {
+        box-shadow: none;
+        width: 297mm;
+        height: 210mm;
+        page-break-inside: avoid;
+      }
+
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Preview controls (screen only) -->
+  <div class="preview-bar">
+    <span class="preview-bar-title">Certificate Preview</span>
+    <div class="preview-fields">
+      <div class="pf">
+        <label>Company / Winner Name</label>
+        <input type="text" id="companyInput" placeholder="e.g. Smith &amp; Sons Electrical Ltd" oninput="updateCert()">
+      </div>
+      <div class="pf">
+        <label>Award Name</label>
+        <input type="text" id="awardInput" placeholder="e.g. Electrical Contractor of the Year" oninput="updateCert()">
+      </div>
+      <div class="pf">
+        <label>Year</label>
+        <input type="text" id="yearInput" value="2026" class="narrow" oninput="updateCert()">
+      </div>
+    </div>
+    <span class="preview-hint">URL params: ?company=…&amp;award=…&amp;year=…</span>
+    <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+
+  <!-- Certificate -->
+  <div class="cert-wrapper">
+    <div class="certificate">
+
+      <!-- Borders & corners -->
+      <div class="cert-border-outer"></div>
+      <div class="cert-border-inner"></div>
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+
+      <!-- Watermark -->
+      <div class="cert-watermark">
+        <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-02.png" alt="">
+      </div>
+
+      <!-- Main content -->
+      <div class="cert-content">
+
+        <img class="cert-logo"
+             src="images/logos/non-stacked/BTA_Corporate_Horizontal-Black-and-White-02.png"
+             alt="British Trade Awards">
+
+        <div class="cert-supertitle">British Trade Awards</div>
+        <div class="cert-headline">Certificate of Excellence</div>
+
+        <div class="cert-rule">
+          <div class="cert-rule-line"></div>
+          <div class="cert-rule-diamond"></div>
+          <div class="cert-rule-line rev"></div>
+        </div>
+
+        <div class="cert-certifies">This is to certify that</div>
+
+        <div class="cert-company" id="certCompany">Company Name</div>
+
+        <div class="cert-wide-rule"></div>
+
+        <div class="cert-awarded">has been awarded the</div>
+
+        <div class="cert-award-name" id="certAward">Award Name</div>
+
+        <div class="cert-event">
+          at the <strong>British Trade Awards</strong>&ensp;<span class="cert-year-inline" id="certYear">2026</span>
+        </div>
+
+        <div class="cert-sig-row">
+          <div class="sig">
+            <div class="sig-rule"></div>
+            <div class="sig-name">Chief Executive</div>
+            <div class="sig-role">British Trade Awards</div>
+          </div>
+          <div class="sig">
+            <div class="sig-rule"></div>
+            <div class="sig-name" id="certDate"></div>
+            <div class="sig-role">Date of Award</div>
+          </div>
+          <div class="sig">
+            <div class="sig-rule"></div>
+            <div class="sig-name">Head of Ceremonies</div>
+            <div class="sig-role">British Trade Awards</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Seal -->
+      <div class="cert-seal">
+        <div class="cert-seal-inner">
+          <div class="cert-seal-text">BTA<br>OFFICIAL<br>AWARD</div>
+        </div>
+      </div>
+
+      <!-- Bottom text -->
+      <div class="cert-ref">BRITISH TRADE AWARDS &middot; EXCELLENCE IN BRITISH TRADE</div>
+
+    </div>
+  </div>
+
+  <script>
+    function updateCert() {
+      const company = document.getElementById('companyInput').value.trim() || 'Company Name';
+      const award   = document.getElementById('awardInput').value.trim()   || 'Award Name';
+      const year    = document.getElementById('yearInput').value.trim()     || '2026';
+
+      document.getElementById('certCompany').textContent = company;
+      document.getElementById('certAward').textContent   = award;
+      document.getElementById('certYear').textContent    = year;
+      document.title = company !== 'Company Name'
+        ? `BTA Certificate – ${company}`
+        : 'BTA Winner Certificate';
+    }
+
+    (function init() {
+      const p = new URLSearchParams(window.location.search);
+      const company = p.get('company') || '';
+      const award   = p.get('award')   || '';
+      const year    = p.get('year')    || '2026';
+      const date    = p.get('date')    || '';
+
+      if (company) document.getElementById('companyInput').value = company;
+      if (award)   document.getElementById('awardInput').value   = award;
+      if (year)    document.getElementById('yearInput').value    = year;
+
+      const dateEl = document.getElementById('certDate');
+      dateEl.textContent = date
+        ? date
+        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      updateCert();
+    })();
+  </script>
+
+</body>
+</html>

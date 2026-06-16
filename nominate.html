@@ -203,6 +203,43 @@
     .btn-submit:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
     .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* ── Declaration ── */
+    .declaration-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 28px;
+      padding: 18px 20px;
+      background: rgba(201,162,39,0.06);
+      border: 1px solid rgba(201,162,39,0.2);
+      border-radius: 8px;
+    }
+    .declaration-check input[type="checkbox"] {
+      width: 18px; height: 18px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      accent-color: #C9A227;
+      cursor: pointer;
+    }
+    .declaration-check label {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.6;
+      cursor: pointer;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 400;
+    }
+    .declaration-check label strong { color: #C9A227; }
+    .declaration-check label a { color: #C9A227; text-decoration: underline; }
+    .declaration-check label a:hover { color: #e8c84a; }
+    .declaration-hint {
+      font-size: 0.8rem;
+      color: #ef4444;
+      margin-top: 6px;
+      display: none;
+    }
+
     /* ── Success state ── */
     .success-state {
       text-align: center;
@@ -378,6 +415,16 @@
             </label>
             <input type="tel" class="form-control form-control-lg" id="nominatorPhone"
               placeholder="e.g. 07700 900000" autocomplete="tel">
+          </div>
+
+          <div class="declaration-check">
+            <input type="checkbox" id="declarationCheckbox">
+            <div>
+              <label for="declarationCheckbox">
+                <strong>Declaration</strong> — I certify that I am the individual submitting this nomination and that, to the best of my knowledge, the information provided is accurate and complete. By submitting this nomination, I consent to British Trade Awards securely processing my data and contacting me with updates regarding this nomination. I consent to the British Trade Awards <a href="/terms-and-conditions.html" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a>.
+              </label>
+              <div class="declaration-hint" id="declarationHint">You must accept the declaration before submitting.</div>
+            </div>
           </div>
 
           <button type="submit" class="btn-submit" id="submitNomBtn">

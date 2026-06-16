@@ -40,35 +40,22 @@ const dom = new JSDOM(
   <div id="step3" class="form-step">
     <h2 id="step3Title"></h2>
     <p id="step3Subtitle"></p>
-    <div id="personFields">
-      <input id="nomineeName" value="" />
-      <input id="nomineeRole" value="" />
-      <input id="nomineeCompany" value="" />
-      <select id="nomineeYearsInTrade"><option value="">Select...</option><option value="1-5">1-5</option></select>
-    </div>
-    <div id="businessFields" style="display:none">
-      <input id="businessName" value="" />
-      <input id="businessOwner" value="" />
-      <textarea id="businessDescription"></textarea>
-      <input id="businessWebsite" value="" />
-      <select id="businessYearsTrading"><option value="">Select...</option><option value="1-5">1-5</option></select>
-      <select id="businessEmployees"><option value="1-10">1-10</option></select>
-    </div>
-    <span id="yearsLabel"></span>
+    <input id="nomineeName" value="" />
+    <input id="nomineeWebsite" value="" />
+    <input id="nomineePhone" value="" />
+    <textarea id="nomineeWorkDesc"></textarea>
+    <span id="workDescCharCount">0 / 1,000</span>
   </div>
 
   <!-- Step 4 – Nomination reason -->
   <div id="step4" class="form-step">
     <textarea id="nominationReason"></textarea>
-    <textarea id="supportingInfo"></textarea>
     <input id="nominationReference" value="" />
   </div>
 
   <!-- Step 5 – Nominator details -->
   <div id="step5" class="form-step">
     <input id="nominatorName" value="" />
-    <input id="nominatorCompany" value="" />
-    <select id="nominatorRelationship"><option value="">Select...</option><option value="colleague">Colleague</option></select>
     <input id="nominatorEmail" value="" />
     <input id="nominatorPhone" value="" />
     <input id="termsCheckbox" type="checkbox" />
@@ -184,47 +171,45 @@ describe('nominateApp - validateStep()', () => {
     expect(app.validateStep(2)).toBe(true);
   });
 
-  test('step 3 (person) returns false when nominee name empty', () => {
-    app.selectedCategory = 'Above & Beyond';
+  test('step 3 returns false when nominee name empty', () => {
     getEl('nomineeName').value = '';
+    getEl('nomineePhone').value = '01234567890';
+    getEl('nomineeWorkDesc').value = 'They do excellent plumbing work across London.';
     expect(app.validateStep(3)).toBe(false);
   });
 
-  test('step 3 (person) returns false when name too short', () => {
-    app.selectedCategory = 'Above & Beyond';
+  test('step 3 returns false when name too short', () => {
     getEl('nomineeName').value = 'A';
-    getEl('nomineeRole').value = 'Plumber';
-    getEl('nomineeCompany').value = 'Plumbing Co';
+    getEl('nomineePhone').value = '01234567890';
+    getEl('nomineeWorkDesc').value = 'They do excellent plumbing work across London.';
     expect(app.validateStep(3)).toBe(false);
   });
 
-  test('step 3 (person) returns false when role empty', () => {
-    app.selectedCategory = 'Above & Beyond';
-    getEl('nomineeName').value = 'John Smith';
-    getEl('nomineeRole').value = '';
+  test('step 3 returns false when phone empty', () => {
+    getEl('nomineeName').value = 'Smith & Sons Ltd';
+    getEl('nomineePhone').value = '';
+    getEl('nomineeWorkDesc').value = 'They do excellent plumbing work across London.';
     expect(app.validateStep(3)).toBe(false);
   });
 
-  test('step 3 (person) returns true when all nominee fields filled', () => {
-    app.selectedCategory = 'Above & Beyond';
-    getEl('nomineeName').value = 'John Smith';
-    getEl('nomineeRole').value = 'Plumber';
-    getEl('nomineeCompany').value = 'Plumbing Co';
-    expect(app.validateStep(3)).toBe(true);
-  });
-
-  test('step 3 (new business) returns false when business name empty', () => {
-    app.selectedCategory = 'New Business of the Year';
-    getEl('businessName').value = '';
+  test('step 3 returns false when work description empty', () => {
+    getEl('nomineeName').value = 'Smith & Sons Ltd';
+    getEl('nomineePhone').value = '01234567890';
+    getEl('nomineeWorkDesc').value = '';
     expect(app.validateStep(3)).toBe(false);
   });
 
-  test('step 3 (new business) returns true when all business fields filled', () => {
-    app.selectedCategory = 'New Business of the Year';
-    getEl('businessName').value = 'New Plumbing Co';
-    getEl('businessOwner').value = 'Jane Doe';
-    getEl('businessDescription').value = 'We do plumbing services';
-    getEl('businessYearsTrading').value = '1-5';
+  test('step 3 returns false when work description too short', () => {
+    getEl('nomineeName').value = 'Smith & Sons Ltd';
+    getEl('nomineePhone').value = '01234567890';
+    getEl('nomineeWorkDesc').value = 'Good work';
+    expect(app.validateStep(3)).toBe(false);
+  });
+
+  test('step 3 returns true when all nominee fields filled', () => {
+    getEl('nomineeName').value = 'Smith & Sons Ltd';
+    getEl('nomineePhone').value = '01234567890';
+    getEl('nomineeWorkDesc').value = 'They do excellent plumbing work across London.';
     expect(app.validateStep(3)).toBe(true);
   });
 
@@ -245,31 +230,31 @@ describe('nominateApp - validateStep()', () => {
 
   test('step 5 returns false when nominator name missing', () => {
     getEl('nominatorName').value = '';
-    getEl('nominatorRelationship').value = 'colleague';
     getEl('nominatorEmail').value = 'nominator@test.com';
-    getEl('nominatorPhone').value = '01234567890';
     expect(app.validateStep(5)).toBe(false);
   });
 
-  test('step 5 returns false when relationship not selected', () => {
+  test('step 5 returns false when email missing', () => {
     getEl('nominatorName').value = 'Bob Jones';
-    getEl('nominatorRelationship').value = '';
-    getEl('nominatorEmail').value = 'bob@test.com';
-    getEl('nominatorPhone').value = '01234567890';
+    getEl('nominatorEmail').value = '';
     expect(app.validateStep(5)).toBe(false);
   });
 
   test('step 5 returns false when email invalid', () => {
     getEl('nominatorName').value = 'Bob Jones';
-    getEl('nominatorRelationship').value = 'colleague';
     getEl('nominatorEmail').value = 'not-an-email';
-    getEl('nominatorPhone').value = '01234567890';
     expect(app.validateStep(5)).toBe(false);
   });
 
-  test('step 5 returns true when all contact fields valid', () => {
+  test('step 5 returns true with name and valid email (phone optional)', () => {
     getEl('nominatorName').value = 'Bob Jones';
-    getEl('nominatorRelationship').value = 'colleague';
+    getEl('nominatorEmail').value = 'bob@test.com';
+    getEl('nominatorPhone').value = '';
+    expect(app.validateStep(5)).toBe(true);
+  });
+
+  test('step 5 returns true with all contact fields filled', () => {
+    getEl('nominatorName').value = 'Bob Jones';
     getEl('nominatorEmail').value = 'bob@test.com';
     getEl('nominatorPhone').value = '01234567890';
     expect(app.validateStep(5)).toBe(true);
@@ -335,15 +320,15 @@ describe('nominateApp - saveStepData()', () => {
     expect(app.formData.county_city).toBe('Kent');
   });
 
-  test('step 3 (person) saves nominee details to formData', () => {
-    app.selectedCategory = 'Above & Beyond';
-    getEl('nomineeName').value = 'Jane Smith';
-    getEl('nomineeRole').value = 'Carpenter';
-    getEl('nomineeCompany').value = 'Woodcraft Ltd';
+  test('step 3 saves nominee details to formData', () => {
+    getEl('nomineeName').value = 'Smith & Sons Ltd';
+    getEl('nomineeWebsite').value = 'https://smithandsons.co.uk';
+    getEl('nomineePhone').value = '01234567890';
+    getEl('nomineeWorkDesc').value = 'Full bathroom installation project.';
     app.saveStepData(3);
-    expect(app.formData.nomineeName).toBe('Jane Smith');
-    expect(app.formData.nomineeRole).toBe('Carpenter');
-    expect(app.formData.nomineeCompany).toBe('Woodcraft Ltd');
+    expect(app.formData.nomineeName).toBe('Smith & Sons Ltd');
+    expect(app.formData.nomineePhone).toBe('01234567890');
+    expect(app.formData.nomineeWorkDesc).toBe('Full bathroom installation project.');
   });
 
   test('step 4 saves nomination reason to formData', () => {
@@ -356,9 +341,9 @@ describe('nominateApp - saveStepData()', () => {
     getEl('nominatorName').value = 'Bob Jones';
     getEl('nominatorEmail').value = 'bob@test.com';
     getEl('nominatorPhone').value = '01234567890';
-    getEl('nominatorRelationship').value = 'colleague';
     app.saveStepData(5);
     expect(app.formData.nominatorName).toBe('Bob Jones');
     expect(app.formData.nominatorEmail).toBe('bob@test.com');
+    expect(app.formData.nominatorPhone).toBe('01234567890');
   });
 });

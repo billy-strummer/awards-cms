@@ -166,6 +166,9 @@ function _fillStep4() {
 function fillStep5() {
   document.getElementById('entryDescription').value =
     'A detailed description of our company that exceeds twenty chars easily.';
+}
+
+function fillStep6WhyShouldWin() {
   document.getElementById('whyShouldWin').value = 'We should win because we are truly excellent builders.';
 }
 
@@ -212,8 +215,8 @@ describe('entryFormApp initialization', () => {
     expect(entryFormApp).toHaveProperty('stepLabels');
   });
 
-  test('starts at step 1 with 8 total steps', () => {
-    expect(entryFormApp.currentStep).toBe(1);
+  test('starts at step 0 (chooser) with 8 total steps', () => {
+    expect(entryFormApp.currentStep).toBe(0);
     expect(entryFormApp.totalSteps).toBe(8);
   });
 
@@ -385,9 +388,9 @@ describe('Step navigation', () => {
     expect(entryFormApp.currentStep).toBe(3);
   });
 
-  test('nextStep advances when validation passes (step 6 always valid)', async () => {
+  test('nextStep advances when validation passes (step 6 requires whyShouldWin)', async () => {
     entryFormApp.goToStep(6);
-    // Step 6 has no required fields — always validates
+    fillStep6WhyShouldWin();
     await entryFormApp.nextStep(6);
     expect(entryFormApp.currentStep).toBe(7);
   });
@@ -427,24 +430,21 @@ describe('Step navigation', () => {
 describe('validateStep — Step 1 (Region)', () => {
   beforeEach(resetApp);
 
-  test('fails when region_group is empty', () => {
-    document.getElementById('region_group').value = '';
+  test('fails when no country selected', () => {
+    document.getElementById('selected_country').value = '';
     document.getElementById('county_city').value = '';
     expect(entryFormApp.validateStep(1)).toBe(false);
   });
 
-  test('fails when region_group selected but county_city empty', () => {
+  test('fails when country selected but county_city empty', () => {
     document.getElementById('selected_country').value = 'england';
-    document.getElementById('region_group').innerHTML += '<option value="South East">South East</option>';
-    document.getElementById('region_group').value = 'South East';
     document.getElementById('county_city').value = '';
     expect(entryFormApp.validateStep(1)).toBe(false);
   });
 
-  test('passes when both region_group and county_city are selected', () => {
+  test('passes when country and county_city are selected', () => {
     document.getElementById('selected_country').value = 'england';
-    document.getElementById('region_group').innerHTML += '<option value="South East">South East</option>';
-    document.getElementById('region_group').value = 'South East';
+    document.getElementById('county_city').innerHTML += '<option value="Kent">Kent</option>';
     document.getElementById('county_city').value = 'Kent';
     expect(entryFormApp.validateStep(1)).toBe(true);
   });
@@ -511,36 +511,35 @@ describe('validateStep — Step 5 (Entry Details)', () => {
 
   test('fails when entry description is empty', () => {
     document.getElementById('entryDescription').value = '';
-    document.getElementById('whyShouldWin').value = 'We are great and amazing builders';
     expect(entryFormApp.validateStep(5)).toBe(false);
   });
 
   test('fails when description is too short', () => {
     document.getElementById('entryDescription').value = 'Short';
-    document.getElementById('whyShouldWin').value = 'We are great and amazing builders';
     expect(entryFormApp.validateStep(5)).toBe(false);
   });
 
-  test('fails when whyShouldWin is empty', () => {
-    document.getElementById('entryDescription').value = 'A sufficiently long description here';
-    document.getElementById('whyShouldWin').value = '';
-    expect(entryFormApp.validateStep(5)).toBe(false);
-  });
-
-  test('fails when whyShouldWin is too short', () => {
-    document.getElementById('entryDescription').value = 'A sufficiently long description here';
-    document.getElementById('whyShouldWin').value = 'Too short';
-    expect(entryFormApp.validateStep(5)).toBe(false);
-  });
-
-  test('passes with valid descriptions', () => {
+  test('passes with valid description', () => {
     fillStep5();
     expect(entryFormApp.validateStep(5)).toBe(true);
   });
 });
 
-describe('validateStep — Step 6 (Support Info — always valid)', () => {
-  test('always returns true', () => {
+describe('validateStep — Step 6 (Why Should Win)', () => {
+  beforeEach(resetApp);
+
+  test('fails when whyShouldWin is empty', () => {
+    document.getElementById('whyShouldWin').value = '';
+    expect(entryFormApp.validateStep(6)).toBe(false);
+  });
+
+  test('fails when whyShouldWin is too short', () => {
+    document.getElementById('whyShouldWin').value = 'Too short';
+    expect(entryFormApp.validateStep(6)).toBe(false);
+  });
+
+  test('passes with valid whyShouldWin text', () => {
+    fillStep6WhyShouldWin();
     expect(entryFormApp.validateStep(6)).toBe(true);
   });
 });
@@ -569,11 +568,11 @@ describe('validateStep — Step 7 (Contact)', () => {
     expect(entryFormApp.validateStep(7)).toBe(false);
   });
 
-  test('passes when contact phone is empty (phone is optional)', () => {
+  test('fails when contact phone is empty (phone is required)', () => {
     document.getElementById('contactName').value = 'Jane';
     document.getElementById('contactEmail').value = 'jane@acme.co.uk';
     document.getElementById('contactPhone').value = '';
-    expect(entryFormApp.validateStep(7)).toBe(true);
+    expect(entryFormApp.validateStep(7)).toBe(false);
   });
 
   test('passes with all contact fields valid', () => {
@@ -911,15 +910,14 @@ describe('Error handling', () => {
 describe('saveStepData', () => {
   beforeEach(resetApp);
 
-  test('step 1 saves region_group and county_city', () => {
-    const rgSel = document.getElementById('region_group');
-    rgSel.innerHTML += '<option value="South East">South East</option>';
-    rgSel.value = 'South East';
+  test('step 1 saves county_city directly (region_group stored as empty)', () => {
+    document.getElementById('selected_country').value = 'england';
     const ccSel = document.getElementById('county_city');
+    ccSel.innerHTML += '<option value="Kent">Kent</option>';
     ccSel.value = 'Kent';
     entryFormApp.saveStepData(1);
-    expect(entryFormApp.formData.region_group).toBe('South East');
     expect(entryFormApp.formData.county_city).toBe('Kent');
+    expect(entryFormApp.formData.region_group).toBe('');
   });
 
   test('step 2 saves sector', () => {
@@ -946,11 +944,15 @@ describe('saveStepData', () => {
     expect(entryFormApp.formData.employeeCount).toBe('1-10');
   });
 
-  test('step 5 saves descriptions and trims', () => {
+  test('step 5 saves entryDescription and trims', () => {
     document.getElementById('entryDescription').value = '  Desc text  ';
-    document.getElementById('whyShouldWin').value = '  Win text  ';
     entryFormApp.saveStepData(5);
     expect(entryFormApp.formData.entryDescription).toBe('Desc text');
+  });
+
+  test('step 6 saves whyShouldWin and trims', () => {
+    document.getElementById('whyShouldWin').value = '  Win text  ';
+    entryFormApp.saveStepData(6);
     expect(entryFormApp.formData.whyShouldWin).toBe('Win text');
   });
 
@@ -1189,69 +1191,51 @@ describe('populateSectors', () => {
   });
 });
 
-describe('populateRegions / country→region→city cascade', () => {
+describe('populateRegions / handleCountrySelect direct county picker', () => {
   beforeEach(() => {
     global.window.REGION_DATA = {
       england: {
         'East of England': ['Bedfordshire', 'Cambridgeshire', 'Essex'],
-        'London Boroughs': ['Camden', 'Hackney', 'Westminster'],
         'North West': ['Lancashire', 'Liverpool', 'Manchester'],
         'West Midlands': ['Birmingham', 'Coventry'],
       },
     };
+    global.window.LONDON_BOROUGHS = ['Camden', 'Hackney', 'Westminster'];
     document.getElementById('selected_country').value = '';
-    document.getElementById('region_group').innerHTML = '<option value="">Select your region</option>';
     document.getElementById('county_city_wrapper').style.display = 'none';
+    document.getElementById('county_city').innerHTML = '<option value="">Select...</option>';
   });
 
   afterEach(() => {
     global.window.REGION_DATA = undefined;
+    global.window.LONDON_BOROUGHS = undefined;
   });
 
-  test('handleCountrySelect populates region_group select from REGION_DATA', () => {
+  test('handleCountrySelect populates county_city with all counties grouped', () => {
     entryFormApp.handleCountrySelect('england');
-    const select = document.getElementById('region_group');
-    const options = Array.from(select.querySelectorAll('option'))
+    const countySelect = document.getElementById('county_city');
+    const allValues = Array.from(countySelect.querySelectorAll('option'))
       .map((o) => o.value)
       .filter(Boolean);
-    expect(options).toContain('East of England');
-    expect(options).toContain('London Boroughs');
-    expect(options).toContain('North West');
-    expect(options).toContain('West Midlands');
-    expect(options.length).toBe(4);
+    expect(allValues).toContain('Bedfordshire');
+    expect(allValues).toContain('Manchester');
+    expect(allValues).toContain('Birmingham');
   });
 
-  test('handleRegionGroupChange populates county_city and shows wrapper', () => {
+  test('handleCountrySelect shows county_city_wrapper immediately', () => {
     entryFormApp.handleCountrySelect('england');
-    document.getElementById('region_group').value = 'North West';
-    entryFormApp.handleRegionGroupChange();
-    const wrapper = document.getElementById('county_city_wrapper');
-    expect(wrapper.style.display).toBe('block');
-    const countyOptions = Array.from(document.getElementById('county_city').querySelectorAll('option'))
+    expect(document.getElementById('county_city_wrapper').style.display).toBe('block');
+  });
+
+  test('handleCountrySelect adds London Boroughs optgroup for england', () => {
+    entryFormApp.handleCountrySelect('england');
+    const countySelect = document.getElementById('county_city');
+    const allValues = Array.from(countySelect.querySelectorAll('option'))
       .map((o) => o.value)
       .filter(Boolean);
-    expect(countyOptions).toContain('Manchester');
-    expect(countyOptions).toContain('Liverpool');
-    expect(countyOptions).toContain('Lancashire');
-  });
-
-  test('handleRegionGroupChange for London Boroughs shows all boroughs', () => {
-    entryFormApp.handleCountrySelect('england');
-    document.getElementById('region_group').value = 'London Boroughs';
-    entryFormApp.handleRegionGroupChange();
-    const countyOptions = Array.from(document.getElementById('county_city').querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter(Boolean);
-    expect(countyOptions).toContain('Westminster');
-    expect(countyOptions).toContain('Camden');
-    expect(countyOptions).toContain('Hackney');
-  });
-
-  test('handleRegionGroupChange hides wrapper when region cleared', () => {
-    entryFormApp.handleCountrySelect('england');
-    document.getElementById('region_group').value = '';
-    entryFormApp.handleRegionGroupChange();
-    expect(document.getElementById('county_city_wrapper').style.display).toBe('none');
+    expect(allValues).toContain('Camden');
+    expect(allValues).toContain('Westminster');
+    expect(allValues).toContain('Hackney');
   });
 });
 
@@ -1299,47 +1283,46 @@ describe('showPublicToast — timer-based fade-out and removal', () => {
 // 11. Coverage: two-step region picker interaction
 // ============================================================
 
-describe('two-step region picker', () => {
+describe('direct county picker (handleCountrySelect)', () => {
   beforeEach(() => {
     global.window.REGION_DATA = {
       england: {
         'South East': ['Kent', 'Surrey', 'East Sussex'],
-        'London Boroughs': ['Camden', 'Westminster'],
       },
     };
+    global.window.LONDON_BOROUGHS = ['Camden', 'Westminster'];
     document.getElementById('selected_country').value = '';
-    document.getElementById('region_group').innerHTML = '<option value="">Select your region</option>';
     document.getElementById('county_city_wrapper').style.display = 'none';
-    entryFormApp.handleCountrySelect('england');
+    document.getElementById('county_city').innerHTML = '<option value="">Select...</option>';
   });
 
   afterEach(() => {
     global.window.REGION_DATA = undefined;
+    global.window.LONDON_BOROUGHS = undefined;
   });
 
-  test('wrapper is hidden initially before a region is chosen', () => {
-    expect(document.getElementById('county_city_wrapper').style.display).toBe('none');
-  });
-
-  test('selecting a region reveals the sub-picker with correct options', () => {
-    document.getElementById('region_group').value = 'South East';
-    entryFormApp.handleRegionGroupChange();
+  test('wrapper is shown after handleCountrySelect (direct pick, no intermediate step)', () => {
+    entryFormApp.handleCountrySelect('england');
     expect(document.getElementById('county_city_wrapper').style.display).toBe('block');
-    const values = Array.from(document.getElementById('county_city').querySelectorAll('option'))
-      .map((o) => o.value)
-      .filter(Boolean);
-    expect(values).toEqual(['Kent', 'Surrey', 'East Sussex']);
   });
 
-  test('changing region resets and repopulates sub-picker', () => {
-    document.getElementById('region_group').value = 'South East';
-    entryFormApp.handleRegionGroupChange();
-    document.getElementById('region_group').value = 'London Boroughs';
-    entryFormApp.handleRegionGroupChange();
+  test('county_city contains all counties from South East after handleCountrySelect', () => {
+    entryFormApp.handleCountrySelect('england');
     const values = Array.from(document.getElementById('county_city').querySelectorAll('option'))
       .map((o) => o.value)
       .filter(Boolean);
-    expect(values).toEqual(['Camden', 'Westminster']);
+    expect(values).toContain('Kent');
+    expect(values).toContain('Surrey');
+    expect(values).toContain('East Sussex');
+  });
+
+  test('county_city contains London Boroughs as options after handleCountrySelect', () => {
+    entryFormApp.handleCountrySelect('england');
+    const values = Array.from(document.getElementById('county_city').querySelectorAll('option'))
+      .map((o) => o.value)
+      .filter(Boolean);
+    expect(values).toContain('Camden');
+    expect(values).toContain('Westminster');
   });
 });
 

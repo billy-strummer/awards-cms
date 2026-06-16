@@ -27,6 +27,8 @@
     document.querySelectorAll('.invalid-feedback').forEach((el) => {
       el.style.display = 'none';
     });
+    const hint = getEl('declarationHint');
+    if (hint) hint.style.display = 'none';
   }
 
   function showToast(msg) {
@@ -92,6 +94,13 @@
       valid = false;
     } else if (!validateEmail(nomEmail)) {
       setError('nominatorEmail', 'nominatorEmailErr', 'Please enter a valid email address');
+      valid = false;
+    }
+
+    const declared = getEl('declarationCheckbox')?.checked;
+    if (!declared) {
+      const hint = getEl('declarationHint');
+      if (hint) hint.style.display = 'block';
       valid = false;
     }
 

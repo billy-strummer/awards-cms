@@ -31,6 +31,8 @@ const dom = new JSDOM(
   </div>
   <div id="successState" style="display:none"></div>
   <div id="nomToast"></div>
+  <input id="declarationCheckbox" type="checkbox" />
+  <div id="declarationHint" style="display:none"></div>
   </body></html>`,
   { url: 'http://localhost/', runScripts: 'dangerously', resources: 'usable' }
 );
@@ -60,6 +62,7 @@ function fillValidForm() {
   getEl('nominatorName').value = 'Jane Customer';
   getEl('nominatorEmail').value = 'jane@example.co.uk';
   getEl('nominatorPhone').value = '';
+  getEl('declarationCheckbox').checked = true;
 }
 
 beforeEach(() => {
@@ -82,6 +85,10 @@ beforeEach(() => {
     el.style.display = 'none';
     el.textContent = '';
   });
+  const decl = getEl('declarationCheckbox');
+  if (decl) decl.checked = false;
+  const hint = getEl('declarationHint');
+  if (hint) hint.style.display = 'none';
   jest.clearAllMocks();
 });
 

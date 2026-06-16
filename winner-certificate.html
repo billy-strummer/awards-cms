@@ -106,9 +106,10 @@
     .cert-wrapper {
       padding: 36px 24px 48px;
       width: 100%;
+      max-width: 100vw;
       display: flex;
       justify-content: center;
-      overflow-x: auto;
+      overflow: hidden;
     }
 
     /* ── Certificate page — A4 landscape ── */
@@ -420,8 +421,7 @@
 
       .certificate {
         box-shadow: none;
-        transform: none !important;
-        margin-bottom: 0 !important;
+        zoom: 1 !important;
         width: 297mm;
         height: 210mm;
         page-break-inside: avoid;

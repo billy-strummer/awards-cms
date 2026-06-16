@@ -5,26 +5,19 @@
 
   // A4 landscape natural size in CSS px (96dpi: 1mm = 3.7795px)
   const CERT_W = Math.round(297 * 3.7795); // ≈ 1122
-  const CERT_H = Math.round(210 * 3.7795); // ≈  794
 
   function scaleCertificate() {
     const cert = document.querySelector('.certificate');
-    const wrapper = document.querySelector('.cert-wrapper');
-    if (!cert || !wrapper) return;
+    if (!cert) return;
 
     const sidePad = window.innerWidth <= 540 ? 16 : 48;
     const available = window.innerWidth - sidePad * 2;
 
     if (available < CERT_W) {
-      const scale = available / CERT_W;
-      cert.style.transform = 'scale(' + scale.toFixed(4) + ')';
-      cert.style.transformOrigin = 'top center';
-      // Compensate for the space transform: scale() vacates
-      cert.style.marginBottom = Math.round(CERT_H * (scale - 1)) + 'px';
+      // zoom shrinks both visual and layout box — no horizontal overflow
+      cert.style.zoom = (available / CERT_W).toFixed(4);
     } else {
-      cert.style.transform = '';
-      cert.style.transformOrigin = '';
-      cert.style.marginBottom = '';
+      cert.style.zoom = '';
     }
   }
 

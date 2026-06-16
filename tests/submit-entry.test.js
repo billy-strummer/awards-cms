@@ -1227,15 +1227,15 @@ describe('populateRegions / handleCountrySelect direct county picker', () => {
     expect(document.getElementById('county_city_wrapper').style.display).toBe('block');
   });
 
-  test('handleCountrySelect adds London Boroughs optgroup for england', () => {
+  test('handleCountrySelect does NOT add London Boroughs directly (they appear via borough picker)', () => {
     entryFormApp.handleCountrySelect('england');
     const countySelect = document.getElementById('county_city');
     const allValues = Array.from(countySelect.querySelectorAll('option'))
       .map((o) => o.value)
       .filter(Boolean);
-    expect(allValues).toContain('Camden');
-    expect(allValues).toContain('Westminster');
-    expect(allValues).toContain('Hackney');
+    // Boroughs should NOT be in the county/city dropdown — they appear in the separate borough picker
+    expect(allValues).not.toContain('Camden');
+    expect(allValues).not.toContain('Westminster');
   });
 });
 
@@ -1316,13 +1316,14 @@ describe('direct county picker (handleCountrySelect)', () => {
     expect(values).toContain('East Sussex');
   });
 
-  test('county_city contains London Boroughs as options after handleCountrySelect', () => {
+  test('county_city does NOT contain London Boroughs directly (borough picker handles them)', () => {
     entryFormApp.handleCountrySelect('england');
     const values = Array.from(document.getElementById('county_city').querySelectorAll('option'))
       .map((o) => o.value)
       .filter(Boolean);
-    expect(values).toContain('Camden');
-    expect(values).toContain('Westminster');
+    // Boroughs appear only via _showBoroughPicker when London is selected
+    expect(values).not.toContain('Camden');
+    expect(values).not.toContain('Westminster');
   });
 });
 

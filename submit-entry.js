@@ -412,19 +412,6 @@
         countySelect.appendChild(optgroup);
       });
 
-      // For England, add London Boroughs as an additional group
-      if (country === 'england') {
-        const boroughGroup = document.createElement('optgroup');
-        boroughGroup.label = 'London Boroughs';
-        (window.LONDON_BOROUGHS || []).forEach((b) => {
-          const el = document.createElement('option');
-          el.value = b;
-          el.textContent = b;
-          boroughGroup.appendChild(el);
-        });
-        countySelect.appendChild(boroughGroup);
-      }
-
       countyWrapper.style.display = 'block';
       this._hideBoroughPicker?.();
       setTimeout(() => countySelect.focus(), 50);

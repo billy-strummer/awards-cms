@@ -581,6 +581,7 @@
     'Lambeth',
     'Lewisham',
     'Merton',
+    'Middlesex',
     'Newham',
     'Redbridge',
     'Richmond upon Thames',
@@ -593,7 +594,4 @@
   ];
   window.SECTORS = Object.keys(SECTOR_CATEGORIES);
   window.STANDARD_CATEGORIES = SECTOR_CATEGORIES;
-
-  // Flat list of London Boroughs used by the direct county/city picker in submit-entry.js
-  window.LONDON_BOROUGHS = (REGION_DATA.england || {})['London Boroughs'] || [];
 })();

@@ -217,6 +217,7 @@ const REGIONS_GROUPED = {
     'Waltham Forest',
     'Wandsworth',
     'Westminster',
+    'Middlesex',
   ],
   'North East': [
     'County Durham',

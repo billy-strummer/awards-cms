@@ -398,7 +398,7 @@
       if (!countySelect || !countyWrapper) return;
 
       const regions = (window.REGION_DATA || {})[country] || {};
-      countySelect.innerHTML = '<option value="">Select your county or city</option>';
+      countySelect.innerHTML = '<option value="">Select your County or City</option>';
 
       Object.keys(regions).forEach((groupName) => {
         const optgroup = document.createElement('optgroup');
@@ -426,7 +426,7 @@
       if (!wrapper || !countySelect) return;
 
       countySelect.value = '';
-      countySelect.innerHTML = '<option value="">Select your county, city or borough</option>';
+      countySelect.innerHTML = '<option value="">Select your County or City</option>';
       this._hideBoroughPicker();
 
       if (!groupName) {
@@ -778,7 +778,7 @@
           }
           const countyCity = document.getElementById('county_city');
           if (!countyCity?.value) {
-            this._markInvalid(countyCity, 'Please select your county or city');
+            this._markInvalid(countyCity, 'Please select your County or City');
             return false;
           }
           if (countyCity?.value === 'London') {

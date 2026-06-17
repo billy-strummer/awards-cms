@@ -50,16 +50,10 @@ const dom = new JSDOM(
     <select id="employeeCount"><option value="">Select...</option><option value="1-10">1-10</option></select>
   </div>
 
-  <!-- Step 5 – About entry -->
+  <!-- Step 5 – About entry (merged with supporting info) -->
   <div id="step5" class="form-step">
     <textarea id="entryDescription"></textarea>
     <span id="descCharCount">0 / 1,000</span>
-    <textarea id="whyShouldWin"></textarea>
-    <span id="whyCharCount">0 / 2,000</span>
-  </div>
-
-  <!-- Step 6 – Extra / supporting -->
-  <div id="step6" class="form-step">
     <textarea id="supportingInfo"></textarea>
     <span id="supportCharCount">0 / 1,500</span>
     <input id="tradeBodies" value="" />
@@ -168,11 +162,7 @@ function fillStep5() {
     'A detailed description of our company that exceeds twenty chars easily.';
 }
 
-function fillStep6WhyShouldWin() {
-  document.getElementById('whyShouldWin').value = 'We should win because we are truly excellent builders.';
-}
-
-function fillStep6() {
+function fillStep5Supporting() {
   document.getElementById('supportingInfo').value = 'Extra supporting details';
   document.getElementById('tradeBodies').value = 'FMB';
   document.getElementById('accreditations').value = 'ISO 9001';
@@ -311,7 +301,6 @@ describe('entryApi — API proxy to /api/entry-proxy', () => {
       companyWebsite: 'https://acme.co',
       awardCategory: 'Roofing Company',
       entryDescription: 'Desc',
-      whyShouldWin: 'Best',
       supportingInfo: '',
       tradeBodies: '',
       accreditations: '',
@@ -388,10 +377,10 @@ describe('Step navigation', () => {
     expect(entryFormApp.currentStep).toBe(3);
   });
 
-  test('nextStep advances when validation passes (step 6 requires whyShouldWin)', async () => {
-    entryFormApp.goToStep(6);
-    fillStep6WhyShouldWin();
-    await entryFormApp.nextStep(6);
+  test('nextStep from step 5 jumps to step 7 (step 6 removed)', async () => {
+    entryFormApp.goToStep(5);
+    document.getElementById('entryDescription').value = 'A detailed description that is long enough to pass.';
+    await entryFormApp.nextStep(5);
     expect(entryFormApp.currentStep).toBe(7);
   });
 
@@ -525,21 +514,10 @@ describe('validateStep — Step 5 (Entry Details)', () => {
   });
 });
 
-describe('validateStep — Step 6 (Why Should Win)', () => {
+describe('validateStep — Step 6 removed', () => {
   beforeEach(resetApp);
 
-  test('fails when whyShouldWin is empty', () => {
-    document.getElementById('whyShouldWin').value = '';
-    expect(entryFormApp.validateStep(6)).toBe(false);
-  });
-
-  test('fails when whyShouldWin is too short', () => {
-    document.getElementById('whyShouldWin').value = 'Too short';
-    expect(entryFormApp.validateStep(6)).toBe(false);
-  });
-
-  test('passes with valid whyShouldWin text', () => {
-    fillStep6WhyShouldWin();
+  test('validateStep(6) returns true (step 6 is no longer used)', () => {
     expect(entryFormApp.validateStep(6)).toBe(true);
   });
 });
@@ -632,7 +610,6 @@ describe('submitEntry', () => {
       companyWebsite: '',
       awardCategory: 'Roofing Company',
       entryDescription: 'A good company',
-      whyShouldWin: 'We are best',
       supportingInfo: '',
       tradeBodies: '',
       accreditations: '',
@@ -950,15 +927,9 @@ describe('saveStepData', () => {
     expect(entryFormApp.formData.entryDescription).toBe('Desc text');
   });
 
-  test('step 6 saves whyShouldWin and trims', () => {
-    document.getElementById('whyShouldWin').value = '  Win text  ';
-    entryFormApp.saveStepData(6);
-    expect(entryFormApp.formData.whyShouldWin).toBe('Win text');
-  });
-
-  test('step 6 saves supporting info', () => {
-    fillStep6();
-    entryFormApp.saveStepData(6);
+  test('step 5 saves supporting info, trade bodies and accreditations', () => {
+    fillStep5Supporting();
+    entryFormApp.saveStepData(5);
     expect(entryFormApp.formData.supportingInfo).toBe('Extra supporting details');
     expect(entryFormApp.formData.tradeBodies).toBe('FMB');
     expect(entryFormApp.formData.accreditations).toBe('ISO 9001');
@@ -1102,7 +1073,6 @@ describe('showReview', () => {
       yearsInField: '5-10',
       employeeCount: '11-50',
       entryDescription: 'We are a top roofing company',
-      whyShouldWin: 'Quality craftsmanship',
       supportingInfo: 'Member of NFRC',
       tradeBodies: 'NFRC',
       accreditations: 'ISO 14001',
@@ -1345,16 +1315,6 @@ describe('setupCharCounters — input event updates counter text (lines 335-337)
     el.dispatchEvent(new dom.window.Event('input'));
 
     expect(counter.textContent).toBe('11 / 1,000');
-  });
-
-  test('updates whyCharCount when whyShouldWin receives input', () => {
-    const el = document.getElementById('whyShouldWin');
-    const counter = document.getElementById('whyCharCount');
-
-    el.value = 'A'.repeat(50);
-    el.dispatchEvent(new dom.window.Event('input'));
-
-    expect(counter.textContent).toBe('50 / 2,000');
   });
 
   test('updates supportCharCount when supportingInfo receives input', () => {

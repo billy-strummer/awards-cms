@@ -490,7 +490,6 @@
     setupCharCounters() {
       const counters = [
         { field: 'entryDescription', display: 'descCharCount', max: 1000 },
-        { field: 'whyShouldWin', display: 'whyCharCount', max: 2000 },
         { field: 'supportingInfo', display: 'supportCharCount', max: 1500 },
         { field: 'nomineeWorkDesc', display: 'workDescCharCount', max: 1000 },
       ];
@@ -663,11 +662,19 @@
         this.showReview();
       }
 
+      // Step 6 removed — step 5 goes directly to step 7
+      if (currentStepNum === 5) {
+        this.goToStep(7);
+        return;
+      }
+
       this.goToStep(currentStepNum + 1);
     },
 
     prevStep(currentStepNum) {
-      this.goToStep(currentStepNum - 1);
+      // Step 6 removed — step 7 goes back to step 5
+      const target = currentStepNum === 7 ? 5 : currentStepNum - 1;
+      this.goToStep(target);
     },
 
     goToStep(stepNum) {
@@ -829,19 +836,6 @@
           }
           return true;
         }
-        case 6: {
-          const whyEl = document.getElementById('whyShouldWin');
-          const why = whyEl ? whyEl.value.trim() : '';
-          if (!why) {
-            this._markInvalid(whyEl, 'Please tell us why you should win this award');
-            return false;
-          }
-          if (why.length < 20) {
-            this._markInvalid(whyEl, 'Please provide more detail on why you should win (at least 20 characters)');
-            return false;
-          }
-          return true;
-        }
         case 7: {
           const contactNameEl = document.getElementById('contactName');
           const contactEmailEl = document.getElementById('contactEmail');
@@ -898,9 +892,6 @@
           break;
         case 5:
           this.formData.entryDescription = document.getElementById('entryDescription').value.trim();
-          break;
-        case 6:
-          this.formData.whyShouldWin = document.getElementById('whyShouldWin')?.value.trim() || '';
           this.formData.supportingInfo = document.getElementById('supportingInfo').value.trim();
           this.formData.tradeBodies = document.getElementById('tradeBodies').value.trim();
           this.formData.accreditations = document.getElementById('accreditations').value.trim();
@@ -955,30 +946,15 @@
 
       <div class="review-group">
         <div class="review-group-title">
-          About Your Entry
+          About Your Business
           <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[5]">Edit</span>
         </div>
         <div class="review-row"><span class="review-label">Description</span></div>
         ${textBlock(d.entryDescription)}
-        <div class="review-row mt-2"><span class="review-label">Why You Should Win</span></div>
-        ${textBlock(d.whyShouldWin)}
-      </div>
-
-      ${
-        d.supportingInfo || d.tradeBodies || d.accreditations
-          ? `
-      <div class="review-group">
-        <div class="review-group-title">
-          Supporting Information
-          <span class="review-edit-btn float-end" data-action="entryFormApp.goToStep" data-args="[6]">Edit</span>
-        </div>
-        ${d.supportingInfo ? `<div class="review-row"><span class="review-label">Additional Info</span></div>${textBlock(d.supportingInfo)}` : ''}
+        ${d.supportingInfo ? `<div class="review-row mt-2"><span class="review-label">Additional Information</span></div>${textBlock(d.supportingInfo)}` : ''}
         ${row('Trade Bodies', d.tradeBodies)}
         ${row('Accreditations', d.accreditations)}
       </div>
-      `
-          : ''
-      }
 
       <div class="review-group">
         <div class="review-group-title">
@@ -1028,7 +1004,6 @@
           companyWebsite: this.formData.companyWebsite,
           awardCategory: this.formData.awardCategory,
           entryDescription: this.formData.entryDescription,
-          whyShouldWin: this.formData.whyShouldWin,
           supportingInfo: this.formData.supportingInfo,
           tradeBodies: this.formData.tradeBodies,
           accreditations: this.formData.accreditations,

@@ -82,7 +82,7 @@ const SECTORS = [
   'BUILDING & CONSTRUCTION',
   'MECHANICAL, ELECTRICAL & PLUMBING',
   'CARPENTRY & JOINERY',
-  'INTERIOR FIT-OUT & FINISHING',
+  'FIT-OUT & FINISHING',
   'OUTDOOR & LANDSCAPING',
   'ENERGY, TECH & SUSTAINABILITY',
   'SPECIALIST TRADES',
@@ -111,7 +111,7 @@ const STANDARD_CATEGORIES = {
     'Staircase Specialist',
     'Timber Windows Installer',
   ],
-  'INTERIOR FIT-OUT & FINISHING': [
+  'FIT-OUT & FINISHING': [
     'Bathroom Installer',
     'Carpet Fitters',
     'Curtains & Blinds Installer',

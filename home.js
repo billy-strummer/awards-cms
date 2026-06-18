@@ -298,7 +298,6 @@
 
       function renderLocations(country) {
         const countryData = SUB_REGIONS[country] || {};
-        const boroughs = window.LONDON_BOROUGHS || countryData['London Boroughs'] || [];
 
         const subList = document.getElementById('sub-list-' + country);
         if (!subList) return;

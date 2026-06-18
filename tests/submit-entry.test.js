@@ -42,12 +42,16 @@ const dom = new JSDOM(
     <button id="step3NextBtn" style="display:none"></button>
   </div>
 
-  <!-- Step 4 – Company info -->
+  <!-- Step 4 – Company info + Contact (merged) -->
   <div id="step4" class="form-step">
     <input id="companyName" value="" />
     <input id="companyWebsite" value="" />
     <select id="yearsInField"><option value="">Select...</option><option value="1-5">1-5</option></select>
     <select id="employeeCount"><option value="">Select...</option><option value="1-10">1-10</option></select>
+    <input id="contactName" value="" />
+    <input id="contactPosition" value="" />
+    <input id="contactEmail" value="" />
+    <input id="contactPhone" value="" />
   </div>
 
   <!-- Step 5 – About entry (merged with supporting info) -->
@@ -58,14 +62,6 @@ const dom = new JSDOM(
     <span id="supportCharCount">0 / 1,500</span>
     <input id="tradeBodies" value="" />
     <input id="accreditations" value="" />
-  </div>
-
-  <!-- Step 7 – Contact -->
-  <div id="step7" class="form-step">
-    <input id="contactName" value="" />
-    <input id="contactPosition" value="" />
-    <input id="contactEmail" value="" />
-    <input id="contactPhone" value="" />
   </div>
 
   <!-- Step 8 – Review -->
@@ -377,11 +373,11 @@ describe('Step navigation', () => {
     expect(entryFormApp.currentStep).toBe(3);
   });
 
-  test('nextStep from step 5 jumps to step 7 (step 6 removed)', async () => {
+  test('nextStep from step 5 jumps to step 8 (steps 6 and 7 removed)', async () => {
     entryFormApp.goToStep(5);
     document.getElementById('entryDescription').value = 'A detailed description that is long enough to pass.';
     await entryFormApp.nextStep(5);
-    expect(entryFormApp.currentStep).toBe(7);
+    expect(entryFormApp.currentStep).toBe(8);
   });
 
   test('nextStep does NOT advance when validation fails', async () => {
@@ -402,11 +398,11 @@ describe('Step navigation', () => {
     spy.mockRestore();
   });
 
-  test('nextStep from step 7 triggers showReview', async () => {
+  test('nextStep from step 5 triggers showReview', async () => {
     const spy = jest.spyOn(entryFormApp, 'showReview');
-    entryFormApp.goToStep(7);
-    fillStep7();
-    await entryFormApp.nextStep(7);
+    entryFormApp.goToStep(5);
+    document.getElementById('entryDescription').value = 'A detailed description that is long enough to pass.';
+    await entryFormApp.nextStep(5);
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
@@ -488,9 +484,10 @@ describe('validateStep — Step 4 (Company Info)', () => {
     expect(entryFormApp.validateStep(4)).toBe(false);
   });
 
-  test('passes with valid company name and years', () => {
+  test('passes with valid company name, years, and contact details', () => {
     document.getElementById('companyName').value = 'Acme Builders';
     document.getElementById('yearsInField').value = '1-5';
+    fillStep7();
     expect(entryFormApp.validateStep(4)).toBe(true);
   });
 });
@@ -522,40 +519,45 @@ describe('validateStep — Step 6 removed', () => {
   });
 });
 
-describe('validateStep — Step 7 (Contact)', () => {
+describe('validateStep — Step 4 contact fields (merged from step 7)', () => {
   beforeEach(resetApp);
 
   test('fails when contact name is empty', () => {
+    _fillStep4();
     document.getElementById('contactName').value = '';
     document.getElementById('contactEmail').value = 'a@b.com';
     document.getElementById('contactPhone').value = '0770';
-    expect(entryFormApp.validateStep(7)).toBe(false);
+    expect(entryFormApp.validateStep(4)).toBe(false);
   });
 
   test('fails when contact email is empty', () => {
+    _fillStep4();
     document.getElementById('contactName').value = 'Jane';
     document.getElementById('contactEmail').value = '';
     document.getElementById('contactPhone').value = '0770';
-    expect(entryFormApp.validateStep(7)).toBe(false);
+    expect(entryFormApp.validateStep(4)).toBe(false);
   });
 
   test('fails when contact email is invalid', () => {
+    _fillStep4();
     document.getElementById('contactName').value = 'Jane';
     document.getElementById('contactEmail').value = 'not-an-email';
     document.getElementById('contactPhone').value = '0770';
-    expect(entryFormApp.validateStep(7)).toBe(false);
+    expect(entryFormApp.validateStep(4)).toBe(false);
   });
 
   test('fails when contact phone is empty (phone is required)', () => {
+    _fillStep4();
     document.getElementById('contactName').value = 'Jane';
     document.getElementById('contactEmail').value = 'jane@acme.co.uk';
     document.getElementById('contactPhone').value = '';
-    expect(entryFormApp.validateStep(7)).toBe(false);
+    expect(entryFormApp.validateStep(4)).toBe(false);
   });
 
-  test('passes with all contact fields valid', () => {
+  test('passes with all company and contact fields valid', () => {
+    _fillStep4();
     fillStep7();
-    expect(entryFormApp.validateStep(7)).toBe(true);
+    expect(entryFormApp.validateStep(4)).toBe(true);
   });
 });
 
@@ -935,9 +937,10 @@ describe('saveStepData', () => {
     expect(entryFormApp.formData.accreditations).toBe('ISO 9001');
   });
 
-  test('step 7 saves contact details', () => {
+  test('step 4 saves contact details (merged from step 7)', () => {
+    _fillStep4();
     fillStep7();
-    entryFormApp.saveStepData(7);
+    entryFormApp.saveStepData(4);
     expect(entryFormApp.formData.contactName).toBe('Jane Smith');
     expect(entryFormApp.formData.contactEmail).toBe('jane@acme.co.uk');
     expect(entryFormApp.formData.contactPhone).toBe('07700900000');

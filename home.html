@@ -2032,9 +2032,22 @@
     .cat-entry-link {
       display: block; color: inherit; text-decoration: none;
       width: 100%; height: 100%;
+      background: none; border: none; padding: 0;
+      text-align: left; cursor: pointer; font-size: inherit; font-family: inherit;
     }
     .cat-entry-link:hover { color: #fff; }
     .cat-modal-cta { display: inline-block; text-decoration: none; }
+    .cat-modal-back {
+      background: none; border: none; padding: 0;
+      color: rgba(255,255,255,0.5); font-size: 0.8rem; letter-spacing: 0.05em;
+      cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; gap: 6px;
+      transition: color 0.15s;
+    }
+    .cat-modal-back:hover { color: #C9A227; }
+    .cat-detail-desc {
+      font-size: 0.95rem; color: rgba(255,255,255,0.75); line-height: 1.75;
+      margin: 0 0 32px;
+    }
     @media (max-width: 480px) {
       .cat-modal-list { grid-template-columns: 1fr; }
       .cat-modal-panel { padding: 40px 24px 32px; }
@@ -3164,11 +3177,26 @@
 <!-- Category modal — must be in DOM before the inline script runs -->
 <div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
   <div class="cat-modal-panel">
-    <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
-    <p class="cat-modal-label" id="cat-modal-label"></p>
-    <h3 class="cat-modal-title" id="cat-modal-title"></h3>
-    <ul class="cat-modal-list" id="cat-modal-list"></ul>
-    <a href="submit-entry.html" class="btn-gold cat-modal-cta">Enter the Awards →</a>
+    <!-- List view: sector → categories -->
+    <div id="cat-modal-list-view">
+      <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
+      <p class="cat-modal-label" id="cat-modal-label"></p>
+      <h3 class="cat-modal-title" id="cat-modal-title"></h3>
+      <ul class="cat-modal-list" id="cat-modal-list"></ul>
+      <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-modal-list-cta">Enter the Awards →</a>
+    </div>
+    <!-- Detail view: individual category description -->
+    <div id="cat-modal-detail-view" style="display:none;">
+      <button class="cat-modal-close" id="cat-modal-close-detail" aria-label="Close category panel">×</button>
+      <button class="cat-modal-back" id="cat-modal-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+        Back to categories
+      </button>
+      <p class="cat-modal-label">Category</p>
+      <h3 class="cat-modal-title" id="cat-detail-name"></h3>
+      <p class="cat-detail-desc" id="cat-detail-desc"></p>
+      <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-detail-cta">Enter this Category →</a>
+    </div>
   </div>
 </div>
 

@@ -654,40 +654,89 @@
   try {
     (function initCategoryModal() {
       const SECTOR_CATEGORIES = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.sectorCategories) || {};
+      const CATEGORY_DESCRIPTIONS = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.categoryDescriptions) || {};
 
       const modal = document.getElementById('cat-modal');
       const closeBtn = document.getElementById('cat-modal-close');
+      const closeBtnDetail = document.getElementById('cat-modal-close-detail');
+      const backBtn = document.getElementById('cat-modal-back');
       const labelEl = document.getElementById('cat-modal-label');
       const titleEl = document.getElementById('cat-modal-title');
       const listEl = document.getElementById('cat-modal-list');
+      const listView = document.getElementById('cat-modal-list-view');
+      const detailView = document.getElementById('cat-modal-detail-view');
+      const detailName = document.getElementById('cat-detail-name');
+      const detailDesc = document.getElementById('cat-detail-desc');
+      const detailCta = document.getElementById('cat-detail-cta');
 
       if (!modal) return;
+
+      let currentSectorParam = '';
+
+      function showListView() {
+        if (listView) listView.style.display = '';
+        if (detailView) detailView.style.display = 'none';
+      }
+
+      function showDetailView(catName, sectorParam) {
+        const desc = CATEGORY_DESCRIPTIONS[catName];
+        if (!desc) return;
+        if (detailName) detailName.textContent = catName;
+        if (detailDesc) detailDesc.textContent = desc;
+        if (detailCta)
+          detailCta.href = 'submit-entry.html?sector=' + sectorParam + '&category=' + encodeURIComponent(catName);
+        if (listView) listView.style.display = 'none';
+        if (detailView) detailView.style.display = '';
+      }
 
       function openModal(sectorKey) {
         const cats = SECTOR_CATEGORIES[sectorKey];
         if (!cats) return;
 
+        currentSectorParam = encodeURIComponent(sectorKey);
+
         labelEl.textContent = 'Award Categories';
         titleEl.textContent = sectorKey.replace(/&amp;/g, '&');
 
-        const sectorParam = encodeURIComponent(sectorKey);
         listEl.innerHTML = cats
           .map(function (cat) {
-            const href = 'public-voting.html?sector=' + sectorParam + '&category=' + encodeURIComponent(cat);
+            const hasDesc = !!CATEGORY_DESCRIPTIONS[cat];
+            if (hasDesc) {
+              return (
+                '<li><button class="cat-entry-link" data-cat="' +
+                escapeHtml(cat) +
+                '">' +
+                escapeHtml(cat) +
+                '</button></li>'
+              );
+            }
+            const href = 'public-voting.html?sector=' + currentSectorParam + '&category=' + encodeURIComponent(cat);
             return '<li><a href="' + href + '" class="cat-entry-link">' + escapeHtml(cat) + '</a></li>';
           })
           .join('');
 
-        const ctaEl = document.querySelector('.cat-modal-cta');
-        if (ctaEl) ctaEl.href = 'submit-entry.html?sector=' + sectorParam;
+        const listCtaEl = document.getElementById('cat-modal-list-cta');
+        if (listCtaEl) listCtaEl.href = 'submit-entry.html?sector=' + currentSectorParam;
 
+        showListView();
         modal.classList.add('open');
         modal.focus();
       }
 
       function closeModal() {
         modal.classList.remove('open');
+        showListView();
       }
+
+      listEl.addEventListener('click', function (e) {
+        const btn = e.target.closest('button.cat-entry-link');
+        if (!btn) return;
+        showDetailView(btn.getAttribute('data-cat'), currentSectorParam);
+      });
+
+      if (backBtn) backBtn.addEventListener('click', showListView);
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      if (closeBtnDetail) closeBtnDetail.addEventListener('click', closeModal);
 
       document.querySelectorAll('.cat-box[data-sector]').forEach(function (box) {
         box.addEventListener('click', function (e) {
@@ -695,8 +744,6 @@
           openModal(box.getAttribute('data-sector').replace(/&amp;/g, '&'));
         });
       });
-
-      closeBtn.addEventListener('click', closeModal);
 
       modal.addEventListener('click', function (e) {
         if (e.target === modal) closeModal();

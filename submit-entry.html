@@ -839,7 +839,7 @@
         <div class="form-step" id="step1">
           <div class="form-section">
             <h2 class="step-question">Where are you based?</h2>
-            <p class="step-subtitle">Select your country, then your county or city.</p>
+            <p class="step-subtitle">Select your Country, then your County or City.</p>
 
             <!-- 1. Country flag cards -->
             <div class="country-picker" id="country_picker" role="group" aria-label="Select your country">
@@ -892,7 +892,7 @@
         <div class="form-step" id="step2">
           <div class="form-section">
             <h2 class="step-question">What sector are you in?</h2>
-            <p class="step-subtitle">Choose the trade sector that best describes your work.</p>
+            <p class="step-subtitle">Choose the trade sector that best fits your work.</p>
             <label class="visually-hidden" for="sector">Trade sector</label>
             <select class="form-select form-select-lg" id="sector" required>
               <option value="">Choose your sector...</option>
@@ -960,6 +960,27 @@
                 <option value="100+">100+</option>
               </select>
             </div>
+            <div class="mb-3">
+              <label class="form-label" for="contactName">Your full name <span class="required-star">*</span></label>
+              <input type="text" class="form-control form-control-lg" id="contactName"
+                placeholder="Your full name" required autocomplete="name">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="contactPosition">Position / Title <small class="text-muted">(optional)</small></label>
+              <input type="text" class="form-control form-control-lg" id="contactPosition"
+                placeholder="e.g. Managing Director, Owner" autocomplete="organization-title">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="contactEmail">Email address <span class="required-star">*</span></label>
+              <input type="email" class="form-control form-control-lg" id="contactEmail"
+                placeholder="you@yourcompany.co.uk" required autocomplete="email">
+              <small class="field-hint-text">e.g. name@company.co.uk</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="contactPhone">Phone number <span class="required-star">*</span></label>
+              <input type="tel" class="form-control form-control-lg" id="contactPhone"
+                placeholder="e.g. 07700 900000" required autocomplete="tel">
+            </div>
             <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[4]">
               Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
@@ -1000,44 +1021,6 @@
               Next <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
             </button>
             <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[5]">
-              <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 7: Contact Information -->
-        <div class="form-step" id="step7">
-          <div class="form-section">
-            <h2 class="step-question">Your contact details</h2>
-            <p class="step-subtitle">We'll use these to keep you updated on your entry</p>
-            <fieldset>
-              <legend class="visually-hidden">Contact Information</legend>
-              <div class="mb-3">
-                <label class="form-label" for="contactName">Full name <span class="required-star">*</span></label>
-                <input type="text" class="form-control form-control-lg" id="contactName"
-                  placeholder="Your full name" required autocomplete="name">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="contactPosition">Position / Title <small class="text-muted">(optional)</small></label>
-                <input type="text" class="form-control form-control-lg" id="contactPosition"
-                  placeholder="e.g. Managing Director, Owner" autocomplete="organization-title">
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="contactEmail">Email address <span class="required-star">*</span></label>
-                <input type="email" class="form-control form-control-lg" id="contactEmail"
-                  placeholder="you@yourcompany.co.uk" required autocomplete="email">
-                <small class="field-hint-text">e.g. name@company.co.uk</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="contactPhone">Phone number <span class="required-star">*</span></label>
-                <input type="tel" class="form-control form-control-lg" id="contactPhone"
-                  placeholder="e.g. 07700 900000" required autocomplete="tel">
-              </div>
-            </fieldset>
-            <button type="button" class="btn btn-next" data-action="entryFormApp.nextStep" data-args="[7]">
-              Review Entry <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i>
-            </button>
-            <button type="button" class="btn btn-back" data-action="entryFormApp.prevStep" data-args="[7]">
               <i class="bi bi-arrow-left me-2" aria-hidden="true"></i>Back
             </button>
           </div>

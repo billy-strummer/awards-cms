@@ -204,7 +204,7 @@ const REGIONS_GROUPED = {
     'Hounslow',
     'Islington',
     'Kensington & Chelsea',
-    'Kingston upon Thames',
+    'Kingston & Richmond',
     'Lambeth',
     'Lewisham',
     'Merton',

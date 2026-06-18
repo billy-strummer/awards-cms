@@ -657,14 +657,10 @@
         await this.buildCategoryList();
       }
 
-      // Build review before showing step 8
-      if (currentStepNum === 7) {
-        this.showReview();
-      }
-
-      // Step 6 removed — step 5 goes directly to step 7
+      // Step 5 goes directly to step 8 (steps 6 and 7 merged/removed)
       if (currentStepNum === 5) {
-        this.goToStep(7);
+        this.showReview();
+        this.goToStep(8);
         return;
       }
 
@@ -672,8 +668,8 @@
     },
 
     prevStep(currentStepNum) {
-      // Step 6 removed — step 7 goes back to step 5
-      const target = currentStepNum === 7 ? 5 : currentStepNum - 1;
+      // Steps 6 and 7 removed — back from step 8 goes to step 5
+      const target = currentStepNum === 8 ? 5 : currentStepNum - 1;
       this.goToStep(target);
     },
 
@@ -821,6 +817,25 @@
             this._markInvalid(yearsEl, 'Please select years in business');
             return false;
           }
+          const contactNameEl = document.getElementById('contactName');
+          if (!contactNameEl.value.trim()) {
+            this._markInvalid(contactNameEl, 'Please enter your name');
+            return false;
+          }
+          const contactEmailEl = document.getElementById('contactEmail');
+          if (!contactEmailEl.value.trim()) {
+            this._markInvalid(contactEmailEl, 'Please enter your email address');
+            return false;
+          }
+          if (!this.validateEmail(contactEmailEl.value.trim())) {
+            this._markInvalid(contactEmailEl, 'Please enter a valid email address');
+            return false;
+          }
+          const contactPhoneEl = document.getElementById('contactPhone');
+          if (!contactPhoneEl?.value.trim()) {
+            this._markInvalid(contactPhoneEl, 'Please enter your phone number');
+            return false;
+          }
           return true;
         }
         case 5: {
@@ -889,6 +904,10 @@
           this.formData.companyWebsite = document.getElementById('companyWebsite').value.trim();
           this.formData.yearsInField = document.getElementById('yearsInField').value;
           this.formData.employeeCount = document.getElementById('employeeCount').value;
+          this.formData.contactName = document.getElementById('contactName').value.trim();
+          this.formData.contactPosition = document.getElementById('contactPosition').value.trim();
+          this.formData.contactEmail = document.getElementById('contactEmail').value.trim();
+          this.formData.contactPhone = document.getElementById('contactPhone').value.trim();
           break;
         case 5:
           this.formData.entryDescription = document.getElementById('entryDescription').value.trim();

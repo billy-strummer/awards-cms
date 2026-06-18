@@ -579,13 +579,144 @@
   };
 
   /* ─────────────────────────────────────────────
-     5. EXPORT
+     5. CATEGORY DESCRIPTIONS — one per category for the modal detail view
+  ───────────────────────────────────────────── */
+  const CATEGORY_DESCRIPTIONS = {
+    // BUILDING & CONSTRUCTION
+    'Brickwork & Masonry Company':
+      'This category recognises excellence in brick, block and stonework services, including new walls, extensions and new builds, repointing, chimney work, and heritage restoration. Winners demonstrate exceptional technical expertise, safe working practices, relevant building regulations compliance, alongside excellent customer satisfaction.',
+    'Drainage Company':
+      'This category recognises excellence in foul and surface water drainage services, including installations, repairs, drain relining, excavations, soakaways and flood prevention, blocked drain clearance, and CCTV surveys. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Extension Company':
+      'This category recognises excellence in delivering extension projects, including single- and multi-storey additions, side-return extensions, wraparounds, structural alterations and full project management. Winners demonstrate exceptional technical expertise, relevant building regulations compliance, safe working practices, and excellent customer satisfaction.',
+    'General Building Company':
+      'This category recognises excellence in comprehensive building services, including renovations, extensions, structural alterations and repairs. Winners demonstrate exceptional technical expertise, safe working practices, relevant building regulations compliance, and excellent customer satisfaction.',
+    'Groundworks & Foundations Company':
+      'This category recognises excellence in groundworks and foundation services, including excavations, concrete foundations, underpinning, retaining structures, piling, drainage installation, and site clearance. Winners demonstrate exceptional technical expertise, safe excavation and temporary working practices, relevant building regulations compliance, and excellent customer satisfaction.',
+    'Guttering Company':
+      'This category recognises excellence in roofline and rainwater management services, including installation, repairs and replacement of gutters, downpipes, fascias and soffits, gutter cleaning, maintenance programmes and rainwater system upgrades. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Loft Conversion Company':
+      'This category recognises excellence in loft conversion services, including dormer, hip-to-gable, mansard and rooflight conversions, structural strengthening, fire-safety upgrades, staircase installation and building regulations management. Winners demonstrate exceptional technical expertise, safe working practices, relevant building regulations compliance, and excellent customer satisfaction.',
+    'Maintenance Services':
+      'This category recognises excellence in property maintenance services, including planned maintenance programmes, reactive repairs, handyman services, minor building works and seasonal property care. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'New Build Company':
+      'This category recognises excellence in the construction of new-build residential properties, including detached and semi-detached houses, bespoke homes and small housing developments. Coverage includes full project delivery from groundworks to completion, coordination of trades, programme management and building regulations compliance. Winners demonstrate exceptional technical expertise, high build quality, safe working practices, and excellent customer satisfaction.',
+    'Roofing Company':
+      'This category recognises excellence in roofing services, including pitched and flat roofing, slate and tile work, roof repairs, replacements and restorations, chimney repairs, leadwork and rooflight window installation. Winners demonstrate exceptional technical expertise, safe working practices, relevant building regulations compliance, and excellent customer satisfaction.',
+    'Structural Engineers':
+      'This category recognises excellence in structural engineering services, including surveys, calculations and design, underpinning schemes, load-bearing alterations, subsidence assessment and reporting, and building control support. Winners demonstrate exceptional technical expertise, regulatory compliance and professional standards, and excellent customer satisfaction.',
+    'Structural Steelworks':
+      'This category recognises excellence in structural steel services, including design, fabrication and installation of steel beams, columns, lintels and frames for extensions, loft conversions, and load-bearing alterations, plus temporary works and lifting planning. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    // MECHANICAL, ELECTRICAL & PLUMBING
+    'Air-Conditioning & Ventilation Company':
+      'This category recognises excellence in climate control services, including air-conditioning installation, servicing and repairs, mechanical ventilation, heat recovery systems, commissioning and airflow balancing, and air quality solutions. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Electrical Company':
+      'This category recognises excellence in electrical services, including installations, rewires, consumer unit upgrades, fault finding, testing and certification, and lighting design. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Heating Company':
+      'This category recognises excellence in heating services, including boiler and cylinder installations, servicing and repairs, central heating systems, radiator upgrades, power flushing, unvented systems and smart heating controls. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Plumbing Company':
+      'This category recognises excellence in plumbing services, including installations, repairs and maintenance, pipework, water systems, bathroom and kitchen plumbing, leak detection and emergency callouts. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Underfloor Heating Company':
+      'This category recognises excellence in underfloor heating services, including design, supply and installation of electric and water-based systems, retrofit solutions, zoning controls, and system servicing and commissioning. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    // CARPENTRY & JOINERY
+    'Cabinet Maker':
+      'This category recognises excellence in bespoke cabinet making, including design and crafting of fitted and freestanding furniture, such as wardrobes, bookcases, media units and storage solutions, using traditional and contemporary techniques. Winners demonstrate exceptional craftsmanship and technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Carpentry Company':
+      'This category recognises excellence in carpentry services, including first and second fix carpentry, timber framing, stud partitions, flooring and joists, door hanging, skirting, architraves and bespoke site-built joinery. Winners demonstrate exceptional craftsmanship and technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Joinery Company':
+      'This category recognises excellence in joinery services, covering the design, workshop manufacture and installation of precision timber components, such as doorsets, windows, staircases, fitted furniture and architectural timber features. Winners demonstrate exceptional craftsmanship and technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Staircase Specialist':
+      'This category recognises excellence in staircase surveying, design, manufacture and installation, including straight, turning and spiral staircases, bespoke balustrades and handrails, upgrades and refurbishments, and mixed-material systems. Winners demonstrate outstanding accuracy, finish and installation quality, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
+    'Timber Windows Installer':
+      'This category recognises excellence in timber window installation and renewal, including casement, sash and flush systems, repairs, restoration, draught-proofing and sympathetic upgrades to period joinery. Winners demonstrate high standards of surveying, fitting, weather-tightness and finishing, relevant regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    // FIT-OUT & FINISHING
+    'Bathroom Installer':
+      'This category recognises excellence in bathroom installation, including design, supply and fitting of suites, sanitaryware, waterproofing, tiling, plumbing, electrics (via appropriately qualified trades) and ventilation, plus wet rooms, ensuites and accessible bathroom adaptions. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Carpet Fitters':
+      'This category recognises excellence in carpet fitting services, including measurement, supply and installation of carpets, underlay and gripper systems, stair runners, repairs and restretching. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Curtains & Blinds Installer':
+      'This category recognises excellence in window dressing services, including measurement, supply and installation of curtains, blinds, shutters and motorised systems, plus tracks, poles and bespoke soft furnishings. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Drylining Company':
+      'This category recognises excellence in drylining services, including plasterboard installation, metal and timber stud partitioning, insulated lining systems, acoustic solutions, fire-rated assemblies, plus taping and jointing. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Flooring Installer':
+      'This category recognises excellence in flooring installation, including hardwood, engineered timber, laminate, LVT/LVP, plus subfloor preparation, moisture testing, repairs and restoration. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Home Office Installer':
+      'This category recognises excellence in home office design and installation, including bespoke desks, fitted storage, shelving systems, cable management, lighting integration and ergonomic workspace configurations. Winners demonstrate exceptional technical expertise and fit standards, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Interior Refurbishment Company':
+      'This category recognises excellence in interior refurbishment and fit-out projects, including layout reconfigurations, structural alterations, multi-trade coordination and project management. Winners demonstrate exceptional technical expertise, project management skills, effective compliance management, safe working practices, and excellent customer satisfaction.',
+    'Kitchen Installer':
+      'This category recognises excellence in kitchen installation, including design coordination, supply and fitting of units, worktops, appliances, plumbing and electrics (via appropriately qualified trades) and wall/floor finishing. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Painting & Decorating Company':
+      'This category recognises excellence in painting and decorating services, including interior and exterior painting, wallpapering, specialist finishes, surface preparation, repairs and colour consultancy. Winners demonstrate exceptional technical expertise and finish quality, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Plastering Company':
+      'This category recognises excellence in plastering services, including skimming, internal rendering, decorative mouldings and coving, and lime plastering for period properties. Winners demonstrate exceptional technical expertise and finish quality, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Screeding Company':
+      'This category recognises excellence in screeding, including sand and cement screeds, liquid and flowing screeds, fast-drying compounds, underfloor heating preparation and floor levelling solutions. Winners demonstrate exceptional technical expertise and finish quality, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Tiling Installer':
+      'This category recognises excellence in tile fitting, including wall and floor tiling, natural stone, porcelain, ceramic and mosaic installations, waterproofing, underfloor heating compatibility and intricate pattern work. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    // OUTDOOR & LANDSCAPING
+    'Decking Company':
+      'This category recognises excellence in the design, supply and installation of timber, composite and PVC decking. This includes balustrades, steps, pergolas, raised platforms and maintenance treatments. Winners demonstrate exceptional technical expertise and finish quality, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Driveway & Paving Company':
+      'This category recognises excellence in driveway and paving laying, including block paving, resin-bound surfaces, tarmac, gravel, natural stone, patios, pathways and drainage solutions. Winners demonstrate exceptional technical expertise, durable finishes, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Fencing Installer':
+      'This category recognises excellence in the installation of timber, metal and composite fencing, gates, trellis, acoustic barriers, security fencing and repairs. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Gardening Services':
+      'This category recognises excellence in gardening and horticulture services, including lawn care, planting schemes, pruning, border cultivation, pest and disease management, and seasonal maintenance programmes. Winners demonstrate sound horticultural knowledge, appropriate compliance, safe working practices, and excellent customer satisfaction.',
+    'Garden Outbuilding Company':
+      'This category recognises excellence in the design, supply and installation of garden outbuildings, including summer houses, garden rooms, home offices, workshops, sheds and bespoke timber structures. Winners demonstrate high-quality craftsmanship, appropriate compliance, safe working practices, and excellent customer satisfaction.',
+    'Landscaping & Garden Design Company':
+      'This category recognises excellence in landscaping and garden design, including hard and soft landscaping, planting schemes, water features, terracing, retaining walls and full garden transformations. Winners demonstrate exceptional technical expertise, appropriate compliance and safe working practices, and excellent customer satisfaction.',
+    'Outdoor Lighting & Electrical Company':
+      'This category recognises excellence in exterior electrical services, including garden lighting design and installation, security lighting, festoon/feature lighting, outdoor power supplies and automation systems. Winners demonstrate exceptional technical expertise, regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Tree Surgery Services':
+      'This category recognises excellence in arboriculture services, including tree felling, crown reduction, pruning, pollarding, stump grinding, hedge management and emergency storm response, delivered with environmental consideration. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    // ENERGY, TECH & SUSTAINABILITY
+    'EV Charger Installer':
+      'This category recognises excellence in electric vehicle charging services, including supply and installation of home chargers, load management, electrical upgrades, smart charging systems and OZEV-approved installations. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Insulation & Energy Efficiency Company':
+      'This category recognises excellence in insulation and energy efficiency services, including loft, cavity wall, solid wall and floor insulation, draught-proofing, ventilation solutions and energy performance improvements. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'PV Installer':
+      'This category recognises excellence in solar photovoltaic services, including design, supply and installation of solar panel systems, battery storage, inverters, monitoring systems and grid connection management. Winners demonstrate exceptional technical expertise, regulatory compliance and safe working practices, and excellent customer satisfaction.',
+    'Renewable Energy Specialist':
+      'This category recognises excellence in renewable energy services, including solar PV, battery storage, heat pumps, biomass systems and hybrid solutions, alongside energy assessments, system design and optimisation to reduce carbon emissions. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Security System Installer':
+      'This category recognises excellence in security system installation services, including intruder alarms, CCTV, access control, video doorbells, monitoring options and integrated security solutions. Winners demonstrate exceptional technical expertise, regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Smart Home & Automation Company':
+      'This category recognises excellence in smart home services, including design and installation of lighting control, heating automation, audio-visual systems, security integration, voice control and whole-home automation platforms. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    // SPECIALIST TRADES
+    'Asbestos Removal Specialist':
+      'This category recognises excellence in asbestos services, including surveys and sampling, encapsulation, safe removal and disposal of asbestos-containing materials, air monitoring and clearance support through to certification, delivered in line with HSE requirements. Winners demonstrate exceptional technical expertise, regulatory compliance, exemplary safe working practices, and excellent customer satisfaction.',
+    Locksmith:
+      'This category recognises excellence in locksmith services, including lock installation, repairs and upgrades, emergency access, key cutting, security assessments, security safe work and smart lock integration. Winners demonstrate exceptional technical expertise, safe working practices, and excellent customer satisfaction.',
+    'Pest Control Company':
+      'This category recognises excellence in pest control services, including prevention, treatment and eradication of rodents, insects and selected wildlife issues, proofing works, hygiene advice, and ongoing monitoring programmes. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Rendering Company':
+      'This category recognises excellence in rendering services, including traditional sand/cement render, monocouche, silicone and acrylic systems, coloured renders, textured finishes and external wall insulation render coatings. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Scaffolding Company':
+      'This category recognises excellence in scaffolding and access solutions, including design, erection and dismantling of scaffolding, tower scaffolds, temporary roofs and safe access solutions for construction and maintenance. Winners demonstrate exceptional technical expertise, regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Shop Fitting Company':
+      'This category recognises excellence in shopfitting services, including design, manufacture and installation of retail interiors, display systems, counters, shelving, lighting and bespoke joinery for commercial premises. Winners demonstrate exceptional technical expertise and programme control, regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Swimming Pool & Hot Tub Company':
+      'This category recognises excellence in pool and spa services, including design, installation, maintenance and repairs of swimming pools, hot tubs and swim spas, plus covers, heating, filtration and water treatment solutions. Winners demonstrate exceptional technical expertise, regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    'Window & Door Installer':
+      'This category recognises excellence in window and door services, including supply and installation of uPVC and aluminium windows, entrance doors, bifold and sliding doors, roof lanterns and conservatory replacements. Winners demonstrate exceptional technical expertise, regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    // COMBINED categories (small regions)
+    'Plumbing & Heating Company':
+      'This category recognises excellence in plumbing and heating services, including system design, installation, servicing, and repair of boilers, cylinders, central heating systems, radiators, pipework, and water systems; plus bathroom and kitchen plumbing, diagnostics, and emergency response. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance and safe working practices, and excellent customer satisfaction.',
+    'Carpentry & Joinery Company':
+      'This category recognises excellence in carpentry and joinery, encompassing design, precision workshop manufacture, installation of timber components and features, including staircases, doorsets, fitted furniture, flooring systems, wall partitions, architectural features, and bespoke joinery. Winners demonstrate exceptional craftsmanship and technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+  };
+
+  /* ─────────────────────────────────────────────
+     6. EXPORT
   ───────────────────────────────────────────── */
   window.BTA_HOME_DATA = {
     sectorCategories: SECTOR_CATEGORIES,
     sectorMeta: SECTOR_META,
     regionData: REGION_DATA,
     flagMap: FLAG_MAP,
+    categoryDescriptions: CATEGORY_DESCRIPTIONS,
   };
 
   // Backward-compatibility aliases expected by submit-entry.js, nominate.js, config.js

@@ -93,13 +93,13 @@
       'Window & Door Installer',
     ],
     'INDUSTRY LEADERSHIP': [
-      'Employer of the Year',
-      'Business Leader of the Year',
-      'Innovation Award',
-      'Apprenticeship Employer of the Year',
+      'Apprentice of the Year',
+      'Lifetime Achievement Award',
       'Community Impact Award',
-      'Net Zero & Sustainability Award',
-      'Rising Star Award',
+      'Female Tradesperson of the Year',
+      'Male Tradesperson of the Year',
+      'Young Tradesperson of the Year (Under 25)',
+      'New Business of the Year',
     ],
   };
 
@@ -154,10 +154,13 @@
       'Window & Door Installer',
     ],
     'INDUSTRY LEADERSHIP': [
-      'Employer of the Year',
-      'Business Leader of the Year',
-      'Innovation Award',
+      'Apprentice of the Year',
+      'Lifetime Achievement Award',
       'Community Impact Award',
+      'Female Tradesperson of the Year',
+      'Male Tradesperson of the Year',
+      'Young Tradesperson of the Year (Under 25)',
+      'New Business of the Year',
     ],
   };
 

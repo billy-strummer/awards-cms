@@ -298,15 +298,12 @@
 
       function renderLocations(country) {
         const countryData = SUB_REGIONS[country] || {};
-        const boroughs = window.LONDON_BOROUGHS || countryData['London Boroughs'] || [];
 
         const subList = document.getElementById('sub-list-' + country);
         if (!subList) return;
 
-        // Render each group with a labelled header, keeping London Boroughs under London chip
-        const groups = Object.entries(countryData).filter(function (e) {
-          return e[0] !== 'London Boroughs';
-        });
+        // Render each group with a labelled header
+        const groups = Object.entries(countryData);
 
         subList.innerHTML = groups
           .map(function (entry) {
@@ -314,27 +311,6 @@
             const locations = entry[1];
             const chipsHtml = locations
               .map(function (loc) {
-                if (loc === 'London' && boroughs.length) {
-                  const flag = FLAG_MAP['London']
-                    ? '<img class="chip-flag" src="images/flags/' +
-                      encodeURIComponent(FLAG_MAP['London']) +
-                      '" alt="" aria-hidden="true">'
-                    : '';
-                  const boroughHtml = boroughs
-                    .map(function (b) {
-                      return chipHtml(b, 'england');
-                    })
-                    .join('');
-                  return (
-                    '<button class="sub-region-chip london-toggle" aria-expanded="false">' +
-                    flag +
-                    'London <span class="london-arrow" aria-hidden="true">▾</span>' +
-                    '</button>' +
-                    '<div class="london-boroughs" hidden>' +
-                    boroughHtml +
-                    '</div>'
-                  );
-                }
                 return chipHtml(loc, country);
               })
               .join('');
@@ -350,18 +326,6 @@
             );
           })
           .join('');
-
-        // Wire London toggle
-        const londonBtn = subList.querySelector('.london-toggle');
-        if (londonBtn) {
-          londonBtn.addEventListener('click', function () {
-            const boroughList = londonBtn.nextElementSibling;
-            const expanded = londonBtn.getAttribute('aria-expanded') === 'true';
-            londonBtn.setAttribute('aria-expanded', String(!expanded));
-            londonBtn.querySelector('.london-arrow').textContent = expanded ? '▾' : '▴';
-            boroughList.hidden = expanded;
-          });
-        }
       }
 
       function openAccordion(country) {

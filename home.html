@@ -45,7 +45,7 @@
       --transition-slow:   0.5s ease;
 
       --header-h: 90px;
-      --section-pad: clamp(40px, 5vw, 72px);
+      --section-pad: clamp(24px, 3vw, 48px);
     }
 
     /* ============================================================
@@ -1529,79 +1529,46 @@
     #site-footer {
       background: var(--bg-footer);
       border-top: 1px solid var(--gold);
-      padding-top: 64px;
+      padding-top: 36px;
     }
 
-    .footer-top {
+    /* Combined row: Follow label + social icons (left) + legal links (right) */
+    .footer-socials-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 32px;
-      padding-bottom: 40px;
+      gap: 24px;
+      padding: 20px 0;
       border-bottom: 1px solid var(--border-subtle);
       flex-wrap: wrap;
     }
 
-    .footer-logo {
+    .footer-socials-left {
       display: flex;
       align-items: center;
       gap: 12px;
-    }
-
-    .footer-logo img {
-      height: 36px;
-      width: auto;
-    }
-
-    .footer-logo-text {
-      font-family: var(--font-display);
-      font-size: 1rem;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1.1;
-    }
-
-    .footer-logo-text span {
-      display: block;
-      font-family: var(--font-body);
-      font-size: 0.6rem;
-      font-weight: 400;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: var(--gold);
-    }
-
-    .footer-nav {
-      display: flex;
-      gap: 8px;
       flex-wrap: wrap;
     }
 
-    .footer-nav a {
-      font-size: 0.875rem;
-      color: rgba(255, 255, 255, 0.6);
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      transition: color var(--transition-fast), background var(--transition-fast);
+    .footer-follow-label {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.75);
+      white-space: nowrap;
+      margin-right: 4px;
     }
 
-    .footer-nav a:hover {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    /* Footer Links row */
     .footer-links {
       display: flex;
-      gap: 24px;
+      gap: 20px;
       flex-wrap: wrap;
-      padding: 28px 0;
-      border-bottom: 1px solid var(--border-subtle);
+      justify-content: flex-end;
     }
 
     .footer-links a {
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.65);
+      color: rgba(255, 255, 255, 0.55);
       transition: color var(--transition-fast);
     }
 
@@ -1609,20 +1576,12 @@
       color: var(--gold);
     }
 
-    /* Social Icons */
-    .footer-socials {
-      display: flex;
-      gap: 12px;
-      padding: 24px 0;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
     .social-link {
       width: 40px;
       height: 40px;
       border-radius: 10px;
-      background: #111;
-      border: 1px solid var(--border-subtle);
+      background: rgba(201, 162, 39, 0.08);
+      border: 1px solid rgba(201, 162, 39, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1632,17 +1591,17 @@
     .social-link svg {
       width: 18px;
       height: 18px;
-      fill: rgba(255, 255, 255, 0.5);
+      fill: var(--gold);
       transition: fill var(--transition-fast);
     }
 
     .social-link:hover {
       border-color: var(--gold);
-      background: rgba(201, 162, 39, 0.08);
+      background: rgba(201, 162, 39, 0.18);
     }
 
     .social-link:hover svg {
-      fill: var(--gold);
+      fill: #e0b93a;
     }
 
     /* Copyright */
@@ -1784,25 +1743,21 @@
       }
 
       /* ── Footer ───────────────────────────────────────────────── */
-      .footer-top {
+      .footer-socials-row {
         flex-direction: column;
         align-items: flex-start;
-      }
-
-      .footer-nav {
-        display: none;
-      }
-
-      .footer-links {
         gap: 16px;
       }
 
-      .footer-logo img { height: 28px; }
+      .footer-links {
+        justify-content: flex-start;
+        gap: 14px;
+      }
     }
 
     /* Mobile: ≤ 480px */
     @media (max-width: 480px) {
-      :root { --section-pad: 32px; }
+      :root { --section-pad: 20px; }
 
       /* Hero — content block (sits below video on mobile) */
       .hero-content { padding: 32px 20px 20px; }
@@ -1865,13 +1820,12 @@
       .geo-link { display: block; margin-top: 8px; text-align: center; }
 
       /* Footer */
-      .footer-socials { justify-content: center; gap: 10px; }
-      .footer-links a { font-size: 0.85rem; }
+      .footer-links a { font-size: 0.78rem; }
     }
 
     /* Large screens: ≥ 1920px */
     @media (min-width: 1920px) {
-      :root { --section-pad: 96px; }
+      :root { --section-pad: 64px; }
 
       .container {
         max-width: 1440px;
@@ -2056,49 +2010,6 @@
     /* ============================================================
        STATS BAR
     ============================================================ */
-    #stats-bar {
-      background: #0d0d0d;
-      border-top: 2px solid var(--gold);
-      padding: 20px 0;
-    }
-
-    .stats-bar-inner {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      text-align: center;
-    }
-
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .stat-number {
-      font-family: var(--font-display);
-      font-size: clamp(1.5rem, 3vw, 2rem);
-      font-weight: 700;
-      color: var(--gold);
-      line-height: 1;
-    }
-
-    .stat-label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-
-    @media (max-width: 600px) {
-      .stats-bar-inner {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 24px 16px;
-      }
-    }
-
     /* ============================================================
        COUNTDOWN TIMER (inside Key Dates feature box)
     ============================================================ */
@@ -2607,33 +2518,6 @@
 
 
 <!-- ============================================================
-     STATS BAR
-============================================================ -->
-<div id="stats-bar" aria-label="Awards at a glance">
-  <div class="container">
-    <div class="stats-bar-inner">
-      <div class="stat-item">
-        <span class="stat-number">8</span>
-        <span class="stat-label">Trade Sectors</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number">60+</span>
-        <span class="stat-label">Award Categories</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number">65+</span>
-        <span class="stat-label">Counties &amp; Cities</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-number">1,000+</span>
-        <span class="stat-label">Potential Winners</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ============================================================
      SECTION 2 — FEATURE BOXES
 ============================================================ -->
 <section id="features" aria-labelledby="features-heading">
@@ -2782,8 +2666,10 @@
 
 <!-- ============================================================
      SPONSORS BAR
+     Hidden until sponsors are confirmed.
+     To re-enable: remove the style="display:none;" attribute below.
 ============================================================ -->
-<section id="sponsors" aria-labelledby="sponsors-label">
+<section id="sponsors" aria-labelledby="sponsors-label" style="display:none;">
   <div class="container section-pad">
     <p class="sponsors-label" id="sponsors-label">Proudly Supported By</p>
     <div class="sponsors-row">
@@ -2925,9 +2811,9 @@
     <div class="testimonials-grid">
 
       <div class="testimonial-card reveal">
-        <p class="testimonial-quote">"British Trade Awards delivers the recognition skilled, dedicated tradespeople deserve."</p>
+        <p class="testimonial-quote">"British Trade Awards delivers the recognition outstanding trade professionals deserve – giving the public confidence in who they hire."</p>
         <div class="testimonial-author">
-          <div class="testimonial-name">Chris Egan</div>
+          <div class="testimonial-name">Chris Stewart</div>
           <div class="testimonial-role">Bespoke Cabinet Maker</div>
         </div>
       </div>
@@ -2943,7 +2829,7 @@
       <div class="testimonial-card reveal reveal-delay-2">
         <p class="testimonial-quote">"Entering was quick and simple. The recognition has already opened doors for our business."</p>
         <div class="testimonial-author">
-          <div class="testimonial-name">James Aldis</div>
+          <div class="testimonial-name">Richard Brewster</div>
           <div class="testimonial-role">Project Director</div>
         </div>
       </div>
@@ -3083,10 +2969,7 @@
       <h2 class="section-heading reveal" id="about-heading">
         About <span class="gold-underline">British Trade Awards</span>
       </h2>
-      <p class="reveal reveal-delay-1" style="font-size: 1.05rem; color: var(--text-muted); margin-top: 28px; line-height: 1.8;">
-        British Trade Awards is a competition to find the champions of construction and building services across England, Scotland and Wales – voted by the public.
-      </p>
-      <div class="reveal reveal-delay-3" style="margin-top: 44px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+      <div class="reveal reveal-delay-2" style="margin-top: 36px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
         <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
         <a href="#categories" class="btn-ghost">View Categories</a>
       </div>
@@ -3102,64 +2985,55 @@
 <footer id="site-footer" role="contentinfo">
   <div class="container">
 
-    <!-- Row 1: Logo + Nav -->
-    <div class="footer-top">
-      <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="#categories">Categories</a>
-        <a href="#regions">Regions</a>
-        <a href="#find-a-trade">Find a Trade</a>
-        <a href="#about">About</a>
-        <a href="submit-entry.html" class="gold-text">Enter 2026</a>
-      </nav>
+    <!-- Follow + social icons (left) + legal links (right) -->
+    <div class="footer-socials-row">
+      <div class="footer-socials-left" aria-label="Social media links">
+        <span class="footer-follow-label">Follow British Trade Awards</span>
+
+        <!-- LinkedIn -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on LinkedIn" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+            <rect width="4" height="12" x="2" y="9"/>
+            <circle cx="4" cy="4" r="2"/>
+          </svg>
+        </a>
+
+        <!-- Instagram -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on Instagram" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+          </svg>
+        </a>
+
+        <!-- Facebook -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on Facebook" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+          </svg>
+        </a>
+
+        <!-- X / Twitter -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on X (Twitter)" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path d="M4 4l16 16M4 20L20 4" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Legal links (right-justified) -->
+      <div class="footer-links" role="list" aria-label="Legal and policy links">
+        <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+        <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
+        <a href="#" role="listitem">Contact Us</a>
+        <a href="#" role="listitem">Sitemap</a>
+        <a href="#" role="listitem">Cookie Policy</a>
+      </div>
     </div>
 
-    <!-- Row 2: Legal Links -->
-    <div class="footer-links" role="list" aria-label="Legal and policy links">
-      <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
-      <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
-      <a href="#" role="listitem">Contact Us</a>
-      <a href="#" role="listitem">Sitemap</a>
-      <a href="#" role="listitem">Cookie Policy</a>
-    </div>
-
-    <!-- Row 3: Social Icons -->
-    <div class="footer-socials" aria-label="Social media links">
-
-      <!-- LinkedIn -->
-      <a href="#" class="social-link" aria-label="British Trade Awards on LinkedIn" rel="noopener noreferrer" target="_blank">
-        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-          <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-          <rect width="4" height="12" x="2" y="9"/>
-          <circle cx="4" cy="4" r="2"/>
-        </svg>
-      </a>
-
-      <!-- Instagram -->
-      <a href="#" class="social-link" aria-label="British Trade Awards on Instagram" rel="noopener noreferrer" target="_blank">
-        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-          <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-          <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
-        </svg>
-      </a>
-
-      <!-- Facebook -->
-      <a href="#" class="social-link" aria-label="British Trade Awards on Facebook" rel="noopener noreferrer" target="_blank">
-        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
-        </svg>
-      </a>
-
-      <!-- X / Twitter -->
-      <a href="#" class="social-link" aria-label="British Trade Awards on X (Twitter)" rel="noopener noreferrer" target="_blank">
-        <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-          <path d="M4 4l16 16M4 20L20 4" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"/>
-        </svg>
-      </a>
-
-    </div>
-
-    <!-- Row 4: Copyright -->
+    <!-- Copyright -->
     <div class="footer-bottom">
       <p>
         &copy; 2026 British Trade Awards &nbsp;|&nbsp;

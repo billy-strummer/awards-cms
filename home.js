@@ -844,4 +844,30 @@
   } catch (e) {
     console.warn('[BTA] initVideo', e);
   }
+
+  /* ============================================================
+     11. SPONSORS VISIBILITY — read from CMS config
+  ============================================================ */
+  try {
+    (function initSponsorsVisibility() {
+      const section = document.getElementById('sponsors');
+      if (!section) return;
+      fetch('/api/entry-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_public_data' }),
+      })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (data) {
+          if (data.sponsors_visible) {
+            section.style.display = '';
+          }
+        })
+        .catch(function () {});
+    })();
+  } catch (e) {
+    console.warn('[BTA] initSponsorsVisibility', e);
+  }
 })();

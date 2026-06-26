@@ -98,7 +98,6 @@
       'Community Impact Award',
       'Female Tradesperson of the Year',
       'Male Tradesperson of the Year',
-      'Young Tradesperson of the Year (Under 25)',
       'New Business of the Year',
     ],
   };
@@ -159,7 +158,6 @@
       'Community Impact Award',
       'Female Tradesperson of the Year',
       'Male Tradesperson of the Year',
-      'Young Tradesperson of the Year (Under 25)',
       'New Business of the Year',
     ],
   };

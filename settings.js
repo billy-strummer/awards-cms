@@ -37,6 +37,7 @@ const settingsModule = {
     this.checkBackupReminders();
     this.renderUxSettings();
     this.renderNotificationSettings();
+    this.renderPublicSiteSettings();
     this.renderCurrentUserRole();
     this.loadMfaStatus();
     this.loadWebhooks();
@@ -1047,6 +1048,63 @@ const settingsModule = {
     prefs[key] = event.target.checked;
     localStorage.setItem('notificationPrefs', JSON.stringify(prefs));
     utils.showToast('Notification preference saved', 'success');
+  },
+
+  async renderPublicSiteSettings() {
+    const container = document.getElementById('publicSiteSettingsContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div></div>';
+    try {
+      const { data } = await apiClient.select('cms_config', {
+        select: 'key, value',
+        filters: { key: { eq: 'sponsors_visible' } },
+      });
+      const sponsorsVisible = (data || []).some((r) => r.key === 'sponsors_visible' && r.value === 'true');
+      container.innerHTML = `
+        <div class="content-card">
+          <h5 class="mb-1"><i class="bi bi-globe me-2"></i>Public Site Settings</h5>
+          <p class="text-muted small mb-3">Controls what visitors see on the public homepage.</p>
+          <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+            <div>
+              <div class="fw-semibold">Sponsors / "Proudly Supported By" section</div>
+              <small class="text-muted">Show or hide the sponsors bar on the homepage. Enable once sponsors are confirmed.</small>
+            </div>
+            <div class="form-check form-switch ms-4 mb-0">
+              <input class="form-check-input" type="checkbox" role="switch"
+                id="sponsorsVisibleToggle"
+                ${sponsorsVisible ? 'checked' : ''}
+                data-on-change="settingsModule.saveSponsorsVisible">
+              <label class="form-check-label" for="sponsorsVisibleToggle">
+                ${sponsorsVisible ? '<span class="text-success fw-semibold">Visible</span>' : '<span class="text-muted">Hidden</span>'}
+              </label>
+            </div>
+          </div>
+        </div>`;
+    } catch (e) {
+      container.innerHTML = '<div class="alert alert-warning py-2">Could not load public site settings.</div>';
+    }
+  },
+
+  async saveSponsorsVisible(value, event) {
+    const checked = event?.target?.checked ?? false;
+    const label = document.querySelector('label[for="sponsorsVisibleToggle"]');
+    if (label)
+      label.innerHTML = checked
+        ? '<span class="text-success fw-semibold">Visible</span>'
+        : '<span class="text-muted">Hidden</span>';
+    try {
+      await apiClient.upsert(
+        'cms_config',
+        { key: 'sponsors_visible', value: String(checked), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      utils.showToast(
+        checked ? 'Sponsors section enabled on homepage' : 'Sponsors section hidden from homepage',
+        'success'
+      );
+    } catch (e) {
+      utils.showToast('Failed to save setting', 'error');
+    }
   },
 
   // M16: Load login activity from CMS audit log

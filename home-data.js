@@ -98,7 +98,6 @@
       'Community Impact Award',
       'Female Tradesperson of the Year',
       'Male Tradesperson of the Year',
-      'Young Tradesperson of the Year (Under 25)',
       'New Business of the Year',
     ],
   };
@@ -668,6 +667,17 @@
       'This category recognises excellence in plumbing and heating services, including system design, installation, servicing, and repair of boilers, cylinders, central heating systems, radiators, pipework, and water systems; plus bathroom and kitchen plumbing, diagnostics, and emergency response. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance and safe working practices, and excellent customer satisfaction.',
     'Carpentry & Joinery Company':
       'This category recognises excellence in carpentry and joinery, encompassing design, precision workshop manufacture, installation of timber components and features, including staircases, doorsets, fitted furniture, flooring systems, wall partitions, architectural features, and bespoke joinery. Winners demonstrate exceptional craftsmanship and technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
+    // INDUSTRY LEADERSHIP
+    'Apprentice of the Year':
+      'This category recognises outstanding performance by an apprentice working within the construction and building services sector, including technical skill development, professional attitude, work ethic, progress toward training and qualifications, contribution to workplace projects, and commitment to continuous learning. Winners demonstrate strong engagement with their training provider, safe working practices, and excellent employer and mentor satisfaction.',
+    'Lifetime Achievement Award':
+      'This category recognises exceptional career achievement and lasting contribution to the British construction and building services sector, including decades of mentorship of apprentices and young tradespeople, industry leadership, advancement of trade best practices, and unwavering commitment to raising quality standards across the sector. Winners demonstrate unparalleled technical expertise throughout their career, consistent adherence to regulatory standards, exemplary safe working practices, and exceptional customer satisfaction over a sustained period.',
+    'Female Tradesperson of the Year':
+      'This category recognises outstanding achievement by a woman working in the British construction and building services sector. Attributes include exceptional technical skill and craftsmanship, professional attitude and work ethic, contribution to workplace projects, commitment to continuous professional development, and dedication to advancing female participation in the industry. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, exemplary safe working practices, strong industry presence, and excellent customer satisfaction.',
+    'Male Tradesperson of the Year':
+      'This category recognises outstanding achievement by a man working in the British construction and building services sector. Attributes include exceptional technical skill and craftsmanship, professional attitude and work ethic, contribution to workplace projects, and commitment to continuous professional development. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, exemplary safe working practices, and excellent customer satisfaction.',
+    'New Business of the Year':
+      'This category recognises outstanding achievement by a newly established business (operating no more than 3 years) within the British construction and building services sector. Attributes include strong business growth and sustainability, innovative approach to service delivery, effective financial management and operational efficiency, and commitment to quality standards. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, exemplary safe working practices, and excellent customer satisfaction.',
   };
 
   /* ─────────────────────────────────────────────

@@ -308,6 +308,7 @@ async function build() {
     'industry-leader.html',
     'winner-certificate.html',
     'public-winners.html',
+    'about.html',
     'privacy-policy.html',
     'terms-and-conditions.html',
     'cookie-policy.html',

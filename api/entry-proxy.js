@@ -558,13 +558,17 @@ async function handleDataExport(req, res) {
 }
 
 async function handleGetPublicData(_req, res) {
-  const [sectorsResult, catsResult] = await Promise.all([
+  const [sectorsResult, catsResult, configResult] = await Promise.all([
     supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
     supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
+    supabase.from('cms_config').select('key, value').in('key', ['sponsors_visible']),
   ]);
+  const config = {};
+  for (const row of configResult.data || []) config[row.key] = row.value;
   return res.status(200).json({
     custom_sectors: sectorsResult.data || [],
     custom_categories: catsResult.data || [],
+    sponsors_visible: config['sponsors_visible'] === 'true',
   });
 }
 

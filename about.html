@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="About British Trade Awards — a competition to find the champions of construction and building services across England, Scotland and Wales, voted by the public.">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>About - British Trade Awards</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #C9A227;
+      --gold-light: #e0b93a;
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --text-primary: #ffffff;
+      --text-muted: #999999;
+      --border-subtle: #2a2a2a;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { color: var(--gold-light); }
+
+    /* Header */
+    .page-header {
+      background: rgba(10,10,10,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #1a1a1a;
+      padding: 20px 0;
+    }
+    .page-header .inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo-link {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.01em;
+    }
+    .back-link {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s ease;
+    }
+    .back-link:hover { color: var(--gold); }
+    .back-link svg { width: 14px; height: 14px; stroke: currentColor; fill: none; }
+
+    /* Content */
+    main {
+      flex: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 64px 24px 80px;
+      width: 100%;
+    }
+    .page-eyebrow {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--text-primary);
+      margin-bottom: 48px;
+    }
+    h1 .gold { color: var(--gold); }
+    .divider {
+      width: 56px;
+      height: 3px;
+      background: var(--gold);
+      margin-bottom: 48px;
+      border-radius: 2px;
+    }
+    .about-body p {
+      font-size: clamp(1rem, 1.5vw, 1.125rem);
+      line-height: 1.85;
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 28px;
+    }
+    .about-body p:last-child { margin-bottom: 0; }
+
+    /* CTAs */
+    .cta-row {
+      margin-top: 56px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.9rem;
+      padding: 14px 28px;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+      letter-spacing: 0.02em;
+    }
+    .btn-gold:hover { background: var(--gold-light); color: #000; }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(201,162,39,0.4);
+      color: var(--gold);
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 14px 28px;
+      border-radius: 8px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .btn-ghost:hover { border-color: var(--gold); background: rgba(201,162,39,0.08); color: var(--gold); }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid #1a1a1a;
+      padding: 24px;
+      text-align: center;
+    }
+    footer p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    footer a { color: rgba(201,162,39,0.7); }
+    footer a:hover { color: var(--gold); }
+
+    @media (max-width: 600px) {
+      main { padding: 40px 20px 60px; }
+      .cta-row { flex-direction: column; }
+      .btn-gold, .btn-ghost { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="page-header">
+    <div class="inner">
+      <a href="home.html" class="logo-link">British Trade Awards</a>
+      <a href="home.html" class="back-link">
+        <svg viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M19 12H5"/><path d="m12 5-7 7 7 7"/>
+        </svg>
+        Back to Home
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <p class="page-eyebrow">About Us</p>
+    <h1>About <span class="gold">British Trade Awards</span></h1>
+    <div class="divider"></div>
+
+    <div class="about-body">
+      <p>British Trade Awards is a competition to find the champions of construction and building services across England, Scotland and Wales &ndash; voted by the public.</p>
+
+      <p>From groundworks to finishing, and carpentry to plumbing, our mission is to showcase the trade professionals delivering exceptional expertise and service in their field &ndash; and in doing so, setting a new benchmark for the industry.</p>
+
+      <p>Launching in 2026 and spanning every county and major city across Britain, we give residential and commercial clients a trusted way to find outstanding local experts, from John o&rsquo;Groats to Land&rsquo;s End. Every trade. Every corner of Britain.</p>
+    </div>
+
+    <div class="cta-row">
+      <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
+      <a href="nominate.html" class="btn-ghost">Nominate Someone</a>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 British Trade Awards &nbsp;&bull;&nbsp;
+      <a href="privacy-policy.html">Privacy Policy</a> &nbsp;&bull;&nbsp;
+      <a href="terms-and-conditions.html">Terms &amp; Conditions</a> &nbsp;&bull;&nbsp;
+      <a href="cookie-policy.html">Cookie Policy</a>
+    </p>
+  </footer>
+
+</body>
+</html>

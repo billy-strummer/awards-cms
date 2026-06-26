@@ -310,6 +310,7 @@ async function build() {
     'public-winners.html',
     'privacy-policy.html',
     'terms-and-conditions.html',
+    'cookie-policy.html',
     'become-a-sponsor.html',
   ];
 

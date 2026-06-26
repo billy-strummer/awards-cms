@@ -1,0 +1,3167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+  <meta name="description" content="British Trade Awards — Crowning Britain's Best Trade Professionals. Enter 2026, vote for your favourite trades, and discover the best tradespeople across the UK.">
+  <meta name="theme-color" content="#142251">
+  <title>British Trade Awards — Crowning Britain's Best Trade Professionals</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <link rel="canonical" href="https://awards-cms.vercel.app/">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       CSS CUSTOM PROPERTIES
+    ============================================================ */
+    :root {
+      --gold:          #C9A227;
+      --gold-light:    #e0b93a;
+      --gold-dark:     #a8871f;
+      --bg-primary:    #142251;
+      --bg-secondary:  #1b2a62;
+      --bg-tertiary:   #17265a;
+      --bg-footer:     #0e1b42;
+      --text-primary:  #ffffff;
+      --text-muted:    #9999cc;
+      --border-subtle: #2e3e8c;
+      --border-gold:   rgba(201,162,39,0.5);
+
+      --font-display:  'Playfair Display', Georgia, serif;
+      --font-body:     'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+      --radius-sm:  8px;
+      --radius-md:  16px;
+      --radius-lg:  24px;
+      --radius-xl:  32px;
+
+      --transition-fast:   0.15s ease;
+      --transition-med:    0.3s ease;
+      --transition-slow:   0.5s ease;
+
+      --header-h: 90px;
+      --section-pad: clamp(24px, 3vw, 48px);
+    }
+
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-weight: 400;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    ul, ol {
+      list-style: none;
+    }
+
+    /* ============================================================
+       UTILITY CLASSES
+    ============================================================ */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px);
+    }
+
+    .section-pad {
+      padding: var(--section-pad) 0;
+    }
+
+    .gold-text {
+      color: var(--gold);
+    }
+
+    .section-heading {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 4vw, 3.25rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+
+    .section-heading .gold-underline {
+      position: relative;
+      display: inline-block;
+    }
+
+    .section-heading .gold-underline::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: -10px;
+      width: 60%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      border-radius: 2px;
+    }
+
+    /* Gold CTA Button */
+    .btn-gold {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--gold);
+      color: #000;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 14px 32px;
+      border-radius: 100px;
+      border: 2px solid var(--gold);
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .btn-gold:hover,
+    .btn-gold:focus-visible {
+      background: var(--gold-light);
+      border-color: var(--gold-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(201, 162, 39, 0.35);
+      outline: none;
+      will-change: transform;
+    }
+
+    .btn-gold:active {
+      transform: translateY(0);
+      box-shadow: none;
+    }
+
+    /* Ghost Button */
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--gold);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 12px 28px;
+      border-radius: 100px;
+      border: 1px solid var(--gold);
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .btn-ghost:hover,
+    .btn-ghost:focus-visible {
+      background: var(--gold);
+      color: #000;
+      transform: translateY(-2px);
+      outline: none;
+      will-change: transform;
+    }
+
+    /* Fade-in animation via IntersectionObserver */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      will-change: opacity, transform;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ============================================================
+       HEADER — SMART STICKY
+    ============================================================ */
+    #site-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      height: var(--header-h);
+      transition:
+        background var(--transition-med),
+        backdrop-filter var(--transition-med),
+        transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        box-shadow var(--transition-med);
+      will-change: transform;
+    }
+
+    /* State 1: at top */
+    #site-header.at-top {
+      background: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+
+    /* State 2: scrolled (visible) — frosted glass */
+    #site-header.scrolled {
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    /* State: hidden (scrolling down) */
+    #site-header.hidden {
+      transform: translateY(-100%);
+    }
+
+    .header-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    /* Logo */
+    .header-logo {
+      flex-shrink: 0;
+      height: 58px;
+      display: flex;
+      align-items: center;
+    }
+
+    .header-logo img {
+      height: 58px;
+      width: auto;
+      transition: opacity var(--transition-med);
+    }
+
+    /* White logo shown when at top */
+    .logo-white { display: block; }
+    .logo-dark  { display: none; }
+
+    #site-header.scrolled .logo-white { display: none; }
+    #site-header.scrolled .logo-dark  { display: block; }
+
+    /* Fallback text logo */
+    .logo-text {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
+      color: #fff;
+      transition: color var(--transition-med);
+    }
+
+    .logo-text span {
+      display: block;
+      font-size: 0.65rem;
+      font-family: var(--font-body);
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    /* Desktop Nav */
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-nav a {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: rgba(255, 255, 255, 0.85);
+      padding: 8px 16px;
+      border-radius: 100px;
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .header-nav a:hover,
+    .header-nav a:focus-visible {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+    }
+
+    /* Header CTA */
+    .header-cta {
+      flex-shrink: 0;
+    }
+
+    /* Small btn-gold variant for header and compact contexts */
+    .btn-gold-sm {
+      padding: 10px 24px;
+      font-size: 0.8rem;
+    }
+
+    .header-cta .btn-gold {
+      padding: 14px 36px;
+      font-size: 0.9rem;
+    }
+
+    /* Hamburger */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      transition: background var(--transition-fast);
+      flex-shrink: 0;
+    }
+
+    .hamburger:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .hamburger-bar {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+      transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease;
+      will-change: transform;
+    }
+
+    .hamburger[aria-expanded="true"] .hamburger-bar:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+    }
+
+    .hamburger[aria-expanded="true"] .hamburger-bar:nth-child(2) {
+      opacity: 0;
+      width: 0;
+    }
+
+    .hamburger[aria-expanded="true"] .hamburger-bar:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+    }
+
+    /* Mobile Menu Drawer */
+    .mobile-menu {
+      position: fixed;
+      top: var(--header-h);
+      left: 0;
+      right: 0;
+      background: rgba(10, 10, 10, 0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 0 24px;
+      z-index: 999;
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
+      will-change: transform, opacity;
+    }
+
+    .mobile-menu.open {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+      bottom: 0;
+      overflow-y: auto;
+    }
+
+    .mobile-menu-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 clamp(20px, 5vw, 60px);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .mobile-menu a {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.85);
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      transition: color var(--transition-fast), background var(--transition-fast);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .mobile-menu a:last-of-type {
+      border-bottom: none;
+    }
+
+    .mobile-menu a:hover {
+      color: var(--gold);
+      background: rgba(201, 162, 39, 0.06);
+    }
+
+    .mobile-menu .btn-gold {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-subtle);
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* ============================================================
+       SECTION 1 — HERO
+    ============================================================ */
+    #hero {
+      position: relative;
+      height: 100vh;
+      min-height: 600px;
+      background: var(--bg-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Video */
+    #hero-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+
+    /* Video wrapper — needed so the end-screen can overlay the video */
+    #video-wrapper {
+      position: relative;
+      line-height: 0;
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 0 48px rgba(201,162,39,0.14);
+    }
+
+    /* End-screen overlay — fades in when video ends */
+    #video-end-screen {
+      position: absolute;
+      inset: 0;
+      background: rgba(20,34,81,0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s ease;
+      z-index: 5;
+      text-align: center;
+    }
+    #video-end-screen.visible { opacity: 1; pointer-events: auto; }
+    .end-screen-link {
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: clamp(20px, 5vw, 60px);
+    }
+    .end-screen-brand {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 700;
+      font-size: clamp(1.4rem, 4vw, 3.2rem);
+      color: var(--gold);
+      letter-spacing: 0.03em;
+      margin: 0;
+      text-shadow: 0 2px 30px rgba(201,162,39,0.4);
+    }
+    .end-screen-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #a07d1a, #C9A227);
+      color: #000;
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 14px 36px;
+      border-radius: 40px;
+      transition: filter 0.2s, transform 0.2s;
+    }
+    .end-screen-link:hover .end-screen-cta { filter: brightness(1.1); transform: scale(1.03); }
+
+    /* Gradient overlay */
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(10, 10, 10, 0.55) 0%,
+        rgba(10, 10, 10, 0.4) 40%,
+        rgba(10, 10, 10, 0.7) 75%,
+        rgba(10, 10, 10, 0.95) 100%
+      );
+      z-index: 1;
+    }
+
+    /* Hero Content */
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 0 clamp(20px, 6vw, 80px);
+      max-width: 900px;
+      width: 100%;
+    }
+
+    .hero-logo {
+      margin: 0 auto 32px;
+      width: clamp(100px, 20vw, 160px);
+    }
+
+    .hero-logo img {
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 0 40px rgba(201, 162, 39, 0.25));
+    }
+
+    /* Fallback text logo in hero */
+    .hero-logo-text {
+      font-family: var(--font-display);
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.04em;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .hero-logo-text span {
+      display: block;
+      font-family: var(--font-body);
+      font-size: clamp(0.65rem, 1.2vw, 0.85rem);
+      font-weight: 400;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-top: 6px;
+    }
+
+    #hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5.5vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 24px;
+      text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    #hero h1 em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .hero-sub {
+      font-size: clamp(1rem, 1.8vw, 1.2rem);
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.85);
+      margin-bottom: 40px;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .hero-cta-group .btn-gold {
+      font-size: 0.9rem;
+      padding: 16px 40px;
+    }
+
+    .hero-cta-group .btn-ghost {
+      font-size: 0.9rem;
+      padding: 14px 36px;
+    }
+
+    /* Scroll indicator */
+    .hero-scroll-hint {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.45);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 24px;
+      width: 100%;
+    }
+
+    .scroll-mouse {
+      width: 24px;
+      height: 38px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .scroll-dot {
+      width: 4px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 2px;
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: scroll-bounce 2s ease infinite;
+    }
+
+    @keyframes scroll-bounce {
+      0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      60%  { opacity: 0; transform: translateX(-50%) translateY(16px); }
+      61%  { opacity: 0; transform: translateX(-50%) translateY(0); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* ============================================================
+       SECTION 2 — FEATURE BENTO BOXES
+    ============================================================ */
+    #features {
+      background: var(--bg-secondary);
+      padding: var(--section-pad) 0;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .feature-box {
+      background: #243374;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: clamp(20px, 3vw, 32px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color var(--transition-med), transform var(--transition-med), box-shadow var(--transition-med);
+      will-change: transform;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(201, 162, 39, 0.04), transparent 60%);
+      opacity: 0;
+      transition: opacity var(--transition-med);
+      pointer-events: none;
+    }
+
+    /* Enter box is the primary CTA — give it a warm gold-tinted glow */
+    .feature-box:first-child {
+      border-color: rgba(201, 162, 39, 0.35);
+      background: linear-gradient(140deg, #10183e 0%, #243374 60%);
+      box-shadow: 0 0 40px rgba(201, 162, 39, 0.07), inset 0 1px 0 rgba(201,162,39,0.1);
+    }
+    .feature-box:first-child::before {
+      opacity: 1;
+    }
+
+    .feature-box:hover {
+      border-color: var(--gold);
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 162, 39, 0.15);
+    }
+
+    .feature-box:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      background: rgba(201, 162, 39, 0.1);
+      border: 1px solid rgba(201, 162, 39, 0.25);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .feature-icon svg {
+      width: 26px;
+      height: 26px;
+      color: var(--gold);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .feature-box h3 {
+      font-family: var(--font-display);
+      font-size: clamp(1.3rem, 2vw, 1.6rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .feature-box p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      line-height: 1.65;
+      flex: 1;
+    }
+
+    /* Key Dates list */
+    .key-dates-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .key-date-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .key-date-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--gold);
+      border-radius: 50%;
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+
+    .key-date-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 2px;
+    }
+
+    .key-date-desc {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    /* ============================================================
+       SECTION 3 — CATEGORY GALLERY
+    ============================================================ */
+    #categories {
+      background: var(--bg-primary);
+      padding: var(--section-pad) 0;
+    }
+
+    .section-intro {
+      text-align: center;
+      margin-bottom: clamp(40px, 6vw, 72px);
+    }
+
+    .section-sub {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 20px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 220px);
+      gap: 12px;
+    }
+
+    .cat-box {
+      position: relative;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    /* Fallback colours (shown when image not yet loaded or unavailable) */
+    .cat-box:nth-child(1) { background-color: #2d1f05; }
+    .cat-box:nth-child(2) { background-color: #12202e; }
+    .cat-box:nth-child(3) { background-color: #251905; }
+    .cat-box:nth-child(4) { background-color: #221212; }
+    .cat-box:nth-child(5) { background-color: #111f0d; }
+    .cat-box:nth-child(6) { background-color: #11122e; }
+    .cat-box:nth-child(7) { background-color: #24100e; }
+    .cat-box:nth-child(8) { background-color: #1c1808; }
+
+    /* Full-bleed background image with ken-burns zoom on hover. */
+    .cat-bg-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      transition: transform 0.6s ease, opacity 0.4s ease;
+      opacity: 0.65;
+      z-index: 0;
+    }
+    .cat-box:hover .cat-bg-img,
+    .cat-box:active .cat-bg-img,
+    .cat-box:focus-within .cat-bg-img,
+    .cat-box:focus .cat-bg-img {
+      transform: scale(1.06);
+      opacity: 0.55;
+    }
+
+    /* Dual-direction gradient: strong at bottom (behind our text) and
+       at top (to suppress any baked-in photo text that bleeds through). */
+    .cat-box-inner {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      padding: clamp(20px, 3vw, 32px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 30%, transparent 50%),
+        linear-gradient(to top,    rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 45%, transparent 75%);
+      transition: background var(--transition-med);
+    }
+
+    .cat-box:hover .cat-box-inner,
+    .cat-box:active .cat-box-inner,
+    .cat-box:focus-within .cat-box-inner,
+    .cat-box:focus .cat-box-inner {
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.3) 35%, transparent 55%),
+        linear-gradient(to top,    rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.1) 70%);
+    }
+
+    .cat-number {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: rgba(201, 162, 39, 0.6);
+      text-transform: uppercase;
+    }
+
+    /* Gold accent line that grows on hover */
+    .cat-accent {
+      width: 32px;
+      height: 2px;
+      background: var(--gold);
+      border-radius: 1px;
+      margin-bottom: 12px;
+      transition: width var(--transition-med);
+    }
+
+    .cat-box:hover .cat-accent,
+    .cat-box:active .cat-accent,
+    .cat-box:focus-within .cat-accent,
+    .cat-box:focus .cat-accent {
+      width: 52px;
+    }
+
+    .cat-name {
+      font-family: var(--font-display);
+      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 0;
+      transition: margin-bottom var(--transition-med);
+    }
+
+    .cat-desc {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.5;
+      margin-top: 10px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: max-height 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .cat-box:hover .cat-desc,
+    .cat-box:active .cat-desc,
+    .cat-box:focus-within .cat-desc,
+    .cat-box:focus .cat-desc {
+      max-height: 80px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Gold shimmer on hover */
+    .cat-box::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-lg);
+      border: 1px solid transparent;
+      transition: border-color var(--transition-med);
+      pointer-events: none;
+    }
+
+    .cat-box:hover::after,
+    .cat-box:active::after,
+    .cat-box:focus-within::after,
+    .cat-box:focus::after {
+      border-color: rgba(201, 162, 39, 0.4);
+    }
+
+    /* ============================================================
+       SECTION 4 — REGIONAL SECTION
+    ============================================================ */
+    #regions {
+      background: var(--bg-tertiary);
+      padding: var(--section-pad) 0;
+    }
+
+    .country-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: clamp(40px, 6vw, 60px);
+    }
+
+    .country-card {
+      background: #1e2d63;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 36px 28px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition-med), transform var(--transition-med), box-shadow var(--transition-med);
+      will-change: transform;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .country-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center top, rgba(201, 162, 39, 0.06), transparent 65%);
+      opacity: 0;
+      transition: opacity var(--transition-med);
+    }
+
+    .country-card:hover,
+    .country-card:active,
+    .country-card.active {
+      border-color: var(--gold);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
+    }
+
+    .country-card:hover::before,
+    .country-card:active::before,
+    .country-card.active::before {
+      opacity: 1;
+    }
+
+    .country-flag {
+      width: 96px;
+      height: 64px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin: 0 auto 16px;
+      display: block;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .chip-flag {
+      width: 22px;
+      height: 15px;
+      object-fit: cover;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .country-name {
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .country-explore {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.06em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: gap var(--transition-fast);
+    }
+
+    .country-card:hover .country-explore {
+      gap: 10px;
+    }
+
+    /* Regions Accordion */
+    .regions-accordion {
+      margin-top: 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      background: #121212;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease, margin-top 0.35s ease;
+      will-change: max-height, opacity;
+    }
+
+    .regions-accordion.open {
+      opacity: 1;
+      margin-top: 20px;
+    }
+
+    .regions-accordion-inner {
+      padding: 28px;
+    }
+
+    .regions-accordion h4 {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .regions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px;
+    }
+
+    .region-btn {
+      background: #243374;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.75);
+      cursor: pointer;
+      transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+      font-family: var(--font-body);
+    }
+
+    .region-btn:hover,
+    .region-btn.active {
+      background: rgba(201, 162, 39, 0.1);
+      border-color: rgba(201, 162, 39, 0.4);
+      color: var(--gold);
+    }
+
+    /* Sub-region (county/city) list */
+    .sub-regions {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-subtle);
+      display: none;
+    }
+
+    .sub-regions.open {
+      display: block;
+    }
+
+    .sub-regions h5 {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .sub-regions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .region-group { display: flex; flex-direction: column; gap: 8px; }
+    .region-group-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0;
+    }
+    .region-group-chips {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .sub-region-chip {
+      background: #1e1e1e;
+      border: 1px solid #2e2e2e;
+      border-radius: 100px;
+      padding: 6px 12px 6px 8px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.65);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      width: 100%;
+      box-sizing: border-box;
+      transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    a.sub-region-chip:hover,
+    button.sub-region-chip:hover {
+      background: rgba(201, 162, 39, 0.12);
+      border-color: rgba(201, 162, 39, 0.4);
+      color: #C9A227;
+    }
+
+    button.sub-region-chip { background: #1e1e1e; }
+    button.sub-region-chip[aria-expanded="true"] {
+      background: rgba(201, 162, 39, 0.12);
+      border-color: rgba(201, 162, 39, 0.4);
+      color: #C9A227;
+    }
+
+    .london-boroughs {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      padding: 10px 0 4px 16px;
+      border-left: 2px solid rgba(201, 162, 39, 0.3);
+      margin-left: 4px;
+    }
+
+    @media (min-width: 600px) {
+      .london-boroughs { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .london-boroughs { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ============================================================
+       SECTION 3.5 — FEATURED NOMINEES
+    ============================================================ */
+    #nominees {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-subtle);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nominees-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 20px;
+      margin: clamp(32px, 5vw, 56px) 0 clamp(32px, 5vw, 48px);
+    }
+
+    .nominee-card {
+      background: #243374;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform var(--transition-med), border-color var(--transition-med), box-shadow var(--transition-med);
+    }
+
+    .nominee-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-gold);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,162,39,0.2);
+    }
+
+    .nominee-logo-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      background: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .nominee-logo-wrap img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
+
+    .nominee-category-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .nominee-company-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .nominee-entry-title {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .nominee-vote-btn {
+      margin-top: auto;
+      padding: 9px 18px;
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      color: #1a1100;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-align: center;
+      text-decoration: none;
+      transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+      display: block;
+    }
+
+    .nominee-vote-btn:hover {
+      box-shadow: 0 4px 14px rgba(201,162,39,0.4);
+      transform: scale(1.02);
+    }
+
+    .nominees-cta-wrap {
+      text-align: center;
+    }
+
+    /* ============================================================
+       SECTION 5 — FIND A TRADE
+    ============================================================ */
+    #find-a-trade {
+      background: var(--bg-primary);
+      padding: var(--section-pad) 0;
+    }
+
+    .find-trade-card {
+      max-width: 680px;
+      margin: clamp(40px, 6vw, 64px) auto 0;
+      background: #1b2a62;
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-xl);
+      padding: clamp(28px, 5vw, 52px);
+      box-shadow: 0 0 80px rgba(201, 162, 39, 0.07);
+    }
+
+    .find-trade-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Input wrapper for autocomplete */
+    .input-wrapper {
+      position: relative;
+    }
+
+    .form-input {
+      width: 100%;
+      background: #243374;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      font-size: 1rem;
+      font-family: var(--font-body);
+      color: #fff;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .form-input::placeholder {
+      color: rgba(255,255,255,0.45);
+    }
+
+    .form-input:focus {
+      border-color: rgba(201, 162, 39, 0.6);
+      box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.1);
+    }
+
+    select.form-input {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 44px;
+    }
+
+    select.form-input option {
+      background: #243374;
+      color: #fff;
+    }
+
+    /* Geolocation link */
+    .geo-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--gold);
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 0;
+      transition: color var(--transition-fast);
+      background: none;
+      border: none;
+      font-family: var(--font-body);
+    }
+
+    .geo-link:hover {
+      color: var(--gold-light);
+    }
+
+    .geo-link svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    /* Autocomplete Dropdown */
+    .autocomplete-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #1e1e1e;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      z-index: 100;
+      max-height: 220px;
+      overflow-y: auto;
+      display: none;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .autocomplete-dropdown.open {
+      display: block;
+    }
+
+    .autocomplete-item {
+      padding: 12px 16px;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: background var(--transition-fast), color var(--transition-fast);
+      border-bottom: 1px solid #252525;
+    }
+
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.highlighted {
+      background: rgba(201, 162, 39, 0.1);
+      color: #fff;
+    }
+
+    /* Find trade row */
+    .find-trade-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .find-trade-row .btn-gold {
+      flex-shrink: 0;
+    }
+
+    /* Results */
+    .find-results {
+      margin-top: 20px;
+      padding: 20px;
+      background: #151515;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      text-align: center;
+      display: none;
+    }
+
+    .find-results.open {
+      display: block;
+    }
+
+    .find-results-icon {
+      width: 44px;
+      height: 44px;
+      margin: 0 auto 12px;
+      background: rgba(201, 162, 39, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .find-results-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: var(--gold);
+      stroke-width: 1.75;
+    }
+
+    .find-results p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .find-results strong {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* ============================================================
+       SECTION 6 — FOOTER
+    ============================================================ */
+    #site-footer {
+      background: var(--bg-footer);
+      border-top: 1px solid var(--gold);
+      padding-top: 36px;
+    }
+
+    /* Combined row: Follow label + social icons (left) + legal links (right) */
+    .footer-socials-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+    }
+
+    .footer-socials-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .footer-follow-label {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.75);
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .footer-links a {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.55);
+      transition: color var(--transition-fast);
+    }
+
+    .footer-links a:hover {
+      color: var(--gold);
+    }
+
+    .social-link {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(201, 162, 39, 0.08);
+      border: 1px solid rgba(201, 162, 39, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .social-link svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--gold);
+      transition: fill var(--transition-fast);
+    }
+
+    .social-link:hover {
+      border-color: var(--gold);
+      background: rgba(201, 162, 39, 0.18);
+    }
+
+    .social-link:hover svg {
+      fill: #e0b93a;
+    }
+
+    /* Copyright */
+    .footer-bottom {
+      padding: 20px 0 28px;
+      text-align: center;
+    }
+
+    .footer-bottom p {
+      font-size: 0.775rem;
+      color: rgba(255, 255, 255, 0.55);
+      line-height: 1.8;
+    }
+
+    .footer-bottom strong {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+
+    /* Tablet: ≤ 1024px */
+    @media (max-width: 1024px) {
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 220px);
+      }
+    }
+
+    /* Tablet/Mobile: ≤ 768px */
+    @media (max-width: 768px) {
+      :root { --header-h: 68px; }
+
+      /* ── Hero: landscape video at natural 16:9 ratio ──────────────
+         On a portrait phone, object-fit:cover on a 100vh hero scales
+         the 1280×720 video ~3.8× — only the centre 26 % is visible.
+         Fix: let the video determine its own height (aspect-ratio 16/9),
+         then flow the CTA block below it on the same dark background. */
+      #hero {
+        height: auto;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+        padding-top: var(--header-h); /* section itself clears the fixed header */
+      }
+
+      #video-wrapper {
+        order: 2;
+        width: calc(100% - 24px);
+        margin: 0 auto;
+        aspect-ratio: 16 / 9;
+      }
+
+      #hero-video {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: 100%;
+        aspect-ratio: unset;
+        object-fit: fill;
+        display: block;
+      }
+
+      /* Gradient overlay: hidden on mobile (content no longer overlays video) */
+      .hero-overlay {
+        display: none;
+      }
+
+      /* Heading block: flows above the video — purely visual padding, no header math */
+      .hero-content {
+        order: 1;
+        position: relative;
+        z-index: 2;
+        padding: 48px 24px 24px;
+        max-width: 100%;
+        background: var(--bg-primary);
+      }
+
+      /* CTA block: flows below the video */
+      .hero-cta-group {
+        order: 3;
+        padding: 20px clamp(20px, 5vw, 40px);
+        background: var(--bg-primary);
+      }
+
+      .hero-logo {
+        width: clamp(80px, 18vw, 120px);
+        margin-bottom: 16px;
+      }
+
+      /* Force "Finest Trade Professionals" onto its own line on mobile */
+      #hero h1 em {
+        display: block;
+      }
+
+      .hero-scroll-hint {
+        display: none;
+      }
+
+      /* ── Header ───────────────────────────────────────────────── */
+      .header-nav,
+      .header-cta {
+        display: none;
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .header-logo { height: 38px; }
+      .header-logo img { height: 38px; }
+      .logo-text { font-size: 0.95rem; }
+
+      /* ── Sections ─────────────────────────────────────────────── */
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, 220px);
+      }
+
+      .country-cards {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .country-flag { width: 72px; height: 48px; }
+      .country-card { padding: 24px 16px; }
+
+      .find-trade-row {
+        flex-direction: column;
+      }
+
+      .find-trade-row .btn-gold {
+        width: 100%;
+      }
+
+      /* ── Footer ───────────────────────────────────────────────── */
+      .footer-socials-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .footer-links {
+        justify-content: flex-start;
+        gap: 14px;
+      }
+    }
+
+    /* Mobile: ≤ 480px */
+    @media (max-width: 480px) {
+      :root { --section-pad: 20px; }
+
+      /* Hero — content block (sits below video on mobile) */
+      .hero-content { padding: 32px 20px 20px; }
+      #hero h1 { font-size: clamp(1.4rem, 6.5vw, 2rem); margin-bottom: 12px; }
+      .hero-sub { font-size: 0.95rem; margin-bottom: 18px; }
+      .hero-cta-group {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .hero-cta-group .btn-gold,
+      .hero-cta-group .btn-ghost { width: 100%; max-width: 280px; justify-content: center; }
+      .hero-scroll-hint { display: none; }
+
+      /* Feature boxes */
+      .feature-box { padding: 20px; }
+      .feature-box h3 { font-size: 1.1rem; }
+      .key-dates-list { gap: 8px; }
+      .key-date-item { gap: 10px; }
+
+      /* Category gallery — single column */
+      .categories-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+      .cat-box { height: 220px; }
+      .cat-number { top: 10px; left: 12px; font-size: 0.55rem; }
+      .cat-accent { width: 24px; }
+      .cat-name { font-size: 1rem; }
+      .cat-desc {
+        max-height: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        font-size: 0.78rem;
+        line-height: 1.4;
+      }
+
+      /* Regional accordion — max-height set by JS */
+      .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
+      .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
+
+      /* Country cards — 3 columns on small screens */
+      .country-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .country-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 8px;
+        text-align: center;
+      }
+      .country-flag { width: 52px; height: 34px; margin: 0; }
+      .country-name { font-size: 0.9rem; margin-bottom: 0; }
+      .country-explore { font-size: 0.75rem; margin-top: 0; }
+
+      /* Find a trade */
+      .find-trade-card { max-width: 100%; padding: 20px; }
+      .form-input { padding: 14px 16px; }
+      .autocomplete-dropdown { max-height: 180px; }
+      .geo-link { display: block; margin-top: 8px; text-align: center; }
+
+      /* Footer */
+      .footer-links a { font-size: 0.78rem; }
+    }
+
+    /* Large screens: ≥ 1920px */
+    @media (min-width: 1920px) {
+      :root { --section-pad: 64px; }
+
+      .container {
+        max-width: 1440px;
+      }
+    }
+
+    /* ============================================================
+       FOCUS STYLES (accessibility)
+    ============================================================ */
+    :focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 3px;
+      border-radius: 4px;
+    }
+
+    /* ============================================================
+       SCROLLBAR STYLING
+    ============================================================ */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #142251;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--gold-dark);
+    }
+
+    /* ============================================================
+       LOADING / PERFORMANCE
+    ============================================================ */
+    /* will-change removed from static .hero-content > * — applied only via transition states */
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      html { scroll-behavior: auto; }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+
+      .hero-scroll-hint { display: none; }
+    }
+
+    /* ============================================================
+       SKIP LINK (accessibility)
+    ============================================================ */
+    .skip-link {
+      position: fixed;
+      top: -100%;
+      left: 16px;
+      z-index: 10000;
+      padding: 8px 16px;
+      background: #C9A227;
+      color: #000;
+      font-weight: 700;
+      font-size: 0.875rem;
+      border-radius: 4px;
+      text-decoration: none;
+      transition: top 0.15s;
+    }
+    .skip-link:focus {
+      top: 16px;
+      outline: 3px solid #fff;
+      outline-offset: 2px;
+    }
+
+    /* ============================================================
+       COMING SOON BADGE
+    ============================================================ */
+    .coming-soon-badge {
+      display: inline-block;
+      background: rgba(201,162,39,0.15);
+      border: 1px solid rgba(201,162,39,0.4);
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-top: 12px;
+    }
+
+    /* ============================================================
+       VISIBLE FORM LABELS
+    ============================================================ */
+    .form-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 8px;
+    }
+
+    /* Category modal */
+    .cat-modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(20,34,81,0.88);
+      z-index: 2000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .cat-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .cat-modal-panel {
+      background: #131313;
+      border: 1px solid rgba(201,162,39,0.35);
+      border-radius: 16px;
+      padding: 48px 40px 40px;
+      max-width: 580px; width: 92%;
+      max-height: 80vh; overflow-y: auto;
+      position: relative;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.8);
+    }
+    .cat-modal-close {
+      position: absolute; top: 16px; right: 20px;
+      background: none; border: none;
+      color: rgba(255,255,255,0.5); font-size: 1.6rem; line-height: 1;
+      cursor: pointer; transition: color 0.15s;
+    }
+    .cat-modal-close:hover { color: #C9A227; }
+    .cat-modal-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; color: #C9A227; margin: 0 0 8px;
+    }
+    .cat-modal-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1.5rem; font-weight: 700;
+      color: #fff; margin: 0 0 24px;
+    }
+    .cat-modal-list {
+      list-style: none; padding: 0; margin: 0 0 32px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .cat-modal-list li {
+      background: #1c1c1c; border: 1px solid #2a2a2a;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 0.85rem; color: rgba(255,255,255,0.75);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .cat-modal-list li:hover { border-color: rgba(201,162,39,0.4); color: #fff; }
+    .cat-entry-link {
+      display: block; color: inherit; text-decoration: none;
+      width: 100%; height: 100%;
+      background: none; border: none; padding: 0;
+      text-align: left; cursor: pointer; font-size: inherit; font-family: inherit;
+    }
+    .cat-entry-link:hover { color: #fff; }
+    .cat-modal-cta { display: inline-block; text-decoration: none; }
+    .cat-modal-back {
+      background: none; border: none; padding: 0;
+      color: rgba(255,255,255,0.5); font-size: 0.8rem; letter-spacing: 0.05em;
+      cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; gap: 6px;
+      transition: color 0.15s;
+    }
+    .cat-modal-back:hover { color: #C9A227; }
+    .cat-detail-desc {
+      font-size: 0.95rem; color: rgba(255,255,255,0.75); line-height: 1.75;
+      margin: 0 0 32px;
+    }
+    @media (max-width: 480px) {
+      .cat-modal-list { grid-template-columns: 1fr; }
+      .cat-modal-panel { padding: 40px 24px 32px; }
+    }
+
+    /* ============================================================
+       STATS BAR
+    ============================================================ */
+    /* ============================================================
+       COUNTDOWN TIMER (inside Key Dates feature box)
+    ============================================================ */
+    .countdown-block {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .countdown-unit {
+      flex: 1;
+      background: #1b2a62;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 6px 8px;
+      text-align: center;
+    }
+
+    .countdown-number {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+      display: block;
+    }
+
+    .countdown-label {
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 4px;
+    }
+
+    .countdown-open-msg {
+      display: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gold);
+      margin-top: 8px;
+    }
+
+    /* ============================================================
+       HOW IT WORKS
+    ============================================================ */
+    #how-it-works {
+      background: var(--bg-primary);
+      padding: var(--section-pad) 0;
+    }
+
+    .how-steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: clamp(40px, 6vw, 72px);
+      position: relative;
+    }
+
+    /* Connecting line between steps */
+    .how-steps::before {
+      content: '';
+      position: absolute;
+      top: 2.25rem;
+      left: calc(33.333% / 2 + 20px);
+      right: calc(33.333% / 2 + 20px);
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,162,39,0.4), transparent);
+      pointer-events: none;
+    }
+
+    .how-step {
+      padding: 0 clamp(16px, 3vw, 36px);
+      text-align: center;
+      position: relative;
+    }
+
+    .how-step-number {
+      font-family: var(--font-display);
+      font-size: clamp(2.5rem, 4vw, 3.5rem);
+      font-weight: 900;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 20px;
+      display: block;
+      position: relative;
+      z-index: 1;
+    }
+
+    .how-step h3 {
+      font-family: var(--font-display);
+      font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 14px;
+      line-height: 1.25;
+    }
+
+    .how-step p {
+      font-size: 0.925rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 768px) {
+      .how-steps {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+      .how-steps::before {
+        display: none;
+      }
+    }
+
+    /* ============================================================
+       SPONSORS BAR
+    ============================================================ */
+    #sponsors {
+      background: var(--bg-secondary);
+      padding: var(--section-pad) 0;
+    }
+
+    .sponsors-label {
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+    }
+
+    .sponsors-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .sponsor-placeholder {
+      border: 1px solid rgba(201,162,39,0.2);
+      border-radius: var(--radius-sm);
+      background: #1b2a62;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 140px;
+      min-height: 72px;
+      color: rgba(255,255,255,0.25);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      transition: border-color var(--transition-med), color var(--transition-med);
+    }
+
+    .sponsor-placeholder:hover {
+      border-color: rgba(201,162,39,0.5);
+      color: rgba(255,255,255,0.45);
+    }
+
+    .sponsors-cta {
+      text-align: center;
+      margin-top: 28px;
+    }
+
+    .sponsors-cta a {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+      transition: color var(--transition-fast);
+    }
+
+    .sponsors-cta a:hover {
+      color: var(--gold-light);
+    }
+
+    @media (max-width: 600px) {
+      .sponsors-row {
+        gap: 12px;
+      }
+      .sponsor-placeholder {
+        min-width: calc(50% - 6px);
+        padding: 16px 20px;
+      }
+    }
+
+    /* ============================================================
+       TESTIMONIALS
+    ============================================================ */
+    #testimonials {
+      background: #1b2a62;
+      padding: var(--section-pad) 0;
+    }
+
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-top: clamp(40px, 6vw, 72px);
+    }
+
+    .testimonial-card {
+      background: #243374;
+      border-left: 3px solid var(--gold);
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .testimonial-quote {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.7;
+      flex: 1;
+    }
+
+    .testimonial-author {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 14px;
+    }
+
+    .testimonial-name {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .testimonial-role {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .testimonials-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+    }
+
+    /* ============================================================
+       NEWSLETTER
+    ============================================================ */
+    #newsletter {
+      background: var(--bg-secondary);
+      padding: var(--section-pad) 0;
+    }
+
+    .newsletter-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .newsletter-inner .section-heading {
+      margin-bottom: 16px;
+    }
+
+    .newsletter-sub {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.65;
+    }
+
+    .newsletter-form {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .newsletter-form .form-input {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .newsletter-form .btn-gold {
+      flex-shrink: 0;
+    }
+
+    .newsletter-success {
+      display: none;
+      margin-top: 20px;
+      font-size: 0.925rem;
+      font-weight: 600;
+      color: var(--gold);
+      padding: 12px 20px;
+      background: rgba(201,162,39,0.08);
+      border: 1px solid rgba(201,162,39,0.3);
+      border-radius: var(--radius-sm);
+    }
+
+    .newsletter-success.visible {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      .newsletter-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .newsletter-form .btn-gold {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    /* Region chips: 3 columns on tablet, 4 on desktop */
+    @media (min-width: 600px) {
+      .region-group-chips { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .region-group-chips { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* Desktop: heading above video, CTAs below video */
+    @media (min-width: 769px) {
+      #hero {
+        height: auto;
+        min-height: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .hero-overlay { display: none; }
+
+      #video-wrapper {
+        order: 2;
+        width: calc(100% - clamp(40px, 6vw, 80px));
+        max-width: 1200px;
+        margin: 0 auto;
+        aspect-ratio: 16 / 9;
+      }
+
+      #hero-video {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        height: 100%;
+        aspect-ratio: unset;
+        object-fit: fill;
+      }
+
+      .hero-content {
+        order: 1;
+        position: relative;
+        max-width: 100%;
+        background: var(--bg-primary);
+        padding: calc(var(--header-h) + 28px) clamp(20px, 6vw, 80px) 24px;
+      }
+
+      .hero-cta-group {
+        order: 3;
+        background: var(--bg-primary);
+        padding: 28px clamp(20px, 6vw, 80px);
+        justify-content: center;
+        border-top: 1px solid var(--border-subtle);
+      }
+
+      .hero-scroll-hint { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- ============================================================
+     HEADER
+============================================================ -->
+<header id="site-header" class="at-top" role="banner">
+  <div class="header-inner">
+
+    <!-- Logo -->
+    <a href="home.html" class="header-logo" aria-label="British Trade Awards — home">
+      <!-- White version (shown at top of page, transparent dark header) -->
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-white"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; document.getElementById('header-logo-fallback').style.display='block'">
+      <!-- Gold+white version (shown when scrolled, frosted header) -->
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-dark"
+           style="display:none"
+           onerror="this.style.display='none'">
+      <!-- Fallback text logo -->
+      <span id="header-logo-fallback" class="logo-text" style="display:none">
+        British Trade Awards
+        <span>Est. 2026</span>
+      </span>
+    </a>
+
+    <!-- Desktop Nav -->
+    <nav class="header-nav" aria-label="Main navigation">
+      <a href="#categories">Categories</a>
+      <a href="#regions">Regions</a>
+      <a href="#find-a-trade">Find a Trade</a>
+      <a href="#about">About</a>
+    </nav>
+
+    <!-- Desktop CTA -->
+    <div class="header-cta">
+      <a href="submit-entry.html" class="btn-gold" aria-label="Enter British Trade Awards">Enter Now</a>
+    </div>
+
+    <!-- Mobile Hamburger -->
+    <button class="hamburger" id="hamburger-btn" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open navigation menu">
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+    </button>
+
+  </div>
+</header>
+
+<!-- Mobile Menu -->
+<nav class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="mobile-menu-inner">
+    <a href="#categories" class="mobile-nav-link">Categories</a>
+    <a href="#regions" class="mobile-nav-link">Regions</a>
+    <a href="#find-a-trade" class="mobile-nav-link">Find a Trade</a>
+    <a href="#about" class="mobile-nav-link">About</a>
+    <a href="submit-entry.html" class="btn-gold">Enter Now</a>
+  </div>
+</nav>
+
+<main id="main-content">
+
+<!-- ============================================================
+     SECTION 1 — HERO
+============================================================ -->
+<section id="hero" aria-label="Hero — Crowning Britain's Best Trade Professionals">
+
+  <!-- Video + end-screen wrapper -->
+  <div id="video-wrapper">
+    <video
+      id="hero-video"
+      autoplay
+      muted
+      playsinline
+      preload="auto"
+      aria-hidden="true"
+    >
+      <source src="/hero-video.mp4" type="video/mp4">
+    </video>
+    <!-- Shown when video ends: freeze + CTA -->
+    <div id="video-end-screen" aria-hidden="true">
+      <a href="submit-entry.html" class="end-screen-link" aria-label="Enter British Trade Awards">
+        <p class="end-screen-brand">British Trade Awards</p>
+        <span class="end-screen-cta">
+          Enter Now
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Dark gradient overlay -->
+  <div class="hero-overlay" aria-hidden="true"></div>
+
+  <!-- Hero content -->
+  <div class="hero-content">
+
+    <h1>
+      Crowning Britain's Best<br><em>Trade Professionals</em>
+    </h1>
+
+    <p class="hero-sub">
+      British Trade Awards is a competition to find the champions of construction and building services<br>
+      across England, Scotland and Wales – voted by the public.
+    </p>
+
+  </div>
+
+  <!-- CTA buttons — sit below video on desktop (order:3), flow naturally on mobile -->
+  <div class="hero-cta-group">
+    <a href="submit-entry.html" class="btn-gold">
+      <!-- Trophy icon -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+      Enter Now
+    </a>
+    <a href="#categories" class="btn-ghost">
+      Explore Categories
+    </a>
+    <!-- Scroll hint -->
+    <div class="hero-scroll-hint" aria-hidden="true">
+      <div class="scroll-mouse">
+        <div class="scroll-dot"></div>
+      </div>
+      <span>Scroll</span>
+    </div>
+  </div>
+
+
+</section>
+
+
+<!-- ============================================================
+     SECTION 2 — FEATURE BOXES
+============================================================ -->
+<section id="features" aria-labelledby="features-heading">
+  <div class="container section-pad">
+
+    <span id="features-heading" class="visually-hidden">Key Actions and Dates</span>
+
+    <div class="features-grid">
+
+      <!-- Box 1: Enter -->
+      <article class="feature-box reveal">
+        <div class="feature-header">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          </div>
+          <h3>Enter</h3>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;">Are you a leading trade professional or company in your area? British Trade Awards invites you to enter our 2026 programme. Entry is free and quick, taking under 3 mins.</p>
+        <a href="submit-entry.html" class="btn-gold" style="align-self: flex-start; margin-top: auto;">
+          Submit Your Entry
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </article>
+
+      <!-- Box 2: Key Dates -->
+      <article class="feature-box reveal reveal-delay-1">
+        <div class="feature-header">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          </div>
+          <h3>Key Dates</h3>
+        </div>
+        <ul class="key-dates-list" role="list">
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">1 Jul – 24 Jul 2026</div>
+              <div class="key-date-desc">Entries</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">29 Jul 2026</div>
+              <div class="key-date-desc">Nominees Announced</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">3 Aug – 1 Oct 2026</div>
+              <div class="key-date-desc">Voting</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">26 Nov 2026</div>
+              <div class="key-date-desc">Winners Announced</div>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <!-- Box 3: Vote -->
+      <article class="feature-box reveal reveal-delay-2">
+        <div class="feature-header">
+          <div class="feature-icon" aria-hidden="true">
+            <!-- Checkbox tick icon -->
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"/><polyline points="9 12 11 14 15 10"/></svg>
+          </div>
+          <h3>Vote</h3>
+        </div>
+        <p>Great service deserves recognition. Vote for your favourite local trade professionals. Voting runs 3 Aug to 1 Oct 2026.</p>
+        <a href="public-voting.html" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">
+          Cast Your Vote
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 3 — CATEGORY GALLERY
+============================================================ -->
+<section id="categories" aria-labelledby="categories-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="categories-heading">
+        <span class="gold-underline">Categories</span>
+      </h2>
+    </div>
+
+    <!-- Populated dynamically by initCategoryGrid() from BTA_HOME_DATA / CMS -->
+    <div class="categories-grid" id="categories-grid" aria-label="Award categories"></div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     GET INVOLVED
+============================================================ -->
+<section id="how-it-works" aria-labelledby="how-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="how-heading">
+        Get <span class="gold-underline">Involved</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">Three steps to recognition</p>
+    </div>
+
+    <div class="how-steps">
+
+      <div class="how-step reveal">
+        <span class="how-step-number">01</span>
+        <h3>Enter</h3>
+        <p>Found a brilliant tradesperson or company? We'd love to hear from you! Or if you work in the trade and consider yourself among the best in your field, this is your opportunity to shine – nominate yourself! Entry is free and takes under 3 minutes.</p>
+        <a href="submit-entry.html" class="btn-gold" style="margin-top: 24px; display: inline-flex;">
+          Enter Now
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <div class="how-step reveal reveal-delay-1">
+        <span class="how-step-number">02</span>
+        <h3>Vote</h3>
+        <p>Every entry is vetted, with the strongest progressing to the nomination stage. Voting then opens for 9 weeks, giving customers the chance to choose their favourite local trade professionals. The nominee with the most votes wins their category.</p>
+      </div>
+
+      <div class="how-step reveal reveal-delay-2">
+        <span class="how-step-number">03</span>
+        <h3>Celebrate</h3>
+        <p>Winners are invited to attend one of our celebration receptions, taking place across England, Scotland and Wales at the end of the year – a well-deserved night to mark outstanding achievement with fellow trade professionals.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SPONSORS BAR
+     Hidden until sponsors are confirmed.
+     To re-enable: remove the style="display:none;" attribute below.
+============================================================ -->
+<section id="sponsors" aria-labelledby="sponsors-label" style="display:none;">
+  <div class="container section-pad">
+    <p class="sponsors-label" id="sponsors-label">Proudly Supported By</p>
+    <div class="sponsors-row">
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+      <div class="sponsor-placeholder">Your Logo</div>
+    </div>
+    <div class="sponsors-cta">
+      <a href="become-a-sponsor.html" aria-label="Become a sponsor of the British Trade Awards">Become a Sponsor &rarr;</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 3.5 — FEATURED NOMINEES (populated from API)
+============================================================ -->
+<section id="nominees" style="display:none;" aria-labelledby="nominees-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="nominees-heading">
+        Meet the <span class="gold-underline">Nominees</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        Public voting is open — cast your vote for the best tradespeople in Britain
+      </p>
+    </div>
+
+    <div class="nominees-grid" id="nominees-grid" aria-label="Featured nominees">
+      <!-- Populated by initNominees() -->
+    </div>
+
+    <div class="nominees-cta-wrap reveal">
+      <a href="public-voting.html" class="btn-gold">
+        See All Nominees &amp; Vote
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 4 — REGIONAL SECTION
+============================================================ -->
+<section id="regions" aria-labelledby="regions-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="regions-heading">
+        Find your <span class="gold-underline">County or City</span>
+      </h2>
+    </div>
+
+    <div class="country-cards reveal reveal-delay-2" aria-label="Select a country to explore regions">
+
+      <!-- England -->
+      <div class="country-card" id="card-england" role="button" tabindex="0"
+           aria-expanded="false" aria-controls="accordion-england" data-country="england">
+        <img class="country-flag" src="images/flags/England.png" alt="England flag">
+        <div class="country-name">England</div>
+        <span class="country-explore" aria-hidden="true">
+          Explore
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </div>
+
+      <!-- Scotland -->
+      <div class="country-card" id="card-scotland" role="button" tabindex="0"
+           aria-expanded="false" aria-controls="accordion-scotland" data-country="scotland">
+        <img class="country-flag" src="images/flags/Scotland.png" alt="Scotland flag">
+        <div class="country-name">Scotland</div>
+        <span class="country-explore" aria-hidden="true">
+          Explore
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </div>
+
+      <!-- Wales -->
+      <div class="country-card" id="card-wales" role="button" tabindex="0"
+           aria-expanded="false" aria-controls="accordion-wales" data-country="wales">
+        <img class="country-flag" src="images/flags/Wales.png" alt="Wales flag">
+        <div class="country-name">Wales</div>
+        <span class="country-explore" aria-hidden="true">
+          Explore
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </span>
+      </div>
+
+    </div>
+
+    <!-- England Accordion -->
+    <div class="regions-accordion" id="accordion-england" aria-hidden="true">
+      <div class="regions-accordion-inner">
+        <div class="sub-regions open" id="sub-england" aria-live="polite">
+          <div class="sub-regions-list" id="sub-list-england"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scotland Accordion -->
+    <div class="regions-accordion" id="accordion-scotland" aria-hidden="true">
+      <div class="regions-accordion-inner">
+        <div class="sub-regions open" id="sub-scotland" aria-live="polite">
+          <div class="sub-regions-list" id="sub-list-scotland"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wales Accordion -->
+    <div class="regions-accordion" id="accordion-wales" aria-hidden="true">
+      <div class="regions-accordion-inner">
+        <div class="sub-regions open" id="sub-wales" aria-live="polite">
+          <div class="sub-regions-list" id="sub-list-wales"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     TESTIMONIALS
+============================================================ -->
+<section id="testimonials" aria-labelledby="testimonials-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="testimonials-heading">
+        Voices from <span class="gold-underline">the Trade</span>
+      </h2>
+    </div>
+
+    <div class="testimonials-grid">
+
+      <div class="testimonial-card reveal">
+        <p class="testimonial-quote">"British Trade Awards delivers the recognition outstanding trade professionals deserve – giving the public confidence in who they hire."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-name">Chris Stewart</div>
+          <div class="testimonial-role">Bespoke Cabinet Maker</div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-1">
+        <p class="testimonial-quote">"I use British Trade Awards to find the best local tradespeople."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-name">Barbara Mitford</div>
+          <div class="testimonial-role">Homeowner</div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-2">
+        <p class="testimonial-quote">"Entering was quick and simple. The recognition has already opened doors for our business."</p>
+        <div class="testimonial-author">
+          <div class="testimonial-name">Richard Brewster</div>
+          <div class="testimonial-role">Project Director</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION 5 — FIND A TRADE
+============================================================ -->
+<section id="find-a-trade" aria-labelledby="find-heading">
+  <div class="container section-pad">
+
+    <div class="section-intro">
+      <h2 class="section-heading reveal" id="find-heading">
+        Find a Trade <span class="gold-underline">Professional</span>
+      </h2>
+      <p class="section-sub reveal reveal-delay-1">
+        Source the best tradespeople in your area with the British Trade Awards guide
+      </p>
+      <span class="coming-soon-badge reveal reveal-delay-2">Directory launching soon</span>
+    </div>
+
+    <div class="find-trade-card reveal reveal-delay-2">
+
+      <form id="find-trade-form" class="find-trade-fields" novalidate>
+
+        <!-- Location input with autocomplete -->
+        <div class="input-wrapper">
+          <label for="location-input" class="form-label">Search by County or City</label>
+          <input
+            type="text"
+            id="location-input"
+            class="form-input"
+            placeholder="Search by County or City"
+            autocomplete="off"
+            aria-autocomplete="list"
+            aria-controls="location-dropdown"
+            aria-expanded="false"
+          >
+          <div id="location-dropdown" class="autocomplete-dropdown" role="listbox" aria-label="Location suggestions">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Geolocation link -->
+        <button type="button" class="geo-link" id="geo-btn" aria-label="Use my current location">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/></svg>
+          Use my location
+        </button>
+
+        <!-- Category select -->
+        <div>
+          <label for="category-select" class="form-label">Select a trade category</label>
+          <select id="category-select" class="form-input" aria-label="Select a trade category">
+            <option value="">All Categories</option>
+            <option value="building-construction">Building &amp; Construction</option>
+            <option value="mep">Mechanical, Electrical &amp; Plumbing</option>
+            <option value="carpentry">Carpentry &amp; Joinery</option>
+            <option value="interior">Fit-Out &amp; Finishing</option>
+            <option value="outdoor">Outdoor &amp; Landscaping</option>
+            <option value="energy">Energy, Tech &amp; Sustainability</option>
+            <option value="specialist">Specialist Trades</option>
+            <option value="leadership">Industry Leadership</option>
+          </select>
+        </div>
+
+        <!-- Find row -->
+        <div class="find-trade-row">
+          <label for="find-submit" class="visually-hidden">Find trade professionals</label>
+          <button type="submit" id="find-submit" class="btn-gold" aria-label="Search for trade professionals">
+            Find
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+        </div>
+
+      </form>
+
+      <!-- Results Area -->
+      <div id="find-results" class="find-results" role="region" aria-live="polite" aria-label="Search results">
+        <div class="find-results-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </div>
+        <p id="find-results-text">
+          <strong>No results found yet.</strong><br>
+          Check back when nominees are announced — our directory of Award-recommended tradespeople is coming soon.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ============================================================
+     NEWSLETTER / REMINDER SIGNUP
+============================================================ -->
+<section id="newsletter" aria-labelledby="newsletter-heading">
+  <div class="container section-pad">
+    <div class="newsletter-inner">
+      <h2 class="section-heading reveal" id="newsletter-heading">
+        Be First to <span class="gold-underline">Know</span>
+      </h2>
+      <p class="newsletter-sub reveal reveal-delay-1">
+        Get notified when entries open, shortlists are announced, and tickets go on sale.
+      </p>
+      <form class="newsletter-form reveal reveal-delay-2" id="newsletter-form" novalidate aria-label="Newsletter signup">
+        <label for="newsletter-email" class="visually-hidden">Your email address</label>
+        <input
+          type="email"
+          id="newsletter-email"
+          class="form-input"
+          placeholder="Your email address"
+          autocomplete="email"
+          required
+          aria-required="true"
+        >
+        <button type="submit" class="btn-gold">Notify Me</button>
+      </form>
+      <p class="newsletter-success" id="newsletter-success" role="status" aria-live="polite">
+        You're on the list! We'll be in touch.
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     SECTION — ABOUT (anchor target)
+============================================================ -->
+<section id="about" aria-labelledby="about-heading" style="background: var(--bg-secondary); padding: var(--section-pad) 0;">
+  <div class="container">
+    <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+      <h2 class="section-heading reveal" id="about-heading">
+        About <span class="gold-underline">British Trade Awards</span>
+      </h2>
+      <div class="reveal reveal-delay-2" style="margin-top: 36px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
+        <a href="#categories" class="btn-ghost">View Categories</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer id="site-footer" role="contentinfo">
+  <div class="container">
+
+    <!-- Follow + social icons (left) + legal links (right) -->
+    <div class="footer-socials-row">
+      <div class="footer-socials-left" aria-label="Social media links">
+        <span class="footer-follow-label">Follow British Trade Awards</span>
+
+        <!-- LinkedIn -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on LinkedIn" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+            <rect width="4" height="12" x="2" y="9"/>
+            <circle cx="4" cy="4" r="2"/>
+          </svg>
+        </a>
+
+        <!-- Instagram -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on Instagram" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+            <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+          </svg>
+        </a>
+
+        <!-- Facebook -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on Facebook" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+          </svg>
+        </a>
+
+        <!-- X / Twitter -->
+        <a href="#" class="social-link" aria-label="British Trade Awards on X (Twitter)" rel="noopener noreferrer" target="_blank">
+          <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+            <path d="M4 4l16 16M4 20L20 4" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Legal links (right-justified) -->
+      <div class="footer-links" role="list" aria-label="Legal and policy links">
+        <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+        <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
+        <a href="#" role="listitem">Contact Us</a>
+        <a href="#" role="listitem">Sitemap</a>
+        <a href="#" role="listitem">Cookie Policy</a>
+      </div>
+    </div>
+
+    <!-- Copyright -->
+    <div class="footer-bottom">
+      <p>
+        &copy; 2026 British Trade Awards &nbsp;|&nbsp;
+        <strong>[Company Name Placeholder]</strong> &nbsp;|&nbsp;
+        Reg. No. <strong>[PLACEHOLDER]</strong> &nbsp;|&nbsp;
+        <strong>[Address Placeholder], United Kingdom</strong> &nbsp;|&nbsp;
+        Registered in England &amp; Wales
+      </p>
+    </div>
+
+  </div>
+</footer>
+
+
+<!-- Category modal — must be in DOM before the inline script runs -->
+<div id="cat-modal" class="cat-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="cat-modal-title" tabindex="-1">
+  <div class="cat-modal-panel">
+    <!-- List view: sector → categories -->
+    <div id="cat-modal-list-view">
+      <button class="cat-modal-close" id="cat-modal-close" aria-label="Close category panel">×</button>
+      <p class="cat-modal-label" id="cat-modal-label"></p>
+      <h3 class="cat-modal-title" id="cat-modal-title"></h3>
+      <ul class="cat-modal-list" id="cat-modal-list"></ul>
+      <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-modal-list-cta">Enter the Awards →</a>
+    </div>
+    <!-- Detail view: individual category description -->
+    <div id="cat-modal-detail-view" style="display:none;">
+      <button class="cat-modal-close" id="cat-modal-close-detail" aria-label="Close category panel">×</button>
+      <button class="cat-modal-back" id="cat-modal-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
+        Back to categories
+      </button>
+      <p class="cat-modal-label">Category</p>
+      <h3 class="cat-modal-title" id="cat-detail-name"></h3>
+      <p class="cat-detail-desc" id="cat-detail-desc"></p>
+      <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-detail-cta">Enter this Category →</a>
+    </div>
+  </div>
+</div>
+
+<!-- Home page data — single source of truth for sectors, categories, regions, flags -->
+<script src="home-data.js"></script>
+
+<script src="home.js"></script>
+
+<script>
+  // Video end-screen: mobile only — on desktop the Enter Now button is already
+  // visible directly below the video, so the overlay would be redundant.
+  (function () {
+    const video = document.getElementById('hero-video');
+    const endScreen = document.getElementById('video-end-screen');
+    if (!video || !endScreen) return;
+    video.addEventListener('ended', function () {
+      if (window.innerWidth >= 769) return;
+      endScreen.classList.add('visible');
+      endScreen.setAttribute('aria-hidden', 'false');
+    });
+  })();
+</script>
+
+<script>
+  // ── Countdown timer ──────────────────────────────────────────────────────────
+  // Target: 1 September 2026 00:00:00 UTC (entries open)
+  (function () {
+    var target = Date.UTC(2026, 6, 1, 0, 0, 0); // month is 0-indexed: 6 = July
+    var block = document.getElementById('countdown-block');
+    var openMsg = document.getElementById('countdown-open-msg');
+    var elDays = document.getElementById('cd-days');
+    var elHours = document.getElementById('cd-hours');
+    var elMins = document.getElementById('cd-mins');
+    var elSecs = document.getElementById('cd-secs');
+
+    if (!block || !elDays) return;
+
+    function pad(n) {
+      return n < 10 ? '0' + n : String(n);
+    }
+
+    function tick() {
+      var now = Date.now();
+      var diff = target - now;
+      if (diff <= 0) {
+        block.style.display = 'none';
+        if (openMsg) openMsg.style.display = 'block';
+        clearInterval(timer);
+        return;
+      }
+      var totalSecs = Math.floor(diff / 1000);
+      var days  = Math.floor(totalSecs / 86400);
+      var hours = Math.floor((totalSecs % 86400) / 3600);
+      var mins  = Math.floor((totalSecs % 3600) / 60);
+      var secs  = totalSecs % 60;
+      elDays.textContent  = days;
+      elHours.textContent = pad(hours);
+      elMins.textContent  = pad(mins);
+      elSecs.textContent  = pad(secs);
+    }
+
+    tick();
+    var timer = setInterval(tick, 1000);
+  })();
+</script>
+
+<script>
+  // ── Newsletter form ───────────────────────────────────────────────────────────
+  (function () {
+    var form = document.getElementById('newsletter-form');
+    var input = document.getElementById('newsletter-email');
+    var successMsg = document.getElementById('newsletter-success');
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var email = input ? input.value.trim() : '';
+      // Basic email validation
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        input.focus();
+        input.style.borderColor = 'rgba(255,80,80,0.8)';
+        setTimeout(function () { input.style.borderColor = ''; }, 2000);
+        return;
+      }
+      // No real API call — show success state
+      form.style.display = 'none';
+      if (successMsg) successMsg.classList.add('visible');
+    });
+  })();
+</script>
+
+
+</body>
+</html>

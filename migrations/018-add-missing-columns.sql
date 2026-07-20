@@ -25,8 +25,8 @@ UPDATE events SET event_status = status WHERE event_status IS NULL AND status IS
 
 -- 2b. MEETING_NOTES — add meeting_title column (JS uses meeting_title not subject)
 ALTER TABLE meeting_notes ADD COLUMN IF NOT EXISTS meeting_title TEXT;
--- Backfill meeting_title from subject for any existing rows
-UPDATE meeting_notes SET meeting_title = subject WHERE meeting_title IS NULL AND subject IS NOT NULL;
+-- Note: database-crm-setup.sql's meeting_notes table already uses meeting_title
+-- (no legacy 'subject' column ever existed on this project), so no backfill needed.
 
 -- 3. RUNNING_ORDER — add columns needed by events.js for ceremony management
 ALTER TABLE running_order ADD COLUMN IF NOT EXISTS award_number TEXT;
@@ -98,7 +98,10 @@ UPDATE event_guests SET guest_name = name WHERE guest_name IS NULL AND name IS N
 UPDATE event_guests SET guest_email = email WHERE guest_email IS NULL AND email IS NOT NULL;
 
 -- 12. Recreate running_order_full view with correct column references
-CREATE OR REPLACE VIEW running_order_full AS
+-- DROP first since running_order's column set has changed since the view was
+-- last defined, and CREATE OR REPLACE VIEW can't reorder/rename view columns.
+DROP VIEW IF EXISTS running_order_full;
+CREATE VIEW running_order_full AS
 SELECT
   ro.*,
   o.company_name,

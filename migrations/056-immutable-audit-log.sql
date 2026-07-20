@@ -9,7 +9,7 @@ ALTER TABLE cms_audit_logs ENABLE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   EXECUTE 'CREATE POLICY "audit_service_insert" ON cms_audit_logs
-    FOR INSERT USING (auth.role() = ''service_role'')';
+    FOR INSERT WITH CHECK (auth.role() = ''service_role'')';
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

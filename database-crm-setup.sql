@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS communications (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal communications
+-- table; backfill columns missing from that stub version.
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS related_deal_id UUID;
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS related_invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL;
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS related_event_id UUID REFERENCES events(id) ON DELETE SET NULL;
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT true;
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS attachments TEXT;
+ALTER TABLE communications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- ============================================
 -- DEAL PIPELINE
@@ -101,6 +111,25 @@ CREATE TABLE IF NOT EXISTS deals (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal deals
+-- table; backfill columns missing from that stub version.
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS contact_id UUID REFERENCES organisation_contacts(id) ON DELETE SET NULL;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS deal_name VARCHAR(255) NOT NULL;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS deal_type VARCHAR(50) NOT NULL;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS probability INTEGER DEFAULT 50;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS deal_value DECIMAL(10,2) NOT NULL;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'GBP';
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS expected_close_date DATE;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS actual_close_date DATE;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS lost_reason TEXT;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255);
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id) ON DELETE SET NULL;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- ============================================
 -- MEETING NOTES

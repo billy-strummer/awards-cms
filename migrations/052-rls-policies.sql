@@ -17,8 +17,10 @@
 
 DO $$
 DECLARE
+  -- 'awards' is a view over award_years (not a table — RLS attaches to
+  -- award_years instead, which is already in this list), so it's excluded here.
   tbls TEXT[] := ARRAY[
-    'organisations', 'awards', 'award_years', 'entries',
+    'organisations', 'award_years', 'entries',
     'award_assignments', 'event_guests', 'invoices', 'payments'
   ];
   tbl TEXT;

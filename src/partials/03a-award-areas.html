@@ -1,0 +1,149 @@
+      <!-- ==================================================== -->
+      <!-- AWARD AREAS TAB -->
+      <!-- ==================================================== -->
+      <div class="tab-pane fade" id="award-areas" role="tabpanel">
+        <div class="container-fluid">
+
+          <!-- Page Header -->
+          <div class="section-header">
+            <h1 class="section-title">
+              <i class="bi bi-geo-alt me-2"></i>Award Areas
+            </h1>
+            <p class="section-subtitle">Bulk-import nominees for any County, City, or London Borough<span id="awardAreasSummary" class="ms-2 text-muted"></span></p>
+          </div>
+
+          <!-- Getting Started Banner -->
+          <div class="card border-0 shadow-sm mb-4" id="awardAreasGettingStarted">
+            <div class="card-body py-3">
+              <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Award Areas</h6>
+                  <p class="text-muted small mb-0">Every County, City, and London Borough is already set up — you never need to create these. Upload a CSV per area to publish nominees to the website.</p>
+                </div>
+                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('awardAreasGettingStarted').style.display='none';"></button>
+              </div>
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
+                    <div>
+                      <div class="fw-semibold small">Click Upload CSV on an area</div>
+                      <div class="text-muted" style="font-size:.75rem;">Every row is automatically assigned to that area — you never type a county name.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
+                    <div>
+                      <div class="fw-semibold small">Fix any validation errors</div>
+                      <div class="text-muted" style="font-size:.75rem;">Unknown categories, duplicate companies, and bad emails are checked before anything is imported.</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
+                    <div>
+                      <div class="fw-semibold small">Import — it's live immediately</div>
+                      <div class="text-muted" style="font-size:.75rem;">Every imported nominee is published straight to the public site. No separate publish step.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body py-2">
+              <input type="text" class="form-control form-control-sm" id="awardAreasSearch" placeholder="Search areas…" style="max-width:320px;">
+            </div>
+          </div>
+
+          <!-- Areas Table -->
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Area</th>
+                      <th>Type</th>
+                      <th>Entries</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="awardAreasTableBody">
+                    <tr><td colspan="5" class="text-center text-muted py-4">Loading areas…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================================================== -->
+      <!-- AWARD AREAS — CSV UPLOAD MODAL -->
+      <!-- ==================================================== -->
+      <div class="modal fade" id="nomineeUploadModal" tabindex="-1" aria-labelledby="nomineeUploadModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+              <h5 class="modal-title" id="nomineeUploadModalTitle">
+                <i class="bi bi-cloud-upload me-2"></i>Upload Nominees — <span id="nomineeUploadAreaName"></span>
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+              <!-- Step 1: file picker -->
+              <div id="nomineeStep1">
+                <p class="text-muted small">
+                  CSV must include a <strong>Company Name</strong> column and an <strong>Award Category</strong> column
+                  (category must match an existing award category exactly). Optional columns: Email, Contact Name, Phone, Website, Notes.
+                </p>
+                <input class="form-control" type="file" id="nomineeFileInput" accept=".csv,.tsv,.txt">
+              </div>
+
+              <!-- Step 2: preview + validation + duplicate strategy + confirm -->
+              <div id="nomineeStep2" class="d-none">
+                <div id="nomineePreviewStats" class="mb-2"></div>
+                <div id="nomineePreviewContainer" class="mb-3"></div>
+
+                <div id="nomineeValidationContainer" class="mb-3"></div>
+
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small">If an organisation already exists</label>
+                  <div class="d-flex gap-3 flex-wrap">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="nomineeDuplicateStrategy" id="nomineeStrategySkip" value="skip" checked>
+                      <label class="form-check-label small" for="nomineeStrategySkip">Skip it</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="nomineeDuplicateStrategy" id="nomineeStrategyUpdate" value="update">
+                      <label class="form-check-label small" for="nomineeStrategyUpdate">Update (fill in missing fields only)</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="nomineeDuplicateStrategy" id="nomineeStrategyReplace" value="replace">
+                      <label class="form-check-label small" for="nomineeStrategyReplace">Replace existing details</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="nomineeUploadVerification" class="d-none mb-3"></div>
+              </div>
+
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" id="nomineeUploadConfirmBtn" disabled>
+                <i class="bi bi-cloud-upload me-2"></i>Upload &amp; Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>

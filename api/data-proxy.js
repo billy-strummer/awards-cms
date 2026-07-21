@@ -22,6 +22,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
+const { resolveCategory } = require('./_lib/award-categories');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
@@ -1293,6 +1294,304 @@ async function executeNomineeUpload(body, user) {
   return { batchId, csvRowCount, storedRowCount, verified: storedRowCount === csvRowCount };
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Award Areas CSV import — the CMS's single pipeline for bulk-importing
+ * nominees into a specific Area (county/city/London borough). Every row
+ * becomes a real organisation + a published entry, never a staging/raw-data
+ * blob — this is what makes the import actually show up on the website.
+ *
+ * mode: 'validate' — run every check, return row-indexed errors, write nothing.
+ * mode: 'import'   — re-validate (never trust the client) then commit; refuses
+ *                     to write anything if validation still fails.
+ *
+ * Award (award_years) records are found-or-created per category+area+year —
+ * that's the one thing this auto-creates, since "the administrator should
+ * never need to create these manually" per area. Categories themselves are
+ * never auto-created: an unrecognised category is always a validation error.
+ */
+async function executeAwardAreaImport(body, user) {
+  const { mode, areaId, rows, filename } = body;
+  const duplicateStrategy = ['skip', 'update', 'replace'].includes(body.duplicateStrategy)
+    ? body.duplicateStrategy
+    : 'skip';
+  // Same convention as executeQuery's insert path: only stamp tenant_id when
+  // the caller is in a real (non-'default') tenant context, so rows created
+  // here are visible in the same tenant-scoped list views as everything else.
+  const tenantId = body.tenantId && body.tenantId !== 'default' ? body.tenantId : null;
+
+  if (mode !== 'validate' && mode !== 'import') {
+    throw new Error('award_area_import: mode must be "validate" or "import"');
+  }
+  if (!areaId) throw new Error('award_area_import: areaId is required');
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('award_area_import: rows must be a non-empty array');
+  if (rows.length > 2000) throw new Error('award_area_import: maximum 2000 rows per import');
+
+  const { data: area, error: areaErr } = await supabase
+    .from('areas')
+    .select('id, display_name, country, area_type')
+    .eq('id', areaId)
+    .maybeSingle();
+  if (areaErr) throw areaErr;
+  if (!area) throw new Error('award_area_import: unknown area — it may have been deleted');
+
+  // ── Validate every row ──────────────────────────────────────────
+  const errors = [];
+  const seenCompanyNames = new Map(); // normalised name -> first row number
+  const validatedRows = [];
+
+  rows.forEach((raw, idx) => {
+    const rowNum = idx + 1;
+    const companyName = String(raw.company_name || '').trim();
+    const category = String(raw.category || '').trim();
+    const email = String(raw.email || '').trim();
+
+    if (!companyName) errors.push({ row: rowNum, field: 'company_name', message: 'Missing organisation name' });
+    if (!category) errors.push({ row: rowNum, field: 'category', message: 'Missing award category' });
+
+    let resolvedCategory = null;
+    if (category) {
+      resolvedCategory = resolveCategory(category);
+      if (!resolvedCategory) {
+        errors.push({
+          row: rowNum,
+          field: 'category',
+          message: `Unknown award category "${category}" — it doesn't match any existing category`,
+        });
+      }
+    }
+
+    if (email && !EMAIL_RE.test(email)) {
+      errors.push({ row: rowNum, field: 'email', message: `Invalid email address "${email}"` });
+    }
+
+    if (companyName) {
+      const key = companyName.toLowerCase();
+      if (seenCompanyNames.has(key)) {
+        errors.push({
+          row: rowNum,
+          field: 'company_name',
+          message: `Duplicate of row ${seenCompanyNames.get(key)} in this file ("${companyName}")`,
+        });
+      } else {
+        seenCompanyNames.set(key, rowNum);
+      }
+    }
+
+    validatedRows.push({
+      row: rowNum,
+      companyName,
+      category,
+      resolvedCategory,
+      email: email || null,
+      contactName: raw.contact_name ? String(raw.contact_name).trim().slice(0, 255) : null,
+      phone: raw.phone ? String(raw.phone).trim().slice(0, 50) : null,
+      website: raw.website ? String(raw.website).trim().slice(0, 500) : null,
+      notes: raw.notes ? String(raw.notes).trim().slice(0, 2000) : null,
+    });
+  });
+
+  if (mode === 'validate' || errors.length > 0) {
+    return { mode: 'validate', valid: errors.length === 0, errors, rowCount: rows.length, area };
+  }
+
+  // ── Import — errors is empty at this point ──────────────────────
+  const countrySlug = (area.country || 'england').toLowerCase().replace(/\s+/g, '-');
+  const yearNow = new Date().getFullYear();
+  const awardCache = new Map(); // category name -> award_id (found-or-created once per import)
+
+  async function getOrCreateAward(resolved) {
+    if (awardCache.has(resolved.category)) return awardCache.get(resolved.category);
+
+    // Match on area_id (always populated, including for awards created via the
+    // Add Award form) rather than the legacy free-text `county` column, which
+    // that form never fills in — matching on county here would miss existing
+    // awards and create duplicates.
+    const { data: existing, error: findErr } = await supabase
+      .from('award_years')
+      .select('id')
+      .eq('award_name', resolved.category)
+      .eq('area_id', area.id)
+      .eq('year', yearNow)
+      .maybeSingle();
+    if (findErr) throw findErr;
+    if (existing) {
+      awardCache.set(resolved.category, existing.id);
+      return existing.id;
+    }
+
+    const { data: created, error: createErr } = await supabase
+      .from('award_years')
+      .insert({
+        award_name: resolved.category,
+        sector: resolved.sector,
+        county: area.display_name,
+        country: area.country,
+        area_id: area.id,
+        year: yearNow,
+        status: 'Active',
+        is_active: true,
+        show_on_website: true,
+        tenant_id: tenantId,
+      })
+      .select('id')
+      .single();
+    if (createErr) throw createErr;
+    awardCache.set(resolved.category, created.id);
+    return created.id;
+  }
+
+  // Sequential entry numbers: BTA-<year>-0001, continuing from the highest
+  // existing number this year (best-effort — a rare race against a
+  // simultaneous import could skip/reuse a number, which is harmless since
+  // entry_number has no uniqueness constraint).
+  const prefix = `BTA-${yearNow}-`;
+  const { data: lastEntryRows } = await supabase
+    .from('entries')
+    .select('entry_number')
+    .ilike('entry_number', `${prefix}%`)
+    .order('entry_number', { ascending: false })
+    .limit(1);
+  let nextNum = 1;
+  if (lastEntryRows && lastEntryRows[0]) {
+    const n = parseInt(String(lastEntryRows[0].entry_number).replace(prefix, ''), 10);
+    if (!isNaN(n)) nextNum = n + 1;
+  }
+
+  let orgsCreated = 0;
+  let orgsUpdated = 0;
+  let orgsReplaced = 0;
+  const rowResults = [];
+
+  for (const r of validatedRows) {
+    const { data: existingOrgs, error: orgFindErr } = await supabase
+      .from('organisations')
+      .select('id')
+      .ilike('company_name', r.companyName)
+      .limit(1);
+    if (orgFindErr) throw orgFindErr;
+    let orgId = existingOrgs && existingOrgs[0] ? existingOrgs[0].id : null;
+
+    if (orgId && duplicateStrategy === 'skip') {
+      rowResults.push({ row: r.row, action: 'skipped', message: 'Organisation already exists' });
+      continue;
+    }
+
+    const orgFields = {
+      company_name: r.companyName,
+      website: r.website,
+      email: r.email,
+      contact_name: r.contactName,
+      contact_phone: r.phone,
+      county_city: area.display_name,
+      country: area.country,
+      area_id: area.id,
+      sector: r.resolvedCategory.sector,
+      status: 'active',
+      tenant_id: tenantId,
+    };
+
+    if (!orgId) {
+      const { data: newOrg, error: insErr } = await supabase
+        .from('organisations')
+        .insert(orgFields)
+        .select('id')
+        .single();
+      if (insErr) throw insErr;
+      orgId = newOrg.id;
+      orgsCreated++;
+    } else if (duplicateStrategy === 'update') {
+      const { data: currentOrg } = await supabase.from('organisations').select('*').eq('id', orgId).maybeSingle();
+      const patch = {};
+      for (const [k, v] of Object.entries(orgFields)) {
+        if (v != null && (currentOrg?.[k] == null || currentOrg[k] === '')) patch[k] = v;
+      }
+      if (Object.keys(patch).length) await supabase.from('organisations').update(patch).eq('id', orgId);
+      orgsUpdated++;
+    } else if (duplicateStrategy === 'replace') {
+      await supabase.from('organisations').update(orgFields).eq('id', orgId);
+      orgsReplaced++;
+    }
+
+    const awardId = await getOrCreateAward(r.resolvedCategory);
+
+    const { data: existingEntry } = await supabase
+      .from('entries')
+      .select('id')
+      .eq('organisation_id', orgId)
+      .eq('award_id', awardId)
+      .maybeSingle();
+    if (existingEntry) {
+      rowResults.push({ row: r.row, action: 'entry_exists', organisationId: orgId, awardId });
+      continue;
+    }
+
+    const entryNumber = `${prefix}${String(nextNum).padStart(4, '0')}`;
+    nextNum++;
+
+    const { error: entryErr } = await supabase.from('entries').insert({
+      entry_number: entryNumber,
+      organisation_id: orgId,
+      award_id: awardId,
+      entry_title: `${r.companyName} — ${r.resolvedCategory.category}`,
+      contact_name: r.contactName,
+      contact_email: r.email,
+      contact_phone: r.phone,
+      award_category: r.resolvedCategory.category,
+      sector: r.resolvedCategory.sector,
+      county_city: area.display_name,
+      selected_country: countrySlug,
+      supporting_information: r.notes,
+      status: 'shortlisted',
+      is_public: true,
+      allow_public_voting: true,
+      is_self_nomination: false,
+      year: yearNow,
+      submission_date: new Date().toISOString(),
+      payment_status: 'waived',
+      public_votes: 0,
+      tenant_id: tenantId,
+    });
+    if (entryErr) throw entryErr;
+
+    rowResults.push({ row: r.row, action: 'imported', organisationId: orgId, awardId, entryNumber });
+  }
+
+  const entriesCreated = rowResults.filter((r) => r.action === 'imported').length;
+
+  // Audit trail — best-effort, doesn't fail the import if it errors.
+  try {
+    await supabase.from('nominee_upload_batches').insert({
+      filename: filename ? String(filename).slice(0, 255) : 'upload.csv',
+      area: area.display_name,
+      country: area.country,
+      category: null,
+      csv_row_count: rows.length,
+      stored_row_count: entriesCreated,
+      uploaded_by: user.email || null,
+    });
+  } catch (_auditErr) {
+    /* audit trail is best-effort */
+  }
+
+  return {
+    mode: 'import',
+    valid: true,
+    area,
+    totals: {
+      rows: rows.length,
+      entriesCreated,
+      organisationsCreated: orgsCreated,
+      organisationsUpdated: orgsUpdated,
+      organisationsReplaced: orgsReplaced,
+      skipped: rowResults.filter((r) => r.action === 'skipped').length,
+      alreadyEntered: rowResults.filter((r) => r.action === 'entry_exists').length,
+    },
+    rowResults,
+  };
+}
+
 /**
  * Execute a smart segment query against the organisations table.
  * Queries ALL organisations in the database (not just the current page).
@@ -1591,6 +1890,18 @@ module.exports = async function handler(req, res) {
       await supabase.from('nominee_upload_rows').delete().eq('batch_id', batchId);
       await supabase.from('nominee_upload_batches').delete().eq('id', batchId);
       return res.status(200).json({ deleted: true });
+    }
+
+    // 7b. Award Areas CSV import — validates and/or imports nominees into a
+    // specific area, creating real organisations + entries.
+    if (body.operation === 'award_area_import') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Award Areas import requires editor role or above' });
+      }
+      const importResult = await executeAwardAreaImport(body, user);
+      return res.status(200).json(importResult);
     }
 
     // 8. Handle smart segment server-side query

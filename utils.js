@@ -3523,6 +3523,18 @@ const apiClient = {
   },
 
   /**
+   * Call a custom named operation on the server-side proxy (anything beyond
+   * the standard select/insert/update/upsert/delete/rpc verbs, e.g. batch
+   * import pipelines). Params are merged alongside `operation` in the body.
+   * @param {string} operation - The operation name the data-proxy handler switches on
+   * @param {Object} [params={}] - Operation-specific payload
+   * @returns {Promise<Object>}
+   */
+  async post(operation, params = {}) {
+    return this._call({ operation, ...params });
+  },
+
+  /**
    * Upload a file to Supabase Storage via the server-side proxy.
    * @param {string} bucket - Storage bucket name
    * @param {string} path - File path within the bucket

@@ -1,6 +1,9 @@
 /**
- * Tests for nominee-uploads.js — CSV parsing, column detection, and fuzzy matching.
+ * Tests for nominee-uploads.js (the Award Areas CSV import module) —
+ * CSV parsing, column detection, and markdown-link stripping.
  * Tests private utilities exposed via underscore-prefixed exports.
+ * Validation/import itself is server-side (api/data-proxy.js
+ * award_area_import) and covered by data-proxy tests instead.
  */
 
 const { JSDOM } = require('jsdom');
@@ -22,20 +25,17 @@ const dom = new JSDOM(
 
 const { window: win } = dom;
 
-win.COUNTIES_CITIES = ['Kent', 'Surrey', 'Essex', 'Greater London', 'Manchester'];
-win.SECTORS = ['BUILDING & CONSTRUCTION', 'CARPENTRY & JOINERY', 'MECHANICAL, ELECTRICAL & PLUMBING'];
-win.REGIONS = win.COUNTIES_CITIES;
-
-// Minimal publicUtils mock
-win.publicUtils = {
+// Minimal utils mock
+win.utils = {
   escapeHtml: (s) => String(s || ''),
-  showPublicToast: () => {},
+  showToast: () => {},
 };
 
 // Minimal apiClient mock (nominee-uploads calls this for DB ops)
 win.apiClient = {
   select: async () => ({ data: [], error: null }),
   insert: async () => ({ data: [], error: null }),
+  post: async () => ({ data: [], error: null }),
 };
 
 const scriptContent = fs.readFileSync(path.join(__dirname, '../nominee-uploads.js'), 'utf8');
@@ -50,21 +50,22 @@ const uploads = win.nomineeUploads;
 // -----------------------------------------------------------------------
 describe('nomineeUploads - _parseCSV()', () => {
   test('parses simple comma-separated CSV', () => {
-    const csv = 'Name,Area,Sector\nAlice Ltd,Kent,BUILDING & CONSTRUCTION\nBob Co,Surrey,CARPENTRY & JOINERY';
+    const csv =
+      'Company Name,Award Category,Email\nAlice Ltd,Roofing Company,alice@test.com\nBob Co,Plumbing Company,bob@test.com';
     const result = uploads._parseCSV(csv);
-    expect(result.headers).toEqual(['Name', 'Area', 'Sector']);
+    expect(result.headers).toEqual(['Company Name', 'Award Category', 'Email']);
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0].Name).toBe('Alice Ltd');
-    expect(result.rows[0].Area).toBe('Kent');
-    expect(result.rows[1].Name).toBe('Bob Co');
+    expect(result.rows[0]['Company Name']).toBe('Alice Ltd');
+    expect(result.rows[0]['Award Category']).toBe('Roofing Company');
+    expect(result.rows[1]['Company Name']).toBe('Bob Co');
   });
 
   test('parses tab-delimited CSV', () => {
-    const csv = 'Company\tRegion\nTest Ltd\tEssex';
+    const csv = 'Company\tCategory\nTest Ltd\tRoofing Company';
     const result = uploads._parseCSV(csv);
-    expect(result.headers).toEqual(['Company', 'Region']);
+    expect(result.headers).toEqual(['Company', 'Category']);
     expect(result.rows[0].Company).toBe('Test Ltd');
-    expect(result.rows[0].Region).toBe('Essex');
+    expect(result.rows[0].Category).toBe('Roofing Company');
   });
 
   test('handles quoted fields with commas inside', () => {
@@ -82,7 +83,7 @@ describe('nomineeUploads - _parseCSV()', () => {
   });
 
   test('skips blank rows', () => {
-    const csv = 'Name,Area\nAlice Ltd,Kent\n\n\nBob Co,Surrey';
+    const csv = 'Name,Category\nAlice Ltd,Roofing Company\n\n\nBob Co,Plumbing Company';
     const result = uploads._parseCSV(csv);
     expect(result.rows).toHaveLength(2);
   });
@@ -109,50 +110,37 @@ describe('nomineeUploads - _parseCSV()', () => {
 // -----------------------------------------------------------------------
 // Column detection
 // -----------------------------------------------------------------------
-describe('nomineeUploads - column detection', () => {
-  test('_detectAreaColumn finds "Area" column', () => {
-    expect(uploads._detectAreaColumn(['Company', 'Area', 'Sector'])).toBe('Area');
+describe('nomineeUploads - _detectColumn()', () => {
+  const companyCandidates = [
+    'company',
+    'company name',
+    'companyname',
+    'organisation',
+    'organization',
+    'business',
+    'business name',
+  ];
+  const categoryCandidates = ['category', 'award category', 'category name'];
+  const emailCandidates = ['email', 'email address', 'direct email'];
+
+  test('finds "Company Name" column', () => {
+    expect(uploads._detectColumn(['Company Name', 'Award Category'], companyCandidates)).toBe('Company Name');
   });
 
-  test('_detectAreaColumn finds "location" column case-insensitively', () => {
-    expect(uploads._detectAreaColumn(['Name', 'Location', 'Trade'])).toBe('Location');
+  test('finds "Organisation" spelling case-insensitively', () => {
+    expect(uploads._detectColumn(['Organisation', 'Category'], companyCandidates)).toBe('Organisation');
   });
 
-  test('_detectAreaColumn finds "county_city" with underscore', () => {
-    expect(uploads._detectAreaColumn(['company_name', 'county_city', 'sector'])).toBe('county_city');
+  test('finds "Award Category" column', () => {
+    expect(uploads._detectColumn(['Company', 'Award Category'], categoryCandidates)).toBe('Award Category');
   });
 
-  test('_detectAreaColumn returns null when no match', () => {
-    expect(uploads._detectAreaColumn(['Name', 'Trade', 'Website'])).toBeNull();
+  test('finds "Email Address" with spaces normalised', () => {
+    expect(uploads._detectColumn(['Company', 'Email Address'], emailCandidates)).toBe('Email Address');
   });
 
-  test('_detectCompanyColumn finds "Company" column', () => {
-    expect(uploads._detectCompanyColumn(['Company', 'Area', 'Sector'])).toBe('Company');
-  });
-
-  test('_detectCompanyColumn finds "Organisation" spelling', () => {
-    expect(uploads._detectCompanyColumn(['Organisation', 'Area'])).toBe('Organisation');
-  });
-
-  test('_detectCompanyColumn falls back to first column when no named match', () => {
-    // The function falls back to headers[0] so entries are always importable
-    expect(uploads._detectCompanyColumn(['Area', 'Sector', 'Website'])).toBe('Area');
-  });
-
-  test('_detectSectorColumn finds "Sector" column', () => {
-    expect(uploads._detectSectorColumn(['Company', 'Area', 'Sector'])).toBe('Sector');
-  });
-
-  test('_detectSectorColumn finds "Trade" column', () => {
-    expect(uploads._detectSectorColumn(['Company', 'Trade', 'Area'])).toBe('Trade');
-  });
-
-  test('_detectSectorColumn does NOT match "Category" (free-form sub-category)', () => {
-    expect(uploads._detectSectorColumn(['Company', 'Category', 'Area'])).toBeNull();
-  });
-
-  test('_detectSectorColumn returns null when no match', () => {
-    expect(uploads._detectSectorColumn(['Name', 'Area', 'Website'])).toBeNull();
+  test('returns null when no match', () => {
+    expect(uploads._detectColumn(['Name', 'Trade', 'Website'], categoryCandidates)).toBeNull();
   });
 });
 
@@ -175,83 +163,5 @@ describe('nomineeUploads - _stripMarkdownLinks()', () => {
   test('returns falsy values unchanged', () => {
     expect(uploads._stripMarkdownLinks('')).toBe('');
     expect(uploads._stripMarkdownLinks(null)).toBeNull();
-  });
-});
-
-// -----------------------------------------------------------------------
-// Levenshtein distance
-// -----------------------------------------------------------------------
-describe('nomineeUploads - _levenshtein()', () => {
-  test('identical strings have distance 0', () => {
-    expect(uploads._levenshtein('kent', 'kent')).toBe(0);
-  });
-
-  test('single substitution has distance 1', () => {
-    expect(uploads._levenshtein('kent', 'bent')).toBe(1);
-  });
-
-  test('single insertion has distance 1', () => {
-    expect(uploads._levenshtein('cat', 'cats')).toBe(1);
-  });
-
-  test('single deletion has distance 1', () => {
-    expect(uploads._levenshtein('cats', 'cat')).toBe(1);
-  });
-
-  test('empty string to non-empty is full length', () => {
-    expect(uploads._levenshtein('', 'hello')).toBe(5);
-  });
-
-  test('completely different strings', () => {
-    expect(uploads._levenshtein('abc', 'xyz')).toBe(3);
-  });
-});
-
-// -----------------------------------------------------------------------
-// normForMatch
-// -----------------------------------------------------------------------
-describe('nomineeUploads - _normForMatch()', () => {
-  test('lowercases and removes non-alphanumeric characters', () => {
-    expect(uploads._normForMatch('BUILDING & CONSTRUCTION')).toBe('buildingconstruction');
-    expect(uploads._normForMatch('Kent-Surrey')).toBe('kentsurrey');
-    expect(uploads._normForMatch('Hello World!')).toBe('helloworld');
-  });
-});
-
-// -----------------------------------------------------------------------
-// Fuzzy match
-// -----------------------------------------------------------------------
-describe('nomineeUploads - _fuzzyMatch()', () => {
-  const areaList = ['Kent', 'Surrey', 'Essex', 'Greater London', 'Manchester'];
-
-  test('exact match returns { exact: true, suggestions: [] }', () => {
-    const result = uploads._fuzzyMatch('Kent', areaList);
-    expect(result.exact).toBe(true);
-    expect(result.suggestions).toHaveLength(0);
-  });
-
-  test('case-insensitive exact match returns exact', () => {
-    const result = uploads._fuzzyMatch('KENT', areaList);
-    expect(result.exact).toBe(true);
-  });
-
-  test('near match returns { exact: false } with suggestions', () => {
-    const result = uploads._fuzzyMatch('Surry', areaList); // typo for Surrey
-    expect(result.exact).toBe(false);
-    expect(result.suggestions.length).toBeGreaterThan(0);
-    expect(result.suggestions[0]).toBe('Surrey');
-  });
-
-  test('partial match includes the partial match in suggestions', () => {
-    const result = uploads._fuzzyMatch('Greater', areaList);
-    expect(result.exact).toBe(false);
-    // suggestions is an array of strings, not objects
-    expect(result.suggestions.some((s) => s === 'Greater London')).toBe(true);
-  });
-
-  test('unrecognised value returns { exact: false } with suggestions', () => {
-    const result = uploads._fuzzyMatch('Nowhere Land', areaList);
-    expect(result.exact).toBe(false);
-    expect(Array.isArray(result.suggestions)).toBe(true);
   });
 });

@@ -321,7 +321,15 @@ const entriesModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : this.filteredEntries.length;
     countSpan.textContent = String(displayCount);
-    utils.renderRowCount('entriesRowCount', this.filteredEntries.length, displayCount, 'entries');
+    utils.renderRowCount(
+      'entriesRowCount',
+      this.filteredEntries.length,
+      displayCount,
+      'entries',
+      undefined,
+      undefined,
+      'entry'
+    );
 
     if (this.filteredEntries.length === 0) {
       const hasFilters = !!(

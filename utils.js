@@ -1789,18 +1789,21 @@ const utils = {
 
   /**
    * Render a consistent row count summary (LOW-1)
+   * @param {string} singular - Singular form for irregular plurals (e.g. "entry" for "entries")
    */
-  renderRowCount(containerId, shown, total, label, page, pageSize) {
+  renderRowCount(containerId, shown, total, label, page, pageSize, singular) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    const word = label || 'records';
+    const noun = total === 1 ? singular || word.replace(/s$/, '') : word;
     if (shown < total && page && pageSize) {
       const from = (page - 1) * pageSize + 1;
       const to = Math.min(page * pageSize, total);
-      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${noun}</span>`;
     } else if (shown < total) {
-      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${noun}</span>`;
     } else {
-      el.innerHTML = `<span class="text-muted small">${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">${total} ${noun}</span>`;
     }
   },
 

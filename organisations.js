@@ -363,9 +363,23 @@ const orgsModule = {
       addSelect.innerHTML = '<option value="">-- Select Area --</option>' + optgroupHtml;
     }
 
-    const csvSelect = document.getElementById('csvAreaSelect');
+    // CSV import's area select stores the area's display name (not its UUID),
+    // since executeCSVImport() writes it straight into organisations.catchment_area
+    // as free text — a separate option list, keyed by name, keeps that contract.
+    const csvOptgroupHtml = Object.keys(grouped)
+      .filter((c) => grouped[c].length > 0)
+      .map(
+        (c) =>
+          `<optgroup label="${utils.escapeHtml(c)} Areas">${grouped[c]
+            .map(
+              (a) => `<option value="${utils.escapeHtml(a.display_name)}">${utils.escapeHtml(a.display_name)}</option>`
+            )
+            .join('')}</optgroup>`
+      )
+      .join('');
+    const csvSelect = document.getElementById('csvCountySelect');
     if (csvSelect) {
-      csvSelect.innerHTML = '<option value="">-- Select Area --</option>' + optgroupHtml;
+      csvSelect.innerHTML = '<option value="">-- Select Area --</option>' + csvOptgroupHtml;
     }
   },
 

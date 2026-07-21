@@ -1541,9 +1541,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 7: Error Handling + Sentry Monitoring
   // ==========================================
   // Initialize Sentry if available (loaded via CDN in index.html)
-  if (typeof Sentry !== 'undefined' && window.SENTRY_DSN) {
+  const sentryDsn = document.querySelector('meta[name="sentry-dsn"]')?.content || '';
+  if (typeof Sentry !== 'undefined' && sentryDsn) {
     Sentry.init({
-      dsn: window.SENTRY_DSN,
+      dsn: sentryDsn,
       environment: window.location.hostname === 'localhost' ? 'development' : 'production',
       release: 'awards-cms@2.1.0',
       integrations: [Sentry.browserTracingIntegration()],

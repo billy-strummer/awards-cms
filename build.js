@@ -268,9 +268,14 @@ async function build() {
     `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
   );
 
+  // Inject Sentry DSN (optional — error monitoring stays disabled if unset)
+  const sentryDsn = process.env.SENTRY_DSN || '';
+  html = html.replace('<meta name="sentry-dsn" content="">', `<meta name="sentry-dsn" content="${sentryDsn}">`);
+
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
   console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
   if (supabaseUrl) console.log('  Supabase: credentials injected from environment');
+  console.log(`  Sentry: ${sentryDsn ? 'DSN injected from environment' : 'disabled (SENTRY_DSN not set)'}`);
 
   // 4. Copy public-facing pages and their assets
   // These standalone pages have their own JS/CSS (not part of the admin bundle)

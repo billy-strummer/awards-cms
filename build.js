@@ -338,7 +338,7 @@ async function build() {
       if (file.endsWith('.html')) {
         // Most public pages talk to Supabase only via /api/*-proxy (server-side,
         // no browser credentials needed), but a few — judge-login.html,
-        // judge-portal.html, company-profile.html, check-in.html — create a
+        // judge-portal.html, reset-password.html, check-in.html — create a
         // browser-side Supabase client directly for auth/realtime and need
         // real values in their <meta name="supabase-*"> tags. Patching every
         // public page the same way index.html already gets patched is a
@@ -389,9 +389,6 @@ async function build() {
     'check-in-app.js',
     'register-app.js',
     'upload-documents.js',
-    'company-profile-app.js',
-    'award-nominees-app.js',
-    'award-companies-app.js',
     'submit-entry-payment.js',
     'nominate.js',
     'industry-leader.js',

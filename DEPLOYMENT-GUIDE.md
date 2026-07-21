@@ -147,7 +147,47 @@ Each platform (Twitter/X, LinkedIn, Facebook, Instagram) is independently option
 
 ---
 
-## 11. Error Monitoring (Sentry) — recommended
+## 11. Automation (Scheduled Tasks)
+
+Scheduled automation (deadline reminders, overdue-payment reminders, dispatching scheduled email campaigns, judging-deadline shortlist generation, weekly judge progress reports, weekly stats, GDPR retention cleanup) runs via **Vercel Cron**, configured in `vercel.json`'s `crons` array:
+
+```json
+"crons": [
+  { "path": "/api/judge-automation?action=cron-tick", "schedule": "0 9 * * *" }
+]
+```
+
+**How it works:**
+- Vercel invokes this path once a day at 9:00 AM UTC (see the timezone note below), sending a GET request with `Authorization: Bearer $CRON_SECRET` automatically added — no code needs to construct this header, Vercel does it whenever `CRON_SECRET` is set as an environment variable.
+- `api/judge-automation.js`'s handler checks that bearer token (constant-time comparison, fails closed with a 500 if `CRON_SECRET` isn't configured — it will never silently run unauthenticated) before calling `runDailyAutomation()` in `api/_lib/automation-scheduler.js`, which is where the actual task logic lives.
+- `runDailyAutomation()` always runs the daily-cadence tasks (deadline reminders, payment reminders, scheduled campaign dispatch, the judging-deadline check), and additionally runs the weekly tasks (judge progress reports, weekly stats) only if the current day is Monday, and GDPR retention cleanup only if it's Sunday — both checked in Europe/London time, regardless of what timezone the server itself runs in.
+
+**Why this architecture:** this file previously registered its own schedule using `node-cron`, which never actually ran in production — `node-cron` needs a long-lived process to keep its timers alive, and Vercel serverless functions are spun up per-invocation with nothing persisting between them. That was found and documented as the single most significant gap in an earlier audit pass (see `RELEASE-REPORT-V1.md` §9) and has been replaced with this Vercel Cron-based design.
+
+**Why `api/judge-automation.js` specifically:** the actual task logic lives in `api/_lib/automation-scheduler.js`, but Vercel does not route HTTP traffic to anything under `api/_lib/` (that's the whole point of the directory — see §3.1's 12-function limit). `api/judge-automation.js` was chosen as the real HTTP entry point because it was — before this pass — an already-deployed function with zero live callers (its judge-assignment/shortlist actions were never called from the frontend), so wiring the cron trigger through it uses an existing function slot rather than needing a 13th one.
+
+**Setup:**
+1. Generate a secret: `openssl rand -hex 32`.
+2. Set `CRON_SECRET` to that value in Vercel's environment variables (see `ENVIRONMENT-VARIABLES.md`).
+3. Deploy. Vercel automatically registers the cron job from `vercel.json` — no separate dashboard configuration needed.
+4. Confirm it's working: Vercel → your project → Cron Jobs (or Observability → Logs, filtered to `api/judge-automation`) shows each invocation and its result. The response body is a structured JSON summary of every task attempted and its outcome — look for `"success": true` and check `results` for any task with `"status": "error"`.
+
+**Reliability, idempotency, and retry-safety** (verified both by the automated test suite and a live manual run against this project's test database during this pass):
+- Each of the 5–8 sub-tasks (depending on day of week) runs independently — one failing task (logged via `console.error`) does not prevent the others from running.
+- Every sub-task's own domain logic already de-dupes against database state before sending anything: `checkDeadlineReminders` and `sendPaymentReminders` check an "already sent" log before emailing anyone, `dispatchScheduledCampaigns` flips a campaign's status to `'Sending'` immediately to prevent double-dispatch, and the judging-deadline shortlist check only touches entries still in `'submitted'` status. This means invoking the endpoint more than once on the same day — a manual re-trigger while debugging, or Vercel retrying a slow invocation — will not double-send anything.
+- The judging-deadline check specifically uses "deadline reached or passed" (not "reached exactly today") so a missed day (e.g. this being the first run after a period where the cron wasn't yet configured) still generates shortlists rather than silently never firing.
+
+**Known limitation — Vercel Hobby plan's cron constraints:** Hobby allows a maximum of 2 cron job definitions, each running at most once per day, and schedules are evaluated in UTC only (no per-job timezone option — this is why the day-of-week logic above is computed manually in Europe/London time inside the function, rather than relying on Vercel's schedule). The original design (before this pass) wanted scheduled email campaigns dispatched within ~5 minutes of their scheduled time; on Hobby, they'll now go out within 24 hours instead (whenever the next daily tick runs), which is an accepted trade-off, not a bug. If tighter campaign-send timing matters, upgrade to Vercel Pro and add a second, more frequent cron entry pointing at the same path with a query parameter to run only `dispatchScheduledCampaigns` — no code change needed beyond `vercel.json`, since `runDailyAutomation` isn't required to be the only entry point.
+
+**Manual testing without waiting for the schedule:**
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://your-domain.com/api/judge-automation?action=cron-tick"
+```
+Locally, run `node api/_lib/automation-scheduler.js` to execute one tick directly (bypassing HTTP/auth entirely) against whatever database your `.env` points at.
+
+---
+
+## 12. Error Monitoring (Sentry) — recommended
 
 Sentry was found this pass to be non-functional (SDK loaded but never initialized — see `ENVIRONMENT-VARIABLES.md`). It's now fixed and ready to use:
 
@@ -159,7 +199,7 @@ See `MONITORING.md` for the full monitoring recommendation.
 
 ---
 
-## 12. Backups
+## 13. Backups
 
 Supabase manages automatic daily backups on paid plans (Point-in-Time Recovery on Pro+). On the Free plan, Supabase does **not** guarantee backups — you are responsible for your own.
 
@@ -173,13 +213,13 @@ Full restore steps: `DISASTER-RECOVERY.md` §1.
 
 ---
 
-## 13. Restore Procedure
+## 14. Restore Procedure
 
 See `DISASTER-RECOVERY.md` §1 (database) and §2 (storage) for step-by-step restore instructions. Summary: restore is done via the Supabase Dashboard's Point-in-Time Recovery (if on a paid plan) or by replaying your most recent `pg_dump`; there is no one-click restore built into this CMS itself.
 
 ---
 
-## 14. Rollback Procedure
+## 15. Rollback Procedure
 
 This project has no custom rollback tooling — it relies entirely on Vercel's built-in deployment history, which is the correct approach for a static+serverless app with no server-side state.
 
@@ -189,22 +229,22 @@ This project has no custom rollback tooling — it relies entirely on Vercel's b
 
 ---
 
-## 15. Zero-Downtime Deployment
+## 16. Zero-Downtime Deployment
 
 Vercel's deployment model is zero-downtime by default and requires no special process here:
 
 1. Every `git push` to the deployed branch triggers a new deployment that builds in isolation — the currently-live deployment keeps serving traffic throughout.
 2. Once the new build passes (and, if configured, any deployment checks), Vercel atomically switches traffic to it. There's no partial-rollout window where some users get the old frontend talking to a new API shape or vice versa, because frontend and API deploy together as one unit.
-3. **The only thing that can break this guarantee is a non-additive database migration** run manually ahead of a deploy that the *current* (soon-to-be-old) frontend can't handle for the few seconds before the new deploy finishes. Since every migration in this project is additive-only, this class of problem doesn't arise if you keep following that convention (see §12/§2.2).
+3. **The only thing that can break this guarantee is a non-additive database migration** run manually ahead of a deploy that the *current* (soon-to-be-old) frontend can't handle for the few seconds before the new deploy finishes. Since every migration in this project is additive-only, this class of problem doesn't arise if you keep following that convention (see §13/§2.2).
 4. Recommended practice for anything higher-stakes than a routine change: deploy to a Vercel Preview URL first (automatic on every PR), manually smoke-test the exact workflow you changed, then merge to trigger the production deploy.
 
 ---
 
-## 16. Post-Deploy Smoke Test
+## 17. Post-Deploy Smoke Test
 
 After any production deploy, before considering it done:
 1. Load the production URL, confirm login works.
 2. Check the browser console for errors (there should be none — see `RELEASE-REPORT-V1.md` for the standard this codebase holds itself to).
 3. Spot-check one write operation (e.g. edit an Award) to confirm `data-proxy.js` round-trips correctly against the real database.
-4. Confirm Sentry is receiving events if you just set it up (§11).
+4. Confirm Sentry is receiving events if you just set it up (§12).
 5. Run through the 6 live-credential checks in `CMS-AUDIT-TODO.md` §10 the first time you deploy to a new production environment (real Resend send, real Stripe webhook, Supabase Storage upload, production Auth login, AI vetting if configured, social posting if configured) — these cannot be verified from a sandboxed dev environment and must be checked against your real, live services.

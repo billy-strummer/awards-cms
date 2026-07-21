@@ -80,6 +80,14 @@ All social platforms are fully optional — each platform's posting feature is s
 
 > ⚠️ **Found and fixed this pass**: `.env.example` listed `PORT=3000`, a relic of `AUTOMATION-COMPLETE.md`'s older, pre-Vercel Express-server design (see `DEEP-AUDIT`/technical-debt notes). It has no effect on Vercel and has been removed from the example file with an explanatory comment, so it doesn't mislead a future deployer into thinking it does something.
 
+## Automation (Scheduled Tasks)
+
+| Variable | Purpose | Required? | Default | Production value required? | Example |
+|---|---|---|---|---|---|
+| `CRON_SECRET` | Authenticates Vercel Cron's daily automation trigger (`/api/judge-automation?action=cron-tick`). Vercel automatically sends `Authorization: Bearer $CRON_SECRET` when invoking a scheduled function if this variable is set — the endpoint checks it via a constant-time comparison and **fails closed (500) if unset**, rather than silently allowing unauthenticated requests through. | **Required** for scheduled automation to run (deadline reminders, payment reminders, scheduled campaigns, judging-deadline shortlist generation, weekly judge progress reports, weekly stats, GDPR retention cleanup) | none | Yes | a long random string, e.g. generated with `openssl rand -hex 32` |
+
+> ✅ **Implemented this pass**: previously, none of the above tasks ran on any schedule in production at all — see `RELEASE-REPORT-V1.md` §9 for the full history. This is now wired up via Vercel Cron; see `DEPLOYMENT-GUIDE.md`'s Automation section for the complete setup and `api/_lib/automation-scheduler.js` for the implementation. **You must set `CRON_SECRET` for the daily automation to actually run** — without it, `vercel.json`'s cron entry will hit the endpoint but receive a 500 and no task will execute (fail-closed, not silently broken — check Vercel's Cron Jobs log if this happens).
+
 ## Confirming nothing is missing
 
 Every `process.env.X` reference in `api/**/*.js` and `build.js` is accounted for in the tables above — cross-checked with:
@@ -90,4 +98,4 @@ grep -rhoE "process\.env\.[A-Z_][A-Z0-9_]*" api/*.js api/_lib/*.js build.js | so
 
 No variable found by that search is undocumented here. Three genuine mismatches between the code and the previous documentation (`STRIPE_PUBLISHABLE_KEY` not actually read, `SENTRY_DSN` never reaching the browser, `TWITTER_BEARER_TOKEN` not matching the real Twitter variable names) were found and corrected as part of this pass — see the ⚠️ notes above and `RELEASE-REPORT-V1.md` for the code-side fixes.
 
-**Total: 24 environment variables** (3 required-always, 3 required-for-payments, 4 required-for-Twitter, 4 more single-platform social variables, 1 required-for-AI-vetting, 1 error-monitoring, 6 email/application variables with safe fallbacks, plus `NODE_ENV` which you don't set yourself).
+**Total: 25 environment variables** (3 required-always, 3 required-for-payments, 4 required-for-Twitter, 4 more single-platform social variables, 1 required-for-AI-vetting, 1 error-monitoring, 1 required-for-automation, 6 email/application variables with safe fallbacks, plus `NODE_ENV` which you don't set yourself).

@@ -1,3 +1,5 @@
+> **Note (added in the following pass):** the automation-scheduler gap described throughout this report as the primary open risk has since been fixed — see `RELEASE-CANDIDATE-SIGNOFF.md` and `RELEASE-REPORT-V1.md` §9/§11 for the Vercel Cron implementation. This document is kept as the historical record of the pass that discovered the gap; treat `RELEASE-CANDIDATE-SIGNOFF.md` as the current status.
+
 # Final Sign-Off Report
 
 Prepared at the close of the "professionally maintained product" transition pass — the point at which this project moves from active development into steady-state operation, maintained by whoever inherits it next.
@@ -116,13 +118,13 @@ None of these are launch blockers. All are documented, understood, and — per t
 
 - [ ] Set every environment variable in `ENVIRONMENT-VARIABLES.md`, using real production values (not the fallback placeholders baked into the code for `FROM_EMAIL`/`APP_URL`/etc.)
 - [ ] Configure custom SMTP in Supabase Auth (`DEPLOYMENT-GUIDE.md` §6) — required before any real user invites
-- [ ] Set `SENTRY_DSN` (`DEPLOYMENT-GUIDE.md` §11) — now that it's actually wired up correctly
+- [ ] Set `SENTRY_DSN` (`DEPLOYMENT-GUIDE.md` §12) — now that it's actually wired up correctly
 - [ ] Run the 6 live-credential checks in `CMS-AUDIT-TODO.md` §10 against your real production services
 - [ ] Supply the real registered company name to fix the 20-file footer placeholder
 - [ ] Confirm the Users tab's role list matches your actual team before inviting anyone
 - [ ] Decide: wire up the automation scheduler now (recommended, small effort) or explicitly accept manual operation until it's fixed
 - [ ] Confirm your Supabase plan/PITR settings match the RPO you actually need (`DISASTER-RECOVERY.md`)
-- [ ] Run the post-deploy smoke test (`DEPLOYMENT-GUIDE.md` §16) against the real production URL
+- [ ] Run the post-deploy smoke test (`DEPLOYMENT-GUIDE.md` §17) against the real production URL
 
 ## 10. Post-Launch Checklist
 

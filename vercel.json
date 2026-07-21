@@ -26,7 +26,7 @@
       "maxDuration": 30
     },
     "api/judge-automation.js": {
-      "maxDuration": 30
+      "maxDuration": 60
     },
     "api/certificates-qr.js": {
       "maxDuration": 30
@@ -41,6 +41,12 @@
       "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/judge-automation?action=cron-tick",
+      "schedule": "0 9 * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/((?!.*\\.[a-zA-Z0-9]{1,8}$).*)", "destination": "/index.html" }
   ],

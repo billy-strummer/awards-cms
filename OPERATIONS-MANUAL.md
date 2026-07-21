@@ -20,7 +20,7 @@ _Takes under 5 minutes once part of routine._
 2. **Judge Portal progress** (if judging is active) — Assignments tab, check judging completion rate. Chase judges who haven't started if a deadline is approaching (Reports & Analytics has judge progress reporting).
 3. **CRM > Communications** — confirm follow-ups flagged "required" from the past week have actually happened.
 4. **Media Gallery** — clear any untagged photos flagged on the Dashboard widget.
-5. **Backups** — confirm your backup job actually ran (see `DEPLOYMENT-GUIDE.md` §12 and `DISASTER-RECOVERY.md`'s RPO note — this project has no in-app automated backup scheduler, so "weekly" backups only happen if a human or an external cron actually triggers them).
+5. **Backups** — confirm your backup job actually ran (see `DEPLOYMENT-GUIDE.md` §13 and `DISASTER-RECOVERY.md`'s RPO note — this project has no in-app automated backup scheduler, so "weekly" backups only happen if a human or an external cron actually triggers them).
 
 ## Monthly Checks
 
@@ -86,4 +86,6 @@ Loop back to step 1 — this is exactly what makes "Clone to Year" valuable: nex
 
 ## A note on what's manual vs. automatic
 
-Be aware that some things described elsewhere as "automation" (scheduled email reminders, automatic judging-deadline shortlist generation, automatic overdue-payment reminders) **do not currently run on a schedule in production** — see the significant finding documented in `RELEASE-REPORT-V1.md` §9 and the Final Sign-Off report's Known Risks. Until that's addressed, treat every step above as something a human needs to actively trigger or check, not something the system will do for you in the background.
+Scheduled email reminders, judging-deadline shortlist generation, weekly judge progress reports, weekly stats, overdue-payment reminders, scheduled email campaign dispatch, and GDPR retention cleanup now run automatically once a day via Vercel Cron (see `DEPLOYMENT-GUIDE.md` §11 and `RELEASE-REPORT-V1.md` §11) — this was a known gap in an earlier pass, since fixed. **This depends on `CRON_SECRET` being set in your Vercel environment variables** (see `ENVIRONMENT-VARIABLES.md`) — without it, the cron job fires but the endpoint fails closed (500) and nothing runs. Check Vercel's Cron Jobs log (or Observability → Logs, filtered to `api/judge-automation`) if you're ever unsure whether the daily tick actually ran — every invocation logs a structured summary of what it did.
+
+Steps above involving manual actions (opening/closing nominations, moving award status, publishing winners) are intentionally manual — they're editorial decisions an administrator makes, not automation gaps.

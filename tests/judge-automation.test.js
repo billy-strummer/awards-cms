@@ -19,6 +19,18 @@ jest.mock(
   { virtual: true }
 );
 
+// Mock the automation-scheduler module that cronTickEndpoint lazily requires,
+// so cron-tick tests exercise the wiring/auth logic without re-running the
+// full scheduler (that module has its own dedicated test suite).
+const mockRunDailyAutomation = jest.fn();
+jest.mock(
+  '../api/_lib/automation-scheduler',
+  () => ({
+    runDailyAutomation: mockRunDailyAutomation,
+  }),
+  { virtual: true }
+);
+
 // Build chainable Supabase mock
 function chainable(resolveWith = { data: null, error: null }) {
   const obj = {
@@ -72,8 +84,8 @@ const judgeAutomation = require('../api/judge-automation');
 // HELPERS
 // ==========================================
 
-function createReq({ body = {}, query = {} } = {}) {
-  return { body, query };
+function createReq({ body = {}, query = {}, headers = {}, method = 'POST' } = {}) {
+  return { body, query, headers, method };
 }
 
 function createRes() {
@@ -1001,6 +1013,183 @@ describe('Judge Automation Module', () => {
 
       expect(res.statusCode).toBe(500);
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  // --- isValidCronSecret ---
+
+  describe('isValidCronSecret', () => {
+    const originalSecret = process.env.CRON_SECRET;
+
+    afterEach(() => {
+      if (originalSecret === undefined) delete process.env.CRON_SECRET;
+      else process.env.CRON_SECRET = originalSecret;
+    });
+
+    test('returns true when the provided token matches CRON_SECRET', () => {
+      process.env.CRON_SECRET = 'correct-horse-battery-staple';
+      expect(judgeAutomation.isValidCronSecret('correct-horse-battery-staple')).toBe(true);
+    });
+
+    test('returns false when the provided token does not match', () => {
+      process.env.CRON_SECRET = 'correct-horse-battery-staple';
+      expect(judgeAutomation.isValidCronSecret('wrong-token')).toBe(false);
+    });
+
+    test('returns false (not a thrown error) when tokens differ in length', () => {
+      process.env.CRON_SECRET = 'a-fairly-long-secret-value';
+      expect(() => judgeAutomation.isValidCronSecret('short')).not.toThrow();
+      expect(judgeAutomation.isValidCronSecret('short')).toBe(false);
+    });
+
+    test('returns false when CRON_SECRET is not configured', () => {
+      delete process.env.CRON_SECRET;
+      expect(judgeAutomation.isValidCronSecret('anything')).toBe(false);
+    });
+
+    test('returns false when no token is provided', () => {
+      process.env.CRON_SECRET = 'correct-horse-battery-staple';
+      expect(judgeAutomation.isValidCronSecret('')).toBe(false);
+      expect(judgeAutomation.isValidCronSecret(undefined)).toBe(false);
+    });
+  });
+
+  // --- cronTickEndpoint ---
+
+  describe('cronTickEndpoint', () => {
+    test('runs the daily automation and returns its summary', async () => {
+      const summary = {
+        startedAt: '2026-07-22T09:00:00.000Z',
+        finishedAt: '2026-07-22T09:00:05.000Z',
+        dayOfWeek: 3,
+        tasksRun: ['deadlineReminders'],
+        results: { deadlineReminders: { status: 'ok', durationMs: 12 } },
+      };
+      mockRunDailyAutomation.mockResolvedValue(summary);
+
+      const req = createReq({ query: { action: 'cron-tick' } });
+      const res = createRes();
+
+      await judgeAutomation.cronTickEndpoint(req, res);
+
+      expect(mockRunDailyAutomation).toHaveBeenCalledTimes(1);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ success: true, ...summary });
+    });
+
+    test('returns 500 if the automation run throws', async () => {
+      mockRunDailyAutomation.mockRejectedValue(new Error('automation failed'));
+
+      const req = createReq({ query: { action: 'cron-tick' } });
+      const res = createRes();
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      await judgeAutomation.cronTickEndpoint(req, res);
+      consoleErrorSpy.mockRestore();
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toEqual({ success: false, error: 'automation failed' });
+    });
+  });
+
+  // --- top-level handler: cron-tick auth branch ---
+  // Verifies the real production wiring: Vercel Cron authenticates via a
+  // CRON_SECRET bearer token instead of a user JWT, checked before the
+  // normal verifyAuth() call so a cron invocation never needs a user session.
+
+  describe('handler — cron-tick authentication', () => {
+    const originalSecret = process.env.CRON_SECRET;
+
+    beforeEach(() => {
+      process.env.CRON_SECRET = 'test-cron-secret';
+    });
+
+    afterEach(() => {
+      if (originalSecret === undefined) delete process.env.CRON_SECRET;
+      else process.env.CRON_SECRET = originalSecret;
+    });
+
+    test('accepts a GET request with the correct bearer token and runs automation', async () => {
+      mockRunDailyAutomation.mockResolvedValue({
+        startedAt: 't0',
+        finishedAt: 't1',
+        dayOfWeek: 2,
+        tasksRun: [],
+        results: {},
+      });
+
+      const req = createReq({
+        method: 'GET',
+        query: { action: 'cron-tick' },
+        headers: { authorization: 'Bearer test-cron-secret' },
+      });
+      const res = createRes();
+
+      await judgeAutomation(req, res);
+
+      expect(mockRunDailyAutomation).toHaveBeenCalledTimes(1);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    test('rejects a request with the wrong bearer token', async () => {
+      const req = createReq({
+        method: 'GET',
+        query: { action: 'cron-tick' },
+        headers: { authorization: 'Bearer not-the-right-secret' },
+      });
+      const res = createRes();
+
+      await judgeAutomation(req, res);
+
+      expect(res.statusCode).toBe(401);
+      expect(mockRunDailyAutomation).not.toHaveBeenCalled();
+    });
+
+    test('rejects a request with no Authorization header at all', async () => {
+      const req = createReq({ method: 'GET', query: { action: 'cron-tick' } });
+      const res = createRes();
+
+      await judgeAutomation(req, res);
+
+      expect(res.statusCode).toBe(401);
+      expect(mockRunDailyAutomation).not.toHaveBeenCalled();
+    });
+
+    test('fails closed (500, not a silent pass-through) if CRON_SECRET is not configured', async () => {
+      delete process.env.CRON_SECRET;
+
+      const req = createReq({
+        method: 'GET',
+        query: { action: 'cron-tick' },
+        headers: { authorization: 'Bearer anything-at-all' },
+      });
+      const res = createRes();
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      await judgeAutomation(req, res);
+      consoleErrorSpy.mockRestore();
+
+      expect(res.statusCode).toBe(500);
+      expect(mockRunDailyAutomation).not.toHaveBeenCalled();
+    });
+
+    test('does not fall through to requiring a user JWT for cron-tick', async () => {
+      // No user-auth mock is configured anywhere in this test file — if the
+      // handler incorrectly fell through to verifyAuth() for this action, it
+      // would throw (no real Supabase auth client available in tests) rather
+      // than reach the 401/200 paths asserted in the other tests above. The
+      // fact that those tests pass without an auth mock already proves this,
+      // but this test makes the intent explicit and regression-proof.
+      const req = createReq({
+        method: 'GET',
+        query: { action: 'cron-tick' },
+        headers: { authorization: 'Bearer wrong' },
+      });
+      const res = createRes();
+
+      await expect(judgeAutomation(req, res)).resolves.not.toThrow();
+      expect(res.statusCode).toBe(401);
     });
   });
 });

@@ -9,7 +9,7 @@ _Small effort, clear, immediate value. Good first PRs for whoever picks this pro
 
 | Item | Effort | Benefit |
 |---|---|---|
-| **Wire up `automation-scheduler.js` via Vercel Cron.** The single most impactful item in this list — several "automated" features (deadline reminders, judge progress reports, shortlist generation, campaign dispatch, invoice reminders, retention cleanup) currently never fire in production (see `RELEASE-REPORT-V1.md` §9). Fix: add a `crons` entry in `vercel.json` pointing at a new authenticated operation inside `data-proxy.js` (protected by a shared secret env var) that calls the existing, already-written trigger functions. | Small–Medium (2–4 hrs; mostly wiring, the automation logic already exists and is tested) | High — makes real, already-built, already-documented features actually work |
+| ~~Wire up `automation-scheduler.js` via Vercel Cron~~ — **done**, see `RELEASE-REPORT-V1.md` §11 and `DEPLOYMENT-GUIDE.md` §11. | — | — |
 | **Fix the Resend webhook to read event `type` from the payload** instead of trusting a static URL parameter (see `RELEASE-REPORT-V1.md` §7). | Small (1–2 hrs) | Medium — correctness fix for bounce/complaint tracking |
 | **Rewrite the Organisations "Counties/Cities/Regions" panel to read live from the `areas` table** instead of a static 100-entry HTML accordion that can drift from the real 118-row list (flagged this pass, deliberately deferred — see `RELEASE-REPORT-V1.md` §7). Pattern already proven in `nominee-uploads.js`. | Small–Medium (3–5 hrs) | Medium — removes a data-consistency footgun |
 | **Add an empty state to CRM > Communications** when there are zero logged communications, matching the pattern already used elsewhere (Media Gallery's "No media yet"). | Tiny (<1 hr) | Low–Medium — polish, consistency |
@@ -66,7 +66,7 @@ _Beyond what this pass already covered (see `RELEASE-REPORT-V1.md` §9 for what 
 ---
 
 ## Future Automation
-_Beyond fixing the existing automation-scheduler wiring (Quick Wins, above)._
+_The core scheduler now runs correctly via Vercel Cron (see Quick Wins, above) — these are further automation ideas beyond that fix._
 
 | Item | Effort | Benefit |
 |---|---|---|

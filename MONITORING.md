@@ -9,7 +9,7 @@ What to monitor, and the cheapest reasonable way to monitor it, given this proje
 | Signal | Where | Setup needed |
 |---|---|---|
 | **Server errors** (uncaught exceptions in `api/*.js`) | Vercel Dashboard → your project → Logs (real-time), or Vercel's Runtime Logs | None — already capturing, just needs someone to look. Set up a saved filter for `error` level. |
-| **Browser-side JS errors** | **Sentry** — was found broken this pass (SDK loaded, never initialized) and fixed; see `DEPLOYMENT-GUIDE.md` §11 | Set `SENTRY_DSN`, redeploy. Free tier (5k errors/month) covers a project this size comfortably. |
+| **Browser-side JS errors** | **Sentry** — was found broken this pass (SDK loaded, never initialized) and fixed; see `DEPLOYMENT-GUIDE.md` §12 | Set `SENTRY_DSN`, redeploy. Free tier (5k errors/month) covers a project this size comfortably. |
 | **Database errors, slow queries** | Supabase Dashboard → Database → Query Performance / Logs | None — built into every Supabase plan, including Free. |
 | **Authentication failures** | Supabase Dashboard → Authentication → Logs | None — built in. |
 | **Storage usage** | Supabase Dashboard → Storage (usage bar), or Settings → Billing for the account-wide total | None — built in. Set a calendar reminder to check monthly (see `OPERATIONS-MANUAL.md`) since Supabase doesn't proactively alert until you're already over. |
@@ -52,7 +52,7 @@ What to monitor, and the cheapest reasonable way to monitor it, given this proje
 ## Minimum viable monitoring checklist for launch
 
 If you only do four things before going live:
-1. Set `SENTRY_DSN` (§ above, `DEPLOYMENT-GUIDE.md` §11) — this alone covers browser errors and a meaningful chunk of "is anything broken right now."
+1. Set `SENTRY_DSN` (§ above, `DEPLOYMENT-GUIDE.md` §12) — this alone covers browser errors and a meaningful chunk of "is anything broken right now."
 2. Set up the Resend bounce/complaint webhooks (`DEPLOYMENT-GUIDE.md` §7) — email silently failing is the hardest kind of failure to notice on your own.
 3. Add a free UptimeRobot monitor on your production URL.
 4. Put a recurring calendar reminder on the weekly/monthly checks already listed in `OPERATIONS-MANUAL.md` — most of the signals above already exist for free in Vercel/Supabase dashboards, and the only missing piece is a human looking at them on a schedule.

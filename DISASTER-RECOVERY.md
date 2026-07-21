@@ -11,9 +11,9 @@ What to do when something breaks. Written to be followed under pressure — each
 | | Target | Why |
 |---|---|---|
 | **RTO** (Recovery Time Objective) — how long you're down | **Under 1 hour** for a frontend/API rollback (Vercel instant promote); **2–4 hours** for a database restore from backup on Supabase Free/Pro; **under 15 minutes** for Point-in-Time Recovery on Supabase Pro+ | Frontend rollback is a single click (§5). Database restore time is bounded by how large your database is and which Supabase plan you're on — PITR is dramatically faster than replaying a `pg_dump`. |
-| **RPO** (Recovery Point Objective) — how much data you can afford to lose | **Up to 1 week** if you're only doing manual weekly `pg_dump`s (Free/no add-on); **under 5 minutes** on Supabase Pro+ with Point-in-Time Recovery enabled | This is a direct consequence of your backup strategy, not a property of the code. See `DEPLOYMENT-GUIDE.md` §12 — **if you haven't upgraded to at least Pro and enabled PITR, your real RPO today is "however long since your last manual backup," which could be a lot worse than a week if backups aren't actually being run on schedule.** Fixing your actual RPO is a backup-cadence decision, not a code change. |
+| **RPO** (Recovery Point Objective) — how much data you can afford to lose | **Up to 1 week** if you're only doing manual weekly `pg_dump`s (Free/no add-on); **under 5 minutes** on Supabase Pro+ with Point-in-Time Recovery enabled | This is a direct consequence of your backup strategy, not a property of the code. See `DEPLOYMENT-GUIDE.md` §13 — **if you haven't upgraded to at least Pro and enabled PITR, your real RPO today is "however long since your last manual backup," which could be a lot worse than a week if backups aren't actually being run on schedule.** Fixing your actual RPO is a backup-cadence decision, not a code change. |
 
-**The honest baseline right now**: this project has no automated backup job wired into the codebase itself (see the automation-scheduler finding in `RELEASE-REPORT-V1.md` §9 — even if one existed, it doesn't currently run). Your real RPO is exactly as good as your Supabase plan's PITR settings, or as good as your manual backup discipline if you haven't upgraded. Treat the numbers above as best-case, not guaranteed.
+**The honest baseline right now**: this project's own daily automation (see `DEPLOYMENT-GUIDE.md` §11) handles application-level tasks — reminders, campaigns, retention cleanup — not database backups, which were never in its scope and remain Supabase's responsibility, not something this codebase implements. Your real RPO is exactly as good as your Supabase plan's PITR settings, or as good as your manual backup discipline if you haven't upgraded. Treat the numbers above as best-case, not guaranteed.
 
 ---
 
@@ -28,7 +28,7 @@ What to do when something breaks. Written to be followed under pressure — each
 4. **Do this first, before trying anything manual** — it's faster and safer than a manual restore.
 
 ### If you're restoring from a manual `pg_dump`
-1. Get your most recent dump (see `DEPLOYMENT-GUIDE.md` §12 for where these should be stored — ideally somewhere outside Supabase itself).
+1. Get your most recent dump (see `DEPLOYMENT-GUIDE.md` §13 for where these should be stored — ideally somewhere outside Supabase itself).
 2. **Do not restore directly into the live production database if you can avoid it.** Create a new Supabase project first, restore into that, verify it looks correct, then either point the app at the new project (update `SUPABASE_URL`/keys in Vercel) or use Supabase's own migration tooling to move data back into the original project.
 3. Restore command: `psql "<connection-string-from-Supabase-Dashboard>" < backup-YYYY-MM-DD.sql` (or `supabase db reset` + replay if using the CLI workflow).
 4. After restoring, immediately re-run the RLS check from `DEPLOYMENT-GUIDE.md` §2.3 — a raw restore can sometimes not preserve policies depending on how the dump was taken.
@@ -43,9 +43,9 @@ Prefer a targeted fix over a full restore — a full PITR/restore will also undo
 
 **Symptom**: uploaded files (logos, entry attachments, certificates, QR codes) are missing or corrupted.
 
-1. Supabase Storage does not have the same Point-in-Time Recovery as the database — restoring individual objects depends entirely on whether you've been syncing buckets to external storage (§12 of `DEPLOYMENT-GUIDE.md`).
+1. Supabase Storage does not have the same Point-in-Time Recovery as the database — restoring individual objects depends entirely on whether you've been syncing buckets to external storage (§13 of `DEPLOYMENT-GUIDE.md`).
 2. If you have an external sync: restore the affected bucket's contents from your external copy via the Supabase CLI (`supabase storage cp` in reverse) or the Management API.
-3. If you don't have an external sync: check whether the underlying record still has the file's original URL/path stored in the database (e.g. `organisations.logo_url`, `entries.attachment_url`) — if the object itself is gone from Storage but the reference survived, the specific file is unrecoverable and needs to be re-uploaded by whoever provided it originally. This is exactly the gap flagged in `DEPLOYMENT-GUIDE.md` §12 — **set up external bucket syncing before you need this section for real.**
+3. If you don't have an external sync: check whether the underlying record still has the file's original URL/path stored in the database (e.g. `organisations.logo_url`, `entries.attachment_url`) — if the object itself is gone from Storage but the reference survived, the specific file is unrecoverable and needs to be re-uploaded by whoever provided it originally. This is exactly the gap flagged in `DEPLOYMENT-GUIDE.md` §13 — **set up external bucket syncing before you need this section for real.**
 4. Certificates and QR codes (`certificate-assets`, `qr-codes` buckets) are *usually* regeneratable from the underlying entry/winner data — check `api/certificates-qr.js` for the generation logic before assuming a manual recovery is needed.
 
 ---
@@ -114,7 +114,7 @@ Prefer a targeted fix over a full restore — a full PITR/restore will also undo
 
 ## 8. Rollback Process
 
-See `DEPLOYMENT-GUIDE.md` §14 for the full procedure. Summary for use during an active incident:
+See `DEPLOYMENT-GUIDE.md` §15 for the full procedure. Summary for use during an active incident:
 
 1. Vercel → your project → Deployments.
 2. Find the most recent deployment you're confident was working.
@@ -129,5 +129,5 @@ See `DEPLOYMENT-GUIDE.md` §14 for the full procedure. Summary for use during an
 After resolving any of the above:
 1. Write down what happened and the exact fix, even briefly — this document should grow from real incidents, not stay theoretical.
 2. If a secret was rotated (§3/§5), confirm every environment (Production **and** Preview, if you use Preview deployments) has the new value — it's easy to fix Production and forget Preview still has the old, now-invalid key.
-3. Re-run the post-deploy smoke test in `DEPLOYMENT-GUIDE.md` §16.
+3. Re-run the post-deploy smoke test in `DEPLOYMENT-GUIDE.md` §17.
 4. If the incident revealed a gap in this document, update it — this file is only useful if it reflects reality.

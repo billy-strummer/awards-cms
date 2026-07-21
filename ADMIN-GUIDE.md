@@ -154,9 +154,22 @@ Go to **Settings > Users**. This tab is only visible to Super Admins.
 
 You cannot disable your own account from this screen (a safety guard to prevent accidental lockout).
 
+**There is currently no self-service "Forgot password?" link on the sign-in page.** If you're locked out, only another Super Admin can recover your access (Settings > Users > Reset Password on your row). If you are the only Super Admin and forget your password, there is no in-app recovery path — see `SOMERSET-REHEARSAL-REPORT.md`'s companion acceptance-test findings. Keep at least two Super Admin accounts for exactly this reason until self-service reset is added.
+
 ---
 
-## 12. Troubleshooting
+## 12. Security & Integrations
+
+Go to **Settings > Security** for:
+- **Two-Factor Authentication (2FA)**: add an authenticator-app (TOTP) second factor to your own account for extra login security. Optional, but recommended for every Admin/Super Admin account.
+- **Login History**: click Refresh to see recent sign-in activity for your account.
+
+Go to **Settings > Integrations** for:
+- **Outbound Webhooks**: notify an external system (e.g. a Zapier/Make automation, or your own internal tool) when data changes in the CMS. Add a webhook URL, choose which events trigger it, and review recent delivery attempts in the log underneath.
+
+---
+
+## 13. Troubleshooting
 
 **"Failed to save: Role 'X' cannot ... on 'Y'."** — this is the system correctly blocking an action your role doesn't permit. It's not a bug; ask a Super Admin if you believe you should have access.
 
@@ -168,9 +181,11 @@ You cannot disable your own account from this screen (a safety guard to prevent 
 
 **I can't find the Users tab.** — it's Super Admin only. Ask a Super Admin to either promote your role or make the change on your behalf.
 
+**I forgot my password and there's no reset link.** — see the note at the end of Section 11. Ask another Super Admin to reset it for you from Settings > Users.
+
 ---
 
-## 13. Best Practices
+## 14. Best Practices
 
 - Always let **Award Areas** validate a CSV fully before fixing errors one-by-one — the full list saves you re-uploading repeatedly.
 - Use **Skip** as your duplicate-handling default unless you specifically intend to overwrite existing organisation data — **Replace Existing** cannot be undone.
@@ -178,9 +193,12 @@ You cannot disable your own account from this screen (a safety guard to prevent 
 - Record GDPR consent before publishing a winner's name or photo, not after.
 - When inviting a new team member, start them at the lowest role that lets them do their job (Editor rather than Admin, Viewer rather than Editor) — you can always raise their role later from Settings > Users.
 - If you're about to bulk-import thousands of records, do a small test batch (5–10 rows) in one area first to confirm your CSV's column headers map correctly, before running the full file.
+- Keep at least two Super Admin accounts, given there is no self-service password reset (Section 11).
 
 ---
 
 *This guide covers CMS v1.0. Update it whenever a described workflow changes.*
 
 *Reviewed against a final commercial-polish pass on the live system: no workflow described above changed. That pass fixed silent display bugs only (a couple of stats that could show a misleading "0", and count labels like "1 winners" now correctly reading "1 winner") — see `RELEASE-REPORT-V1.md` Section 9 for the full list.*
+
+*Reviewed again against a final acceptance test covering the full administrator and public-visitor journey — see `FINAL-ACCEPTANCE-REPORT.md`. That pass restored a genuinely missing "Add Winner" feature (Section 6) and added this Section 12 to document 2FA/Login History/Webhooks, which already existed but were never written up.*

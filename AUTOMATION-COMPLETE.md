@@ -1,3 +1,13 @@
+> **⚠️ HISTORICAL / SUPERSEDED — do not treat this file as current.**
+> Written for an earlier, pre-Vercel architecture (Express server, PM2, SendGrid,
+> `api/automation-scheduler.js` at a different path than today's
+> `api/_lib/automation-scheduler.js`). The deployment instructions below do not
+> match how this project actually deploys today — see `DEPLOYMENT-GUIDE.md`
+> instead. Critically, the scheduled-automation claims in this file are **not
+> currently true in production**: see `RELEASE-REPORT-V1.md` §9 and
+> `FINAL-SIGNOFF-REPORT.md` §8 for the real, current status. Kept for historical
+> reference only.
+
 # 🚀 AWARDS CMS - COMPLETE AUTOMATION SYSTEM
 
 ## ✅ ALL AUTOMATION FEATURES IMPLEMENTED & DEPLOYED

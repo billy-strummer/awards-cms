@@ -335,7 +335,27 @@ async function build() {
     const dest = path.join(DIST_DIR, file);
     if (fs.existsSync(src)) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.copyFileSync(src, dest);
+      if (file.endsWith('.html')) {
+        // Most public pages talk to Supabase only via /api/*-proxy (server-side,
+        // no browser credentials needed), but a few — judge-login.html,
+        // judge-portal.html, company-profile.html, check-in.html — create a
+        // browser-side Supabase client directly for auth/realtime and need
+        // real values in their <meta name="supabase-*"> tags. Patching every
+        // public page the same way index.html already gets patched is a
+        // harmless no-op for pages without those tags.
+        let pageHtml = fs.readFileSync(src, 'utf8');
+        pageHtml = pageHtml.replace(
+          '<meta name="supabase-url" content="">',
+          `<meta name="supabase-url" content="${supabaseUrl}">`
+        );
+        pageHtml = pageHtml.replace(
+          '<meta name="supabase-anon-key" content="">',
+          `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
+        );
+        fs.writeFileSync(dest, pageHtml);
+      } else {
+        fs.copyFileSync(src, dest);
+      }
       copiedCount++;
     }
   });

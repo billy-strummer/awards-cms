@@ -108,6 +108,14 @@ const authModule = {
         // Load RBAC permissions on session restore
         if (typeof rbacModule !== 'undefined') {
           await rbacModule.loadUserRole(session.user.email);
+          // Judges have their own dedicated portal (judge-portal.html) with no
+          // access to the internal admin modules — the main dashboard would
+          // otherwise show them a wall of "Role cannot select" console errors
+          // from widgets querying tables they have no read permission for.
+          if (rbacModule.currentRole === 'judge') {
+            window.location.href = '/judge-portal.html';
+            return;
+          }
         }
         this.showDashboard();
         this.startInactivityTimer();
@@ -177,6 +185,12 @@ const authModule = {
       // Load RBAC permissions before showing dashboard
       if (typeof rbacModule !== 'undefined') {
         await rbacModule.loadUserRole(data.user.email);
+        // Judges belong in their own portal, not the internal admin shell —
+        // see the matching check in checkSession() for why.
+        if (rbacModule.currentRole === 'judge') {
+          window.location.href = '/judge-portal.html';
+          return;
+        }
       }
       this.showDashboard();
       utils.showToast('Login successful!', 'success');

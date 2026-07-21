@@ -11,6 +11,8 @@ This is the reference guide for running the entire British Trade Awards platform
 ### Logging in
 Go to your CMS URL and sign in with the email and password a Super Admin gave you. If you don't have an account yet, ask a Super Admin to invite you (see [Section 11: User Management](#11-user-management)).
 
+**Forgotten your password?** Click **"Forgot password?"** on the sign-in page, enter your email, and you'll receive a reset link (check your spam folder if it doesn't arrive within a few minutes). This works for your own account regardless of role — you don't need a Super Admin to reset it for you. Clicking the link takes you to a page to set a new password, then straight back to sign in.
+
 ### Your role determines what you see
 The sidebar only shows tabs you have permission to use. Your role is shown next to your name in the top-right corner. Seven roles exist:
 
@@ -154,7 +156,7 @@ Go to **Settings > Users**. This tab is only visible to Super Admins.
 
 You cannot disable your own account from this screen (a safety guard to prevent accidental lockout).
 
-**There is currently no self-service "Forgot password?" link on the sign-in page.** If you're locked out, only another Super Admin can recover your access (Settings > Users > Reset Password on your row). If you are the only Super Admin and forget your password, there is no in-app recovery path — see `SOMERSET-REHEARSAL-REPORT.md`'s companion acceptance-test findings. Keep at least two Super Admin accounts for exactly this reason until self-service reset is added.
+**Self-service password reset**: every user — any role, not just Super Admin — can recover their own account via **"Forgot password?"** on the sign-in page (see Section 1). This uses Supabase Auth's own `resetPasswordForEmail`/`updateUser` functions directly, the same native mechanism used everywhere else in this app's authentication — no separate password-recovery system, no admin action required. A Super Admin's **Reset Password** button in this section remains useful for prompting a specific user to change their password (e.g. after a suspected compromise) by sending them the same reset email on their behalf.
 
 ---
 
@@ -181,7 +183,7 @@ Go to **Settings > Integrations** for:
 
 **I can't find the Users tab.** — it's Super Admin only. Ask a Super Admin to either promote your role or make the change on your behalf.
 
-**I forgot my password and there's no reset link.** — see the note at the end of Section 11. Ask another Super Admin to reset it for you from Settings > Users.
+**I forgot my password.** — click "Forgot password?" on the sign-in page (Section 1). No need to ask a Super Admin unless the reset email never arrives after checking spam — in that case, check SMTP is configured correctly, or ask a Super Admin to trigger the same reset email for you from Settings > Users.
 
 ---
 
@@ -193,7 +195,6 @@ Go to **Settings > Integrations** for:
 - Record GDPR consent before publishing a winner's name or photo, not after.
 - When inviting a new team member, start them at the lowest role that lets them do their job (Editor rather than Admin, Viewer rather than Editor) — you can always raise their role later from Settings > Users.
 - If you're about to bulk-import thousands of records, do a small test batch (5–10 rows) in one area first to confirm your CSV's column headers map correctly, before running the full file.
-- Keep at least two Super Admin accounts, given there is no self-service password reset (Section 11).
 
 ---
 
@@ -202,3 +203,5 @@ Go to **Settings > Integrations** for:
 *Reviewed against a final commercial-polish pass on the live system: no workflow described above changed. That pass fixed silent display bugs only (a couple of stats that could show a misleading "0", and count labels like "1 winners" now correctly reading "1 winner") — see `RELEASE-REPORT-V1.md` Section 9 for the full list.*
 
 *Reviewed again against a final acceptance test covering the full administrator and public-visitor journey — see `FINAL-ACCEPTANCE-REPORT.md`. That pass restored a genuinely missing "Add Winner" feature (Section 6) and added this Section 12 to document 2FA/Login History/Webhooks, which already existed but were never written up.*
+
+*Closed out the two remaining open items from that acceptance test — see `PRODUCTION-SIGNOFF-FINAL.md`: self-service password recovery is now real (Sections 1, 11, 13), and the three orphaned public pages it flagged (`award_companies.html`, `award-nominees.html`, `company-profile.html`) have been removed rather than left in a broken state — they were never linked from anywhere in the live product.*

@@ -61,6 +61,8 @@ Set bucket policies to match: public buckets need a `SELECT` policy allowing ano
 - Enable Email/Password auth (Dashboard → Authentication → Providers).
 - **Configure a custom SMTP provider** (Authentication → Settings → SMTP Settings) before inviting real users. Supabase's built-in email service has a low default rate limit unsuitable for anything beyond light testing — the Users tab's Invite/Reset Password features will fail or queue indefinitely without this. See §6 below for SMTP-specific steps.
 - Under Authentication → URL Configuration, set **Site URL** to your real `APP_URL` and add it (plus any preview URLs) to **Redirect URLs**.
+- **Add `<your APP_URL>/reset-password.html` to Redirect URLs specifically** (Authentication → URL Configuration → Redirect URLs). This is the self-service "Forgot password?" landing page (login page → `authModule.handleForgotPassword` → Supabase's native `resetPasswordForEmail`, using the anon key, no server-side admin call). Supabase rejects a `redirectTo` that isn't on this allow-list, so the reset link in the email will fail to authenticate the user back in without this entry — test it once after setup via the login page's "Forgot password?" link.
+- The password-reset email uses Supabase's built-in **"Reset Password" email template** (Authentication → Email Templates → Reset Password). The default template works out of the box; customize its wording/branding there if desired — no code change needed either way, since the app only calls the native API and never constructs the email itself.
 
 ---
 

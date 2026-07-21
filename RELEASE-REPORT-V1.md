@@ -36,7 +36,7 @@ The CMS now covers the full lifecycle of running the British Trade Awards withou
 - Reports: dashboards and financial reporting.
 
 **Public website**
-- Nine-plus standalone public pages (home, submit-entry, public-voting, public-winners, register, judge-login/portal, company-profile, check-in, payment success/cancelled) all reading live from the same tables the CMS writes to — no hard-coded content.
+- Standalone public pages (home, submit-entry, public-voting, public-winners, register, judge-login/portal, reset-password, check-in, payment success/cancelled) all reading live from the same tables the CMS writes to — no hard-coded content.
 
 ---
 
@@ -103,7 +103,7 @@ All migrations are additive-only (no destructive statements), safe to run agains
 - **`sponsor-portal.js`**: has the same "top-level `ModuleRegistry.register()` before its DOMContentLoaded listener" crash pattern found and fixed in `judge-portal.js`, but is currently unreferenced by any HTML page — zero live impact today. Fix or remove before wiring it up to a real page.
 - **"[Company Name Placeholder]" in 20 public page footers**: cannot fix without the real registered company name — needs your input.
 - **No structured data (JSON-LD)** anywhere on the public site (Organization/Event schema) — an SEO opportunity, not a defect.
-- **`company-profile.html`'s Open Graph tags are static**, not per-company — the meta tags now have `id` hooks (`ogTitle`/`ogDescription`) ready for `company-profile-app.js` to populate dynamically; the JS side isn't wired up yet.
+- ~~`company-profile.html`'s Open Graph tags are static, not per-company.~~ **Moot** — `company-profile.html` and its companion `award_companies.html`/`award-nominees.html` were removed entirely in a later pass (`PRODUCTION-SIGNOFF-FINAL.md`): nothing in the live product linked to them, and their queries no longer matched the current schema.
 - **CRM > Communications table has no "no communications logged yet" empty state** — an empty result set renders a blank table body instead of the friendly empty-state message used elsewhere (e.g. Media Gallery's "No media yet"). Cosmetic only, low priority.
 - **Organisations tab's "Counties, Cities & Regions Reference" panel** is a hand-typed, static 100-entry accordion that can drift from the authoritative 118-row `areas` database table used by Award Areas. This pass added a disclaimer and a link to the live list rather than rewriting the panel to be data-driven, to avoid a risky change late in the cycle — a full rewrite (matching the pattern already proven in `nominee-uploads.js`) remains a good future improvement.
 - ~~`api/_lib/automation-scheduler.js`'s scheduled automation never fires in production.~~ **Fixed in the following pass** (see Section 9 and `RELEASE-CANDIDATE-SIGNOFF.md`): now wired to Vercel Cron via `api/judge-automation.js`'s `cron-tick` action, replacing the `node-cron`-based `startScheduler()` that never actually ran on Vercel's serverless model. Verified with a live manual run against the test database as well as an automated test suite covering reliability, idempotency, and the day-of-week task gating. See `DEPLOYMENT-GUIDE.md` §11 for the full architecture and setup.

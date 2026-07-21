@@ -376,7 +376,10 @@ const nomineeUploads = (() => {
   // no rollback. Splitting into fixed-size chunks keeps each call well
   // under that limit regardless of workbook size, and lets the admin see
   // progress on a large import instead of one opaque spinner.
-  const IMPORT_CHUNK_SIZE = 40;
+  // Measured against a live Supabase project: a chunk of 40 new-organisation
+  // rows took up to 29s — too close to the 30s ceiling for real-world
+  // network/DB variance. 25 keeps worst-case chunk time near ~18s.
+  const IMPORT_CHUNK_SIZE = 25;
 
   function _mergeTotals(a, b) {
     if (!a) return b;

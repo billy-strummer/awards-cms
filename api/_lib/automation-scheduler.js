@@ -581,7 +581,7 @@ async function runRetentionCleanup() {
   deleted.notification_queue = emailDeleted?.length || 0;
 
   // Public vote records: 1 year
-  const { data: votesDeleted } = await supabase.from('public_votes').delete().lt('voted_at', cutoff(1)).select('id');
+  const { data: votesDeleted } = await supabase.from('public_votes').delete().lt('created_at', cutoff(1)).select('id');
   deleted.public_votes = votesDeleted?.length || 0;
 
   // Event guests: 3 years after event (approximate: 3 years from created_at)

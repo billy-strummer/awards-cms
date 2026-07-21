@@ -182,3 +182,5 @@ You cannot disable your own account from this screen (a safety guard to prevent 
 ---
 
 *This guide covers CMS v1.0. Update it whenever a described workflow changes.*
+
+*Reviewed against a final commercial-polish pass on the live system: no workflow described above changed. That pass fixed silent display bugs only (a couple of stats that could show a misleading "0", and count labels like "1 winners" now correctly reading "1 winner") — see `RELEASE-REPORT-V1.md` Section 9 for the full list.*

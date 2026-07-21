@@ -295,7 +295,15 @@ const reportsAnalytics = {
     el('reportsTotal', fAwards.length);
     el('reportsTotalOrgs', fOrgs.length);
     el('reportsTotalWinners', fWinners.length);
-    el('reportsTotalEntries', fEntries.length);
+    // Entries aren't eagerly loaded into STATE.allEntries (unlike awards/orgs/
+    // winners) to avoid fetching potentially thousands of rows on every
+    // dashboard visit. If it's still empty, use the accurate server-side count
+    // dashboardModule already fetched rather than showing a misleading 0.
+    const entriesTotal =
+      year === 'all' && entries.length === 0 && typeof STATE._reportsEntriesCount === 'number'
+        ? STATE._reportsEntriesCount
+        : fEntries.length;
+    el('reportsTotalEntries', entriesTotal);
 
     this.renderPipelineChart(fOrgs);
     this.renderSectorChart(fOrgs);

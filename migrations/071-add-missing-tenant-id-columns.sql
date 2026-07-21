@@ -37,6 +37,11 @@ END $$;
 -- Only auto-backfill when exactly one tenant exists — with more than one,
 -- there is no safe way to guess which tenant legacy rows belong to, so we
 -- leave them NULL and let an admin assign them manually.
+--
+-- Emits RAISE NOTICE diagnostics (visible in the Supabase SQL Editor output
+-- pane, or any psql-compatible client) so a deploy can be verified without a
+-- separate round of manual COUNT queries: tenant count, orphaned-row count
+-- per table before the update, and updated-row count per table after.
 DO $$
 DECLARE
   t TEXT;
@@ -48,15 +53,30 @@ DECLARE
   ];
   default_tenant_id UUID;
   tenant_count INT;
+  orphan_count INT;
+  updated_count INT;
 BEGIN
   SELECT count(*) INTO tenant_count FROM tenants;
+  RAISE NOTICE '[migration 071] Tenants detected: %', tenant_count;
+
   IF tenant_count = 1 THEN
     SELECT id INTO default_tenant_id FROM tenants LIMIT 1;
+    RAISE NOTICE '[migration 071] Exactly one tenant found — backfilling orphaned rows to tenant_id %', default_tenant_id;
+
     FOREACH t IN ARRAY tables LOOP
       IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t AND column_name = 'tenant_id') THEN
+        EXECUTE format('SELECT count(*) FROM %I WHERE tenant_id IS NULL', t) INTO orphan_count;
+        RAISE NOTICE '[migration 071] Table %: % orphaned row(s) found', t, orphan_count;
+
         EXECUTE format('UPDATE %I SET tenant_id = $1 WHERE tenant_id IS NULL', t) USING default_tenant_id;
+        GET DIAGNOSTICS updated_count = ROW_COUNT;
+        RAISE NOTICE '[migration 071] Table %: % row(s) updated', t, updated_count;
+      ELSE
+        RAISE NOTICE '[migration 071] Table % has no tenant_id column (missing table or column) — skipped', t;
       END IF;
     END LOOP;
+  ELSE
+    RAISE NOTICE '[migration 071] SKIPPED backfill — % tenants detected, backfill only runs automatically when exactly 1 tenant exists. Orphaned rows (if any) were left with tenant_id IS NULL for manual assignment.', tenant_count;
   END IF;
 END $$;
 

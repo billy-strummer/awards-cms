@@ -83,7 +83,7 @@ All migrations are additive-only (no destructive statements), safe to run agains
 |---|---|---|
 | Dashboard | ✅ | KPIs, activity feed, notifications |
 | Awards | ✅ | Full CRUD verified live |
-| Award Areas | ✅ | Single nominee-import pipeline, deeply tested |
+| Award Areas | ✅ | Single nominee-import pipeline. A later full end-to-end rehearsal with a real 565-row workbook (`SOMERSET-REHEARSAL-REPORT.md`) found and fixed 3 real defects this line's "deeply tested" missed: no .xlsx support, false-positive duplicate detection, and a silent entry-drop under the default duplicate strategy — see that report for detail |
 | Entries | ✅ | State-machine workflow verified |
 | Winners | ✅ | Publishing pipeline verified |
 | Organisations | ✅ | Full CRUD + soft-archive verified; bulk-contact CSV relabeled for clarity this release |
@@ -118,7 +118,7 @@ All migrations are additive-only (no destructive statements), safe to run agains
 
 Reviewed against the stated near-term load: thousands of organisations, thousands of nominees, hundreds of winners, multiple award years, multiple administrators, judges, and sponsors.
 
-- **CSV import**: batches inserts in groups of 50, validates server-side before any write — should scale to thousands of rows without special handling, but has not been tested at that volume in this sandbox (test database currently holds dozens of records, not thousands).
+- **CSV/Excel import**: this line previously claimed the import batched inserts in groups of 50 — that was never actually true, and a real 565-row rehearsal (`SOMERSET-REHEARSAL-REPORT.md`) proved it: the import processed rows one at a time with no batching, took 233s for 485 rows against the 30s Vercel timeout, and silently dropped 79% of valid rows under the default duplicate strategy. Both the timeout risk (now client-side chunked uploads, 40 rows/call) and the silent data loss (now fixed) have been corrected and re-verified live.
 - **Rate limiting** (120 req/min/user): reasonable for interactive admin use; a large CSV import or bulk operation run by a single admin session should stay well under this, but worth monitoring during your first large real import.
 - **Settings tab's concurrent request fan-out**: flagged above — low risk at current scale, worth revisiting if Settings grows more sections.
 - **No pagination concerns found** in the tables reviewed — Awards, Organisations, Entries all use server-side pagination already.

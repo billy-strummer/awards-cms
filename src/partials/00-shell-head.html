@@ -66,7 +66,7 @@
           </div>
           
           <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
-          
+
           <form id="loginForm" data-on-submit="authModule.handleLogin">
             <div class="mb-3">
               <label for="loginEmail" class="form-label">Email</label>
@@ -75,20 +75,43 @@
                 <input type="email" class="form-control" id="loginEmail" placeholder="admin@britishtrade.com" required autocomplete="username">
               </div>
             </div>
-            
-            <div class="mb-4">
+
+            <div class="mb-2">
               <label for="loginPassword" class="form-label">Password</label>
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-lock"></i></span>
                 <input type="password" class="form-control" id="loginPassword" placeholder="Enter password" required autocomplete="current-password">
               </div>
             </div>
-            
+
+            <div class="text-end mb-3">
+              <button type="button" class="btn btn-link btn-sm p-0" data-action="authModule.showForgotPassword">Forgot password?</button>
+            </div>
+
             <button type="submit" id="loginBtn" class="btn btn-primary w-100 py-2">
               <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
             </button>
           </form>
-          
+
+          <!-- Forgot Password form — hidden by default, toggled in place of loginForm -->
+          <form id="forgotPasswordForm" class="d-none" data-on-submit="authModule.handleForgotPassword">
+            <p class="text-muted small mb-3">Enter your account email and we'll send you a link to reset your password.</p>
+            <div id="forgotPasswordMessage" class="alert d-none" role="alert"></div>
+            <div class="mb-3">
+              <label for="forgotPasswordEmail" class="form-label">Email</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control" id="forgotPasswordEmail" placeholder="admin@britishtrade.com" required autocomplete="username">
+              </div>
+            </div>
+            <button type="submit" id="forgotPasswordBtn" class="btn btn-primary w-100 py-2 mb-2">
+              <i class="bi bi-send me-2"></i>Send Reset Link
+            </button>
+            <button type="button" class="btn btn-link btn-sm w-100" data-action="authModule.showLoginForm">
+              <i class="bi bi-arrow-left me-1"></i>Back to Sign In
+            </button>
+          </form>
+
           <div class="text-center mt-4">
             <small class="text-muted">
               <i class="bi bi-shield-check me-1"></i>Secure admin access

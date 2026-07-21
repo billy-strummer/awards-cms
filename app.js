@@ -1076,6 +1076,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
+  // --- Forgot Password Form ---
+  const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+  if (forgotPasswordForm)
+    forgotPasswordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      authModule.handleForgotPassword();
+    });
+
   // --- Logout ---
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn)

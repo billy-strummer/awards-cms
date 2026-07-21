@@ -378,7 +378,7 @@ if (typeof window !== 'undefined') {
   window.REGIONS = COUNTIES_CITIES;
   window.SECTORS = SECTORS;
   // Same reasoning — judge-login.html/judge-portal.js, check-in-app.js,
-  // and company-profile-app.js all reference window.SUPABASE_CONFIG /
+  // and reset-password.js all reference window.SUPABASE_CONFIG /
   // window.STATE directly from non-module scripts, but nothing was ever
   // attaching either to window, so those references were always undefined.
   window.SUPABASE_CONFIG = SUPABASE_CONFIG;

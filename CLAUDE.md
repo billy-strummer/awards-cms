@@ -188,6 +188,15 @@ Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test sui
 | `ALLOWED_ORIGINS` | CORS origin allowlist for data-proxy (`data-proxy.js`) | Set (comma-separated URLs) |
 | `CONTACT_EMAIL` | Fallback contact email in payment receipts (`stripe-payment.js`); falls back to `FROM_EMAIL` if unset | Set |
 
+#### Required — verify these are set in Vercel before launch
+
+> **CLAUDE: These two were found missing from this document during a 2026-07 release-candidate audit — their presence in Vercel was never actually confirmed. Verify both are set before relying on the features below; do not assume "Set" just because they're listed here.**
+
+| Variable | Service | Why it's required |
+|---|---|---|
+| `CRON_SECRET` | Authenticates Vercel Cron's daily call to `/api/judge-automation?action=cron-tick` (judge assignment automation, `vercel.json`'s only scheduled cron) | `judge-automation.js` explicitly refuses to run (500) if this is unset — the daily automation silently does nothing every day until it's set. |
+| `RESEND_WEBHOOK_SECRET` | Verifies the `x-resend-signature` header on Resend's bounce/complaint webhook (`email-automation.js`, actions `resend-bounce`/`resend-complaint`) | As of this audit, the endpoint refuses the request (500) if unset, rather than skipping verification — previously it skipped verification silently, letting anyone suppress any email address. Must be set to the same value configured in the Resend dashboard's webhook settings for this endpoint to work at all. |
+
 #### Not Yet Configured (only needed when ready for these features)
 
 | Variable | Service | Where to get it |
@@ -202,6 +211,14 @@ Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test sui
 | `FACEBOOK_PAGE_TOKEN` | Facebook & Instagram posting | developers.facebook.com → Graph API Explorer → Page Access Token (`pages_manage_posts`) |
 | `FACEBOOK_PAGE_ID` | Facebook posting | Facebook Page → About → Page ID |
 | `INSTAGRAM_ACCOUNT_ID` | Instagram posting | Graph API: `GET /{page-id}?fields=instagram_business_account` |
+
+#### Optional (have safe fallbacks — not needed to launch)
+
+| Variable | Service | Fallback if unset |
+|---|---|---|
+| `BTA_LOGO_URL` | Logo shown in Stripe Checkout and email headers (`stripe-payment.js`, `_lib/email-header.js`) | Falls back to `${APP_URL}/assets/british-trade-awards-logo.png`, or an empty string in email headers |
+| `SENTRY_DSN` | Error tracking | Sentry stays disabled; `build.js` logs this plainly at build time |
+| `DEV_EMAIL` | Redirects all outbound email to one inbox in non-production environments | Only read when `NODE_ENV !== 'production'` — irrelevant in production |
 
 ## Commands
 

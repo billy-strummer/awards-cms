@@ -595,3 +595,70 @@ describe('Email Automation - sendWinnerAnnouncementsEndpoint', () => {
     expect(res.body.success).toBe(true);
   });
 });
+
+describe('Email Automation - Resend webhook signature verification', () => {
+  const crypto = require('crypto');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTableResponses = {};
+    delete process.env.RESEND_WEBHOOK_SECRET;
+  });
+
+  test('refuses the webhook when RESEND_WEBHOOK_SECRET is not configured', async () => {
+    const req = createReq({
+      headers: {},
+      query: { action: 'resend-bounce' },
+      body: { action: 'resend-bounce', email: 'attacker@example.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(mockFrom).not.toHaveBeenCalledWith('email_suppressions');
+  });
+
+  test('rejects a request with an invalid signature when the secret is configured', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = 'test-webhook-secret';
+    const req = createReq({
+      headers: { 'x-resend-signature': 'not-the-right-signature' },
+      query: { action: 'resend-bounce' },
+      body: { action: 'resend-bounce', email: 'attacker@example.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(401);
+    expect(mockFrom).not.toHaveBeenCalledWith('email_suppressions');
+  });
+
+  test('rejects a request with no signature header at all (no crash)', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = 'test-webhook-secret';
+    const req = createReq({
+      headers: {},
+      query: { action: 'resend-bounce' },
+      body: { action: 'resend-bounce', email: 'attacker@example.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('accepts and processes a request with a valid signature', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = 'test-webhook-secret';
+    const suppressionsChain = chainable({ data: null, error: null });
+    suppressionsChain.upsert = jest.fn(() => Promise.resolve({ data: null, error: null }));
+    mockTableResponses['email_suppressions'] = suppressionsChain;
+
+    const body = { action: 'resend-bounce', email: 'bounced@example.com', reason: 'hard_bounce' };
+    const signature = crypto.createHmac('sha256', 'test-webhook-secret').update(JSON.stringify(body)).digest('hex');
+
+    const req = createReq({
+      headers: { 'x-resend-signature': signature },
+      query: { action: 'resend-bounce' },
+      body,
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.suppressed).toBe('bounced@example.com');
+  });
+});

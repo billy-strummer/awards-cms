@@ -380,11 +380,9 @@ async function build() {
 
   // Copy any JS files referenced by public pages that aren't in the bundle
   const publicJsFiles = [
-    'vote.js',
     'public-voting.js',
     'nominee-voting.js',
     'judge-portal.js',
-    'judge-login.js',
     'winners-portal-app.js',
     'check-in-app.js',
     'register-app.js',

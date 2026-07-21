@@ -165,3 +165,55 @@ describe('nomineeUploads - _stripMarkdownLinks()', () => {
     expect(uploads._stripMarkdownLinks(null)).toBeNull();
   });
 });
+
+// -----------------------------------------------------------------------
+// _readFileAsCSVText — .csv passthrough vs. .xlsx conversion
+// -----------------------------------------------------------------------
+describe('nomineeUploads - _readFileAsCSVText()', () => {
+  test('reads a .csv file as plain text, no XLSX involved', async () => {
+    const file = { name: 'nominees.csv', text: async () => 'Company Name,Category\nAcme,Roofing Company' };
+    const text = await uploads._readFileAsCSVText(file);
+    expect(text).toBe('Company Name,Category\nAcme,Roofing Company');
+  });
+
+  test('converts a .xlsx file to CSV text via the SheetJS global', async () => {
+    const fakeSheet = { '!ref': 'A1:B2' };
+    win.XLSX = {
+      read: (_data, _opts) => ({ SheetNames: ['Sheet1'], Sheets: { Sheet1: fakeSheet } }),
+      utils: { sheet_to_csv: (sheet) => (sheet === fakeSheet ? 'Company Name,Category\nAcme,Roofing Company' : '') },
+    };
+    const file = { name: 'nominees.xlsx', arrayBuffer: async () => new ArrayBuffer(8) };
+    const text = await uploads._readFileAsCSVText(file);
+    expect(text).toBe('Company Name,Category\nAcme,Roofing Company');
+    delete win.XLSX;
+  });
+});
+
+// -----------------------------------------------------------------------
+// _mergeTotals — accumulates totals across chunked import calls
+// -----------------------------------------------------------------------
+describe('nomineeUploads - _mergeTotals()', () => {
+  const totals = (overrides) => ({
+    rows: 0,
+    entriesCreated: 0,
+    organisationsCreated: 0,
+    organisationsUpdated: 0,
+    organisationsReplaced: 0,
+    skipped: 0,
+    alreadyEntered: 0,
+    ...overrides,
+  });
+
+  test('returns the second totals object when the first is null (first chunk)', () => {
+    const b = totals({ rows: 40, entriesCreated: 40 });
+    expect(uploads._mergeTotals(null, b)).toEqual(b);
+  });
+
+  test('sums every field across two chunks', () => {
+    const a = totals({ rows: 40, entriesCreated: 38, organisationsCreated: 10, skipped: 2 });
+    const b = totals({ rows: 40, entriesCreated: 40, organisationsCreated: 5, alreadyEntered: 1 });
+    expect(uploads._mergeTotals(a, b)).toEqual(
+      totals({ rows: 80, entriesCreated: 78, organisationsCreated: 15, skipped: 2, alreadyEntered: 1 })
+    );
+  });
+});

@@ -49,16 +49,16 @@ To manage or add a genuinely new area, go to **Settings > Seasons & Areas**.
 1. Open **Award Areas**.
 2. Find the county/city/borough you're importing for (use the search box if the list is long).
 3. Click **Upload CSV** on that row (it becomes **Replace CSV** once you've imported once).
-4. Select your file. Your CSV should have columns for: Company Name, Award Category, Email, Contact Name, Phone, Website, Notes (the importer detects common header variations automatically — "Company", "Organisation", "Business Name" all work for the company column, for example).
+4. Select your file — CSV or Excel (.xlsx/.xls) both work. Your file should have columns for: Company Name, Award Category, Email, Contact Name, Phone, Website, Notes (the importer detects common header variations automatically — "Company", "Organisation", "Business Name" all work for the company column, for example). Any other columns are read but ignored, including any "Region" column — the county/area a nominee is filed under always comes from which Award Area row you clicked, never from the file.
 5. **Validation runs automatically before anything is imported.** You'll see a clear list of any problems, each tied to a row number:
    - Missing required columns
    - Unknown award categories (the category name must match an existing category exactly — this prevents accidental duplicate categories)
-   - Duplicate companies within the file
+   - Duplicate rows — the same company nominated in the same category twice. A company nominated in *different* categories on different rows is expected and not flagged.
    - Invalid email addresses
    - Missing organisation names
-6. **Nothing is imported until every error is fixed.** Fix your CSV and re-upload, or fix the specific rows flagged.
-7. Once validation passes, choose how to handle companies that already exist in the system: **Skip** (leave existing records untouched), **Update Existing** (fill in blanks on the existing record), or **Replace Existing** (overwrite existing values).
-8. Click **Upload & Publish**. This is instant — there is no separate "publish" step. The moment the import completes, the organisations, entries, and awards it created are live on the public site.
+6. **Nothing is imported until every error is fixed.** Fix your file and re-upload, or fix the specific rows flagged.
+7. Once validation passes, choose how to handle companies that already exist in the system: **Skip** (leave existing records untouched — still creates a new entry if this row is a new category for that company), **Update Existing** (fill in blanks on the existing record), or **Replace Existing** (overwrite existing values).
+8. Click **Upload & Publish**. This is instant — there is no separate "publish" step. The moment the import completes, the organisations, entries, and awards it created are live on the public site. Large files upload in batches with a progress indicator.
 
 ### What actually gets created
 For every valid row, the import creates (or reuses) all three of:

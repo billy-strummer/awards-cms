@@ -11,7 +11,8 @@ Your first real data import into production. Treat this one county as a rehearsa
 1. **Pick one county deliberately.** Choose one with a moderate, manageable number of expected nominees — not your largest or most complex county for this first real run. You want to be able to manually eyeball every result.
 2. **Create your real award categories first**, if you haven't already (Awards tab). The importer matches categories by exact name — if a category doesn't exist yet, decide now whether the importer should create it or whether you want it pre-created; per `ADMIN-GUIDE.md` §3, an *unknown* category name is treated as a validation error, not auto-created, so create every category you intend to import against before starting.
 3. **Confirm your season's dates are set** (Settings → Seasons & Areas) so newly-created entries fall into the correct, currently-open cycle.
-4. **Prepare your CSV** with columns for Company Name, Award Category, Email, Contact Name, Phone, Website, Notes. Common header variations are auto-detected, but keep it clean and consistent.
+4. **Prepare your CSV or Excel (.xlsx) file** with columns for Company Name, Award Category, Email, Contact Name, Phone, Website, Notes. Common header variations are auto-detected, but keep it clean and consistent. Any other columns (Region, Sector, Catchment Area, Nomination Date, address fields, etc.) are read but ignored — the county/area a nominee is filed under always comes from which Award Area row you click "Upload CSV" on, never from a column in the file, so a "Region" column that actually holds county-level values (e.g. "Somerset") has no effect either way.
+5. **A company can safely appear on more than one row** if it's nominated in more than one category — that's a normal, expected pattern, not a duplicate. Only an exact repeat of the same company *and* the same category on two rows is flagged as a true duplicate.
 
 ---
 

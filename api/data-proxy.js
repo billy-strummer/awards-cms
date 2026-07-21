@@ -1366,13 +1366,17 @@ async function executeAwardAreaImport(body, user) {
       errors.push({ row: rowNum, field: 'email', message: `Invalid email address "${email}"` });
     }
 
-    if (companyName) {
-      const key = companyName.toLowerCase();
+    // Keyed on company+category, not company alone — the same organisation
+    // legitimately appears on multiple rows when it's nominated in more than
+    // one category (a common, expected pattern), so only an exact repeat of
+    // the same company AND the same category is a true duplicate row.
+    if (companyName && category) {
+      const key = `${companyName.toLowerCase()}::${(resolvedCategory ? resolvedCategory.category : category).toLowerCase()}`;
       if (seenCompanyNames.has(key)) {
         errors.push({
           row: rowNum,
           field: 'company_name',
-          message: `Duplicate of row ${seenCompanyNames.get(key)} in this file ("${companyName}")`,
+          message: `Duplicate of row ${seenCompanyNames.get(key)} in this file ("${companyName}" — "${category}")`,
         });
       } else {
         seenCompanyNames.set(key, rowNum);
@@ -1462,6 +1466,7 @@ async function executeAwardAreaImport(body, user) {
   let orgsCreated = 0;
   let orgsUpdated = 0;
   let orgsReplaced = 0;
+  let orgsSkipped = 0;
   const rowResults = [];
 
   for (const r of validatedRows) {
@@ -1472,11 +1477,6 @@ async function executeAwardAreaImport(body, user) {
       .limit(1);
     if (orgFindErr) throw orgFindErr;
     let orgId = existingOrgs && existingOrgs[0] ? existingOrgs[0].id : null;
-
-    if (orgId && duplicateStrategy === 'skip') {
-      rowResults.push({ row: r.row, action: 'skipped', message: 'Organisation already exists' });
-      continue;
-    }
 
     const orgFields = {
       company_name: r.companyName,
@@ -1512,6 +1512,13 @@ async function executeAwardAreaImport(body, user) {
     } else if (duplicateStrategy === 'replace') {
       await supabase.from('organisations').update(orgFields).eq('id', orgId);
       orgsReplaced++;
+    } else {
+      // duplicateStrategy === 'skip' and the organisation already existed —
+      // leave its fields untouched, but still proceed to create this row's
+      // entry below. "Skip" means don't overwrite the organisation, not
+      // "ignore every nomination after this company's first row" — the same
+      // company legitimately gets its own entry per category it's entered in.
+      orgsSkipped++;
     }
 
     const awardId = await getOrCreateAward(r.resolvedCategory);
@@ -1585,7 +1592,7 @@ async function executeAwardAreaImport(body, user) {
       organisationsCreated: orgsCreated,
       organisationsUpdated: orgsUpdated,
       organisationsReplaced: orgsReplaced,
-      skipped: rowResults.filter((r) => r.action === 'skipped').length,
+      skipped: orgsSkipped,
       alreadyEntered: rowResults.filter((r) => r.action === 'entry_exists').length,
     },
     rowResults,

@@ -103,10 +103,11 @@
               <!-- Step 1: file picker -->
               <div id="nomineeStep1">
                 <p class="text-muted small">
-                  CSV must include a <strong>Company Name</strong> column and an <strong>Award Category</strong> column
+                  CSV or Excel (.xlsx) file must include a <strong>Company Name</strong> column and an <strong>Award Category</strong> column
                   (category must match an existing award category exactly). Optional columns: Email, Contact Name, Phone, Website, Notes.
+                  Any other columns (e.g. Region, Sector, Catchment Area, Nomination Date) are ignored — this importer only reads the columns listed above.
                 </p>
-                <input class="form-control" type="file" id="nomineeFileInput" accept=".csv,.tsv,.txt">
+                <input class="form-control" type="file" id="nomineeFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls">
               </div>
 
               <!-- Step 2: preview + validation + duplicate strategy + confirm -->

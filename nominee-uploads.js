@@ -238,9 +238,37 @@ const nomineeUploads = (() => {
       </div>`;
   }
 
+  async function _readFileAsCSVText(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'xls') return file.text();
+
+    if (typeof XLSX === 'undefined') {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load Excel parser'));
+        document.head.appendChild(script);
+      });
+    }
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    return XLSX.utils.sheet_to_csv(sheet);
+  }
+
   async function _handleFile(file) {
     _currentFilename = file.name;
-    const text = await file.text();
+    let text;
+    try {
+      text = await _readFileAsCSVText(file);
+    } catch (e) {
+      const container = document.getElementById('nomineeValidationContainer');
+      if (container) {
+        container.innerHTML = `<div class="alert alert-danger py-2 small mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i>${utils.escapeHtml(e.message)}</div>`;
+      }
+      return;
+    }
     const { headers, rows } = _parseCSV(text);
     _headers = headers;
     _parsedRows = rows;
@@ -342,6 +370,27 @@ const nomineeUploads = (() => {
     btn.disabled = !_lastValidation || !_lastValidation.valid;
   }
 
+  // Each row does several sequential DB round-trips server-side, and
+  // api/data-proxy.js has a 30s Vercel function timeout — a single call
+  // covering an entire large county would risk timing out mid-import with
+  // no rollback. Splitting into fixed-size chunks keeps each call well
+  // under that limit regardless of workbook size, and lets the admin see
+  // progress on a large import instead of one opaque spinner.
+  const IMPORT_CHUNK_SIZE = 40;
+
+  function _mergeTotals(a, b) {
+    if (!a) return b;
+    return {
+      rows: a.rows + b.rows,
+      entriesCreated: a.entriesCreated + b.entriesCreated,
+      organisationsCreated: a.organisationsCreated + b.organisationsCreated,
+      organisationsUpdated: a.organisationsUpdated + b.organisationsUpdated,
+      organisationsReplaced: a.organisationsReplaced + b.organisationsReplaced,
+      skipped: a.skipped + b.skipped,
+      alreadyEntered: a.alreadyEntered + b.alreadyEntered,
+    };
+  }
+
   async function _confirmImport() {
     if (!_lastValidation || !_lastValidation.valid || !_currentArea) return;
 
@@ -350,21 +399,34 @@ const nomineeUploads = (() => {
 
     const btn = document.getElementById('nomineeUploadConfirmBtn');
     const original = btn ? btn.innerHTML : '';
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importing…';
-    }
+    if (btn) btn.disabled = true;
 
+    const allRows = _rowsForServer();
+    const chunks = [];
+    for (let i = 0; i < allRows.length; i += IMPORT_CHUNK_SIZE) chunks.push(allRows.slice(i, i + IMPORT_CHUNK_SIZE));
+
+    let mergedTotals = null;
+    let area = null;
     try {
-      const result = await apiClient.post('award_area_import', {
-        mode: 'import',
-        areaId: _currentArea.id,
-        rows: _rowsForServer(),
-        duplicateStrategy: _duplicateStrategy,
-        filename: _currentFilename,
-        tenantId: apiClient._getTenantId(),
-      });
-      _showImportSuccess(result);
+      for (let i = 0; i < chunks.length; i++) {
+        if (btn) {
+          btn.innerHTML =
+            chunks.length > 1
+              ? `<span class="spinner-border spinner-border-sm me-2"></span>Importing… (${i + 1}/${chunks.length})`
+              : '<span class="spinner-border spinner-border-sm me-2"></span>Importing…';
+        }
+        const result = await apiClient.post('award_area_import', {
+          mode: 'import',
+          areaId: _currentArea.id,
+          rows: chunks[i],
+          duplicateStrategy: _duplicateStrategy,
+          filename: _currentFilename,
+          tenantId: apiClient._getTenantId(),
+        });
+        area = result.area;
+        mergedTotals = _mergeTotals(mergedTotals, result.totals);
+      }
+      _showImportSuccess({ area, totals: mergedTotals });
       await loadAreasTable();
       setTimeout(() => {
         bootstrap.Modal.getInstance(document.getElementById('nomineeUploadModal'))?.hide();
@@ -469,6 +531,8 @@ const nomineeUploads = (() => {
     _splitLine,
     _detectColumn,
     _stripMarkdownLinks,
+    _readFileAsCSVText,
+    _mergeTotals,
   };
 })();
 

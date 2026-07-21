@@ -98,7 +98,7 @@ In priority order (full detail and reasoning in `RELEASE-REPORT-V1.md` §7 and `
 7. **4 JS chunks exceed the build's own 150KB warning threshold** (events 517KB, email 316KB, crm 260KB, media 249KB) — functional, but a future splitting pass would improve load time on those tabs.
 8. **`sponsor-portal.js`** has a known crash pattern, currently zero live impact since it's unreferenced by any page.
 9. **"[Company Name Placeholder]" in 20 public page footers** — blocked on the real registered company name, cannot be fixed without your input.
-10. Smaller items: no structured data (SEO), `company-profile.html`'s static Open Graph tags, CRM's missing empty state, the Organisations counties panel's static-vs-live data drift risk (disclaimer added, not fully fixed).
+10. Smaller items: no structured data (SEO), CRM's missing empty state, the Organisations counties panel's static-vs-live data drift risk (disclaimer added, not fully fixed). (`company-profile.html`'s static Open Graph tags, listed here previously, is moot — the page was removed entirely in a later pass; see `PRODUCTION-SIGNOFF-FINAL.md`.)
 
 None of these are launch blockers. All are documented, understood, and — per this phase's explicit instruction — intentionally left rather than rushed.
 

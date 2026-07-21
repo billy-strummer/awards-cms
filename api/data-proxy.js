@@ -19,7 +19,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
 const { resolveCategory } = require('./_lib/award-categories');
@@ -1592,6 +1592,135 @@ async function executeAwardAreaImport(body, user) {
   };
 }
 
+// ============================================
+// USER MANAGEMENT — super_admin only
+// ============================================
+// Uses Supabase's own Auth Admin API (service-role client already
+// initialised above) plus the existing user_roles table that rbacModule
+// already reads from — no separate/duplicate auth system. Roles come from
+// the same ROLE_HIERARCHY used everywhere else in this file.
+
+const VALID_ROLES = new Set(ROLE_HIERARCHY);
+
+/**
+ * List every Supabase Auth user alongside their CMS role and derived status.
+ * @returns {Promise<{users: Array<Object>}>}
+ */
+async function executeUserList() {
+  const { data: authData, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 200 });
+  if (authErr) throw authErr;
+
+  const { data: roleRows, error: roleErr } = await supabase.from('user_roles').select('email, role');
+  if (roleErr) throw roleErr;
+  const roleMap = new Map((roleRows || []).map((r) => [(r.email || '').toLowerCase(), r.role]));
+
+  const now = Date.now();
+  const users = (authData?.users || [])
+    .map((u) => {
+      const isBanned = u.banned_until && new Date(u.banned_until).getTime() > now;
+      const status = isBanned ? 'disabled' : u.email_confirmed_at ? 'active' : 'invited';
+      return {
+        id: u.id,
+        email: u.email,
+        role: roleMap.get((u.email || '').toLowerCase()) || 'viewer',
+        status,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at || null,
+      };
+    })
+    .sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+
+  return { users };
+}
+
+/**
+ * Invite a new user by email via Supabase's built-in invite email, and
+ * assign their initial CMS role.
+ * @param {{email: string, role: string}} body
+ * @returns {Promise<{invited: boolean, userId: string}>}
+ */
+async function executeUserInvite(body) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const role = String(body.role || 'viewer').toLowerCase();
+
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+  if (!VALID_ROLES.has(role)) throw new Error(`Invalid role "${role}"`);
+
+  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+  if (error) throw error;
+
+  const { error: roleErr } = await supabase.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (roleErr) throw roleErr;
+
+  return { invited: true, userId: data.user.id };
+}
+
+/**
+ * Change an existing user's CMS role.
+ * @param {{email: string, role: string}} body
+ * @param {Object} actingUser - The authenticated caller making this change.
+ * @returns {Promise<{updated: boolean}>}
+ */
+async function executeUserSetRole(body, actingUser) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const role = String(body.role || '').toLowerCase();
+
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+  if (!VALID_ROLES.has(role)) throw new Error(`Invalid role "${role}"`);
+  if (email === (actingUser.email || '').toLowerCase() && role !== 'super_admin') {
+    throw new Error('You cannot change your own role away from Super Admin — ask another Super Admin to do this');
+  }
+
+  const { error } = await supabase.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (error) throw error;
+  return { updated: true };
+}
+
+/**
+ * Disable or reactivate a user's ability to sign in, without deleting their
+ * account or any data. Uses Supabase Auth's native ban mechanism (reversible).
+ * @param {{userId: string, disable: boolean}} body
+ * @param {Object} actingUser - The authenticated caller making this change.
+ * @returns {Promise<{updated: boolean, disabled: boolean}>}
+ */
+async function executeUserSetStatus(body, actingUser) {
+  const userId = body.userId;
+  const disable = !!body.disable;
+  if (!userId || typeof userId !== 'string') throw new Error('userId is required');
+
+  const { data: targetData, error: getErr } = await supabase.auth.admin.getUserById(userId);
+  if (getErr) throw getErr;
+  if ((targetData?.user?.email || '').toLowerCase() === (actingUser.email || '').toLowerCase()) {
+    throw new Error('You cannot disable your own account');
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    ban_duration: disable ? '876000h' : 'none', // ~100 years, matches Supabase's own convention for an effectively-indefinite ban
+  });
+  if (error) throw error;
+  return { updated: true, disabled: disable };
+}
+
+/**
+ * Send a password reset email to a user via Supabase Auth.
+ * @param {{email: string}} body
+ * @returns {Promise<{sent: boolean}>}
+ */
+async function executeUserResetPassword(body) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+  return { sent: true };
+}
+
 /**
  * Execute a smart segment query against the organisations table.
  * Queries ALL organisations in the database (not just the current page).
@@ -1902,6 +2031,31 @@ module.exports = async function handler(req, res) {
       }
       const importResult = await executeAwardAreaImport(body, user);
       return res.status(200).json(importResult);
+    }
+
+    // 7c. User management — invite, role changes, disable/reactivate, password
+    // reset. Super Admin only, regardless of what any other check would allow.
+    if (
+      ['user_list', 'user_invite', 'user_set_role', 'user_set_status', 'user_reset_password'].includes(body.operation)
+    ) {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'User management requires Super Admin role' });
+      }
+      if (body.operation === 'user_list') {
+        return res.status(200).json(await executeUserList());
+      }
+      if (body.operation === 'user_invite') {
+        return res.status(200).json(await executeUserInvite(body));
+      }
+      if (body.operation === 'user_set_role') {
+        return res.status(200).json(await executeUserSetRole(body, user));
+      }
+      if (body.operation === 'user_set_status') {
+        return res.status(200).json(await executeUserSetStatus(body, user));
+      }
+      if (body.operation === 'user_reset_password') {
+        return res.status(200).json(await executeUserResetPassword(body));
+      }
     }
 
     // 8. Handle smart segment server-side query

@@ -565,8 +565,8 @@
           <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
             <i class="bi bi-plus-lg me-1"></i>Add Organisation
           </button>
-          <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal">
-            <i class="bi bi-upload me-1"></i>Import
+          <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Bulk-add companies to your contact list — not for award nominees">
+            <i class="bi bi-upload me-1"></i>Add Contacts in Bulk
           </button>
           <div class="btn-group btn-group-sm">
             <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -802,11 +802,18 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="csvImportModalLabel">
-              <i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Organisations from CSV
+              <i class="bi bi-file-earmark-spreadsheet me-2"></i>Add Contacts in Bulk
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
+              <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+              <div>
+                <strong>This adds companies to your contact list only.</strong> It does not enter them into an award, category, or make them a nominee.
+                To import nominees for an award category, use <a href="#" data-action="app.switchTab" data-id="award-areas" data-bs-dismiss="modal" class="alert-link">Award Areas</a> instead — that's the one place a CSV import creates real, publishable nominees.
+              </div>
+            </div>
             <!-- Step 1: File Upload -->
             <div id="csvStep1">
               <!-- Area Selector (Required) -->

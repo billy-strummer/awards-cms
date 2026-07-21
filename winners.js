@@ -359,6 +359,8 @@ const winnersModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredWinners.length;
     count.textContent = displayCount;
+    const winnersCountLabel = document.getElementById('winnersCountLabel');
+    if (winnersCountLabel) winnersCountLabel.textContent = utils.pluralize(displayCount, 'winner');
     utils.renderRowCount('winnersRowCount', STATE.filteredWinners.length, displayCount, 'winners');
 
     // Server-side: data is already one page; client-side: slice locally

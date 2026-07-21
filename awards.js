@@ -906,6 +906,8 @@ const awardsModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredAwards.length;
     count.textContent = displayCount;
+    const countLabel = document.getElementById('awardsCountLabel');
+    if (countLabel) countLabel.textContent = utils.pluralize(displayCount, 'award');
     utils.renderRowCount('awardsRowCount', STATE.filteredAwards.length, displayCount, 'awards');
 
     if (STATE.filteredAwards.length === 0) {
@@ -1408,8 +1410,10 @@ const awardsModule = {
     el('statsActiveAwards', awards.filter((a) => a.status?.toLowerCase() === 'active').length);
     el('statsWithNominees', awards.filter((a) => (a._assignmentCounts?.total || 0) > 0).length);
     el('statsWithWinners', awards.filter((a) => (a._assignmentCounts?.winner || 0) > 0).length);
-    el('statsCounties', [...new Set(awards.map((a) => a.area_id || a.country).filter(Boolean))].length);
-    el('statsSectors', [...new Set(awards.map((a) => a.sector).filter(Boolean))].length);
+    el(
+      'awardsEntriesCount',
+      awards.reduce((sum, a) => sum + (a._assignmentCounts?.total || 0), 0)
+    );
   },
 
   /**

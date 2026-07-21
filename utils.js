@@ -260,6 +260,17 @@ const utils = {
     return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   },
 
+  /**
+   * Pick singular or plural form based on count (regular "-s" plurals only).
+   * @param {number} count
+   * @param {string} singular - e.g. "award"
+   * @param {string} [plural] - Defaults to singular + "s"
+   * @returns {string}
+   */
+  pluralize(count, singular, plural) {
+    return count === 1 ? singular : plural || `${singular}s`;
+  },
+
   // H7: Highlight search term matches within text
   highlightMatch(text, query) {
     if (!text) return '';

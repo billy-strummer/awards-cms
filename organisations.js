@@ -798,6 +798,8 @@ const orgsModule = {
       if (showing) showing.textContent = pageOrgs.length > 0 ? `${startIdx + 1}-${endIdx}` : '0';
       if (total) total.textContent = STATE.allOrganisations.length;
     }
+    const orgsCountLabel = document.getElementById('orgsCountLabel');
+    if (orgsCountLabel) orgsCountLabel.textContent = utils.pluralize(totalFiltered, 'organisation');
     if (lastRefresh) {
       const now = new Date();
       lastRefresh.textContent = 'just now';

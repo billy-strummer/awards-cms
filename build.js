@@ -58,7 +58,6 @@ const JS_FILES = [
   'winner-announcements.js',
   'ui-init.js',
   'app.js',
-  'btc-module.js',
 ];
 
 const CSS_FILES = ['styles.css', 'modern-theme.css', 'assignments-styles.css'];
@@ -256,13 +255,13 @@ async function build() {
     '<!-- Custom Styles -->\n  <link rel="stylesheet" href="app.min.css">\n</head>'
   );
 
-  // Replace app script block: everything from <!-- Application Scripts --> to the last
-  // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
+  // Replace app script block: everything from <!-- Application Scripts --> to the
+  // bundled app.js tag. Keep only one bundled script tag.
   // Also inject <link rel="prefetch"> hints for all lazy chunks so the browser
   // downloads them at idle time and serves them from cache on first tab click.
   const chunkPrefetches = LAZY_CHUNKS.map((c) => `  <link rel="prefetch" as="script" href="${c.outfile}">`).join('\n');
   html = html.replace(
-    /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
+    /\s*<!-- Application Scripts[\s\S]*?<script src="app\.js"><\/script>/,
     `\n${chunkPrefetches}\n  <script type="module" src="app.min.js"></script>`
   );
 

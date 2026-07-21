@@ -2102,7 +2102,6 @@ document.addEventListener('DOMContentLoaded', function () {
           reports: 'Reports',
           marketing: 'Marketing',
           settings: 'Settings',
-          bitcoin: 'Markets',
         };
         document.title = tabTitles[tabName] ? `${tabTitles[tabName]} · BTA Admin` : 'British Trade Awards Admin';
       }

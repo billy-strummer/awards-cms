@@ -10,7 +10,7 @@ const path = require('path');
 
 const DIST_DIR = path.join(__dirname, 'dist');
 
-// JS files in load order (must match index.html script tags)
+// JS files in load order (must match src/partials/99-shell-foot.html script tags)
 const JS_FILES = [
   'config.js',
   'utils.js',
@@ -227,27 +227,21 @@ async function build() {
     console.log(`  CSS: ${(totalCssSize / 1024).toFixed(0)}KB (concatenated, not minified)`);
   }
 
-  // 3. Assemble HTML from src/partials/ (or fall back to root index.html)
+  // 3. Assemble HTML from src/partials/
   const partialsManifest = path.join(__dirname, 'src', 'partials', 'manifest.json');
-  let html;
-
-  if (fs.existsSync(partialsManifest)) {
-    const partials = JSON.parse(fs.readFileSync(partialsManifest, 'utf8'));
-    const partialsDir = path.join(__dirname, 'src', 'partials');
-    html = partials
-      .map((file) => {
-        const filePath = path.join(partialsDir, file);
-        if (!fs.existsSync(filePath)) throw new Error(`Partial not found: src/partials/${file}`);
-        return fs.readFileSync(filePath, 'utf8');
-      })
-      .join('');
-    console.log(`  HTML: assembled from ${partials.length} partial(s) in src/partials/`);
-  } else {
-    const indexPath = path.join(__dirname, 'index.html');
-    if (!fs.existsSync(indexPath)) throw new Error('index.html not found and no partials manifest');
-    html = fs.readFileSync(indexPath, 'utf8');
-    console.log('  HTML: using root index.html (no partials manifest found)');
+  if (!fs.existsSync(partialsManifest)) {
+    throw new Error('src/partials/manifest.json not found — cannot assemble index.html');
   }
+  const partials = JSON.parse(fs.readFileSync(partialsManifest, 'utf8'));
+  const partialsDir = path.join(__dirname, 'src', 'partials');
+  let html = partials
+    .map((file) => {
+      const filePath = path.join(partialsDir, file);
+      if (!fs.existsSync(filePath)) throw new Error(`Partial not found: src/partials/${file}`);
+      return fs.readFileSync(filePath, 'utf8');
+    })
+    .join('');
+  console.log(`  HTML: assembled from ${partials.length} partial(s) in src/partials/`);
 
   // Replace custom CSS block: everything from <!-- Custom Styles --> to </head>
   html = html.replace(

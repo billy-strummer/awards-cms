@@ -48,7 +48,6 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    // console.debug('Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
@@ -85,8 +84,6 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCompanies() {
-    // console.debug('Loading companies CRM view...');
-
     try {
       // Enable server-side pagination and fetch first page
       this._serverPagination = true;
@@ -878,8 +875,6 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadSegments() {
-    // console.debug('Loading segments...');
-
     try {
       // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
       const segments = await apiClient.selectAll('contact_segments', {
@@ -3882,6 +3877,5 @@ const crmModule = {
 // INITIALIZATION
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
-// console.debug('CRM Module loaded');
 
 export { crmModule };

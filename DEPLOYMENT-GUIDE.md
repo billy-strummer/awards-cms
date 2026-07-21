@@ -32,6 +32,7 @@ Follow `MIGRATION_ORDER.md` exactly:
 1. `migrations/000-complete-database-setup.sql` first — every other file depends on the `award_years` table it creates.
 2. The root `database-*.sql` files in the order listed in `MIGRATION_ORDER.md` §"Recommended migration order".
 3. All remaining `migrations/0XX-*.sql` files in numeric order through the highest-numbered file.
+4. **The 5 non-numbered files** listed in `MIGRATION_ORDER.md`'s "Additional non-numbered migrations" section — found missing from this guide during a dress rehearsal; one of them creates the `award_seasons` table that Settings → Seasons & Areas depends on entirely, so skipping this step leaves that feature silently broken.
 
 Run them via the Supabase Dashboard's SQL Editor (paste and run one file at a time, confirm no errors before the next) or the Supabase CLI (`supabase db push`). **Never run raw SQL against production without reading it first.**
 

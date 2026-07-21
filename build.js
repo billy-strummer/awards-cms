@@ -361,6 +361,15 @@ async function build() {
             /(<meta property="og:image" content=")(?!https?:\/\/)([^"]+)(")/,
             `$1${appUrl.replace(/\/$/, '')}/$2$3`
           );
+          // og:url is likewise required by link-preview crawlers and was
+          // missing from every public page except home.html — add it right
+          // after og:type on any page that has Open Graph tags but no og:url.
+          if (/<meta property="og:title"/.test(pageHtml) && !/<meta property="og:url"/.test(pageHtml)) {
+            pageHtml = pageHtml.replace(
+              /(<meta property="og:type" content="[^"]*">)/,
+              `$1\n  <meta property="og:url" content="${appUrl.replace(/\/$/, '')}/${file}">`
+            );
+          }
         }
         fs.writeFileSync(dest, pageHtml);
       } else {

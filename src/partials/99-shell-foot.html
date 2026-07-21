@@ -6,6 +6,45 @@
   <!-- MODALS -->
   <!-- ==================================================== -->
 
+  <!-- Add Winner Modal (admin-only manual entry) -->
+  <div class="modal fade" id="addWinnerModal" tabindex="-1" aria-labelledby="addWinnerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addWinnerModalLabel"><i class="bi bi-trophy me-2 text-warning"></i>Add Winner</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="addWinnerOrgSelect" class="form-label fw-semibold">Organisation <span class="text-danger">*</span></label>
+            <select class="form-select" id="addWinnerOrgSelect" required>
+              <option value="">— Select Organisation —</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="addWinnerAwardSelect" class="form-label fw-semibold">Award <span class="text-danger">*</span></label>
+            <select class="form-select" id="addWinnerAwardSelect" required>
+              <option value="">— Select Award —</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="addWinnerYear" class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="addWinnerYear" min="2000" max="2100" required>
+          </div>
+          <div class="mb-3">
+            <label for="addWinnerStory" class="form-label fw-semibold">Winner Story <span class="text-muted fw-normal">(optional — can be added later)</span></label>
+            <textarea class="form-control" id="addWinnerStory" rows="3" placeholder="Optional winner story, shown on the public site once published…"></textarea>
+          </div>
+          <div class="form-text">New winners start at status <strong>Pending</strong> — nothing is visible on the public site until you move this record to Published.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" data-action="winnersModule.saveAddWinner"><i class="bi bi-check-lg me-1"></i>Save Winner</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Areas/Regions CSV Import Modal -->
   <input type="file" id="areasImportFileInput" accept=".csv,.txt" class="d-none">
   <div class="modal fade" id="areasImportModal" tabindex="-1" aria-labelledby="areasImportModalLabel" aria-modal="true">

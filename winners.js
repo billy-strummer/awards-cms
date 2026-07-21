@@ -4243,13 +4243,16 @@ const winnersModule = {
       try {
         /* selectAll: justified — small reference list for modal dropdown */
         const orgs = await apiClient.selectAll('organisations', {
-          select: 'id, name',
-          sort: { column: 'name', ascending: true },
+          select: 'id, company_name',
+          sort: { column: 'company_name', ascending: true },
         });
         orgSelect.innerHTML =
           '<option value="">— Select Organisation —</option>' +
           (orgs || [])
-            .map((o) => `<option value="${o.id}">${utils.escapeHtml ? utils.escapeHtml(o.name) : o.name}</option>`)
+            .map(
+              (o) =>
+                `<option value="${o.id}">${utils.escapeHtml ? utils.escapeHtml(o.company_name) : o.company_name}</option>`
+            )
             .join('');
       } catch (e) {
         orgSelect.innerHTML = '<option value="">Failed to load organisations</option>';
@@ -4322,8 +4325,7 @@ const winnersModule = {
     const orgId = document.getElementById('addWinnerOrgSelect')?.value?.trim();
     const awardId = document.getElementById('addWinnerAwardSelect')?.value?.trim();
     const year = parseInt(document.getElementById('addWinnerYear')?.value, 10);
-    const placement = document.getElementById('addWinnerPlacement')?.value || 'Winner';
-    const notes = document.getElementById('addWinnerNotes')?.value?.trim() || null;
+    const winnerStory = document.getElementById('addWinnerStory')?.value?.trim() || null;
 
     if (!orgId || !awardId || !year) {
       utils.showToast('Please fill in all required fields.', 'warning');
@@ -4340,9 +4342,8 @@ const winnersModule = {
         organisation_id: orgId,
         award_id: awardId,
         year,
-        placement,
-        notes,
-        status: 'Pending',
+        winner_story: winnerStory,
+        winner_status: 'pending',
       });
 
       bootstrap.Modal.getInstance(document.getElementById('addWinnerModal'))?.hide();

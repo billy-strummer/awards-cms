@@ -3073,7 +3073,7 @@ const orgsModule = {
 
         await apiClient.insert('organisations', companyData);
 
-        utils.showToast('Company added successfully!', 'success');
+        utils.showToast('Organisation added successfully', 'success');
         bootstrap.Modal.getInstance(document.getElementById('addNewOrgModal'))?.hide();
         form.reset();
         await this.loadOrganisations();

@@ -369,7 +369,7 @@ const entriesModule = {
 
     tbody.innerHTML = pageEntries
       .map((entry) => {
-        const companyName = entry.organisations?.company_name || 'Unknown';
+        const companyName = entry.organisations?.company_name || 'Unknown Organisation';
         const awardName = entry.awards?.award_name || entry.award_category || 'Unknown';
         const _statusBadge = this.getStatusBadge(entry.status);
         const paymentBadge = this.getPaymentBadge(entry.payment_status);
@@ -941,7 +941,7 @@ const entriesModule = {
                 <h5 class="modal-title mb-1">
                   <i class="bi bi-file-earmark-text me-2"></i>${utils.escapeHtml(entry.entry_title)}
                 </h5>
-                <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Company')} | ${utils.escapeHtml(entry.entry_number)}</small>
+                <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Organisation')} | ${utils.escapeHtml(entry.entry_number)}</small>
               </div>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -1747,7 +1747,7 @@ const entriesModule = {
                   <h5 class="modal-title mb-1">
                     <i class="bi bi-pencil me-2"></i>Edit Entry: ${utils.escapeHtml(entry.entry_number)}
                   </h5>
-                  <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Company')}</small>
+                  <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Organisation')}</small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
@@ -2488,7 +2488,7 @@ const entriesModule = {
 
       const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
       const safeVotingUrl = utils.escapeHtml(votingUrl);
-      const companyName = entry.organisations?.company_name || 'Nominee';
+      const companyName = entry.organisations?.company_name || 'Unknown Organisation';
 
       // Create modal HTML
       const modalHtml = `

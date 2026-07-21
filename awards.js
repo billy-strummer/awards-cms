@@ -1487,7 +1487,7 @@ const awardsModule = {
     // Update save button for create mode
     const saveBtnLabel = document.getElementById('awardFormSaveBtnLabel');
     const saveBtnIcon = document.getElementById('awardFormSaveBtnIcon');
-    if (saveBtnLabel) saveBtnLabel.textContent = 'Create Award';
+    if (saveBtnLabel) saveBtnLabel.textContent = 'Save Award';
     if (saveBtnIcon) {
       saveBtnIcon.className = 'bi bi-plus-lg me-1';
     }
@@ -2013,7 +2013,7 @@ const awardsModule = {
             : `Award created: ${awardData.award_name} (${awardData.area_id ? locationModule.getAreaName(awardData.area_id) : awardData.country || ''}, ${awardData.year})`
         );
 
-        utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
+        utils.showToast(id ? 'Award updated successfully' : 'Award created successfully', 'success');
         await this.loadAwards();
         if (typeof updateTabCounts === 'function') updateTabCounts();
         if (!id && typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {

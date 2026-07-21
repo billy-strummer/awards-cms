@@ -825,7 +825,7 @@ const winnersModule = {
         // Close modal and reload
         bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal'))?.hide();
         await this.loadWinners();
-        utils.showToast('Media uploaded successfully!', 'success');
+        utils.showToast('Media uploaded successfully', 'success');
       });
     } catch (error) {
       console.error('Error uploading media:', error);
@@ -915,7 +915,7 @@ const winnersModule = {
 
         await this.loadWinners();
         bootstrap.Modal.getInstance(document.getElementById('viewMediaModal'))?.hide();
-        utils.showToast('Media deleted successfully!', 'success');
+        utils.showToast('Media deleted successfully', 'success');
       });
     } catch (error) {
       console.error('Error deleting media:', error);
@@ -4347,7 +4347,7 @@ const winnersModule = {
       });
 
       bootstrap.Modal.getInstance(document.getElementById('addWinnerModal'))?.hide();
-      utils.showToast('Winner added successfully.', 'success');
+      utils.showToast('Winner added successfully', 'success');
       await this.loadWinners();
     } catch (err) {
       utils.showToast('Failed to add winner: ' + err.message, 'error');

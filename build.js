@@ -272,6 +272,9 @@ async function build() {
   const sentryDsn = process.env.SENTRY_DSN || '';
   html = html.replace('<meta name="sentry-dsn" content="">', `<meta name="sentry-dsn" content="${sentryDsn}">`);
 
+  // Used below to rewrite relative og:image paths on public pages into absolute URLs
+  const appUrl = process.env.APP_URL || '';
+
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
   console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
   if (supabaseUrl) console.log('  Supabase: credentials injected from environment');
@@ -350,6 +353,15 @@ async function build() {
           '<meta name="supabase-anon-key" content="">',
           `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
         );
+        // og:image must be an absolute URL — social platforms' link-preview
+        // crawlers don't resolve relative paths against the page's own URL,
+        // so a relative og:image silently fails to render in shared links.
+        if (appUrl) {
+          pageHtml = pageHtml.replace(
+            /(<meta property="og:image" content=")(?!https?:\/\/)([^"]+)(")/,
+            `$1${appUrl.replace(/\/$/, '')}/$2$3`
+          );
+        }
         fs.writeFileSync(dest, pageHtml);
       } else {
         fs.copyFileSync(src, dest);

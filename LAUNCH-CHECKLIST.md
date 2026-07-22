@@ -6,8 +6,8 @@ Print this page. Work through it top to bottom before announcing the system publ
 |---|---|---|
 | **Backups & Migrations** | | |
 | Manual backup taken of any existing production data | ☐ | `PRODUCTION-DEPLOYMENT-PLAN.md` Step 1 |
-| All migrations run in `MIGRATION_ORDER.md` order, including the 5 additional files at the end | ☐ | Step 2 — the `award_seasons` table specifically depends on this |
-| RLS confirmed enabled on every table | ☐ | Step 2 verification query |
+| All migrations run in `MIGRATION_ORDER.md` order, including the 5 additional files at the end and migration 077 | ☐ | Step 2 — the `award_seasons` table and RLS coverage on `email_logs`/`judge_conflicts`/`sponsorships` specifically depend on this |
+| RLS confirmed enabled *and effective* on every table (not just "enabled" — check for leftover permissive policies too) | ☐ | Step 2's 3-part verification query |
 | **Environment & Configuration** | | |
 | Every variable in `ENVIRONMENT-VARIABLES.md` set in Vercel, real production values | ☐ | Step 3 |
 | `CRON_SECRET` generated and set | ☐ | Required for automation to run at all |

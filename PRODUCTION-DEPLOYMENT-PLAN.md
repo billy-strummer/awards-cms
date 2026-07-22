@@ -19,13 +19,36 @@ A step-by-step launch sequence. Each step names what should happen, how to confi
 
 ## Step 2 — Supabase Migration Order
 
-- **Action**: Run every file in `MIGRATION_ORDER.md`'s order exactly, via the Supabase Dashboard SQL Editor (paste and run one file at a time) or `supabase db push`. This includes the 5 additional non-numbered files at the end of that document (`create-award-seasons.sql` and the others) — these were found missing from the documented order during the final pre-launch review and are essential, not optional.
+- **Action**: Run every file in `MIGRATION_ORDER.md`'s order exactly, via the Supabase Dashboard SQL Editor (paste and run one file at a time) or `supabase db push`. This includes the 5 additional non-numbered files at the end of that document (`create-award-seasons.sql` and the others) and **migration 077** (`077-enable-rls-missing-tables.sql`) — these were found missing from the documented order during pre-launch review and are essential, not optional. Migration 077 specifically closes a real gap found during production-deployment verification: `email_logs`, `judge_conflicts`, and `sponsorships` had RLS disabled *and* the standard broad Supabase default grants to `anon`/`authenticated` — meaning anyone holding the public anon key could read or write those tables directly via the REST API. **Do not skip this migration.**
 - **Expected outcome**: Every file reports success with no errors. `award_years`, `award_seasons`, and all other tables exist.
 - **Verification**:
   ```sql
+  -- 1. Tables with RLS disabled outright
   select tablename, rowsecurity from pg_tables where schemaname = 'public' and rowsecurity = false;
+
+  -- 2. Tables where RLS is enabled but a leftover permissive policy (e.g. an old
+  --    "Allow all access ... USING (true)") still exists alongside a restrictive
+  --    one. Postgres combines multiple PERMISSIVE policies with OR, so a single
+  --    USING (true) policy silently cancels out any USING (false) policy on the
+  --    same table — RLS shows as "enabled" but provides no actual protection.
+  --    Found live on award_assignments and event_guests during the migration-077
+  --    investigation; not yet fixed as of this writing (see DB-SCHEMA-AUDIT-TODO.md
+  --    DB-C3 annotation) — check this on every environment, including production.
+  select tablename, array_agg(policyname) as permissive_true_policies
+  from pg_policies
+  where schemaname = 'public' and permissive = 'PERMISSIVE' and qual = 'true'
+  group by tablename
+  order by tablename;
+
+  -- 3. Confirm the anon key genuinely cannot read/write a sample sensitive table
+  --    (repeat for any table you expect to be service-role-only) — the only way
+  --    to be sure grants/RLS combine the way you expect, rather than trusting
+  --    the policy list alone:
+  --    curl -s "$SUPABASE_URL/rest/v1/email_logs?select=*&limit=1" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $ANON_KEY"
+  --    Expect [] even if rows exist (confirm separately via the service key), and
+  --    expect a POST to that same endpoint to fail with a 401 / 42501 RLS error.
   ```
-  This should return zero rows (or only intentional exceptions you understand) — confirms RLS is enabled everywhere, per `DEPLOYMENT-GUIDE.md` §2.3. Also confirm `award_seasons` specifically exists (`select count(*) from award_seasons;`) since its migration was the one most recently found missing from documentation.
+  Query 1 should return zero rows (or only intentional exceptions you understand). Query 2 should also return zero rows — any result there means a table you believe is locked down actually isn't. Confirms RLS is enabled *and effective* everywhere, per `DEPLOYMENT-GUIDE.md` §2.3. Also confirm `award_seasons` specifically exists (`select count(*) from award_seasons;`) since its migration was the one most recently found missing from documentation.
 - **Rollback if it fails**: Every migration is additive-only and idempotent (`IF NOT EXISTS` guards) — a failed migration is almost always safe to fix and re-run rather than needing an undo. If a specific file errors, read the error message (it will name the missing dependency or conflicting object), fix the root cause, and re-run just that file. Do not skip ahead. If you truly need to start over, restore from Step 1's backup into a fresh Supabase project rather than trying to manually reverse partial migration state.
 
 ---

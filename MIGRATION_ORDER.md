@@ -21,6 +21,18 @@ first running that migration will fail with "relation 'award_years' does not exi
    the highest-numbered file sequentially. Each file is idempotent (uses `IF NOT EXISTS`
    guards) so re-running is safe.
 
+> ⚠️ **`migrations/077-enable-rls-missing-tables.sql` is required, not optional.**
+> It closes a real, live security gap found during production-deployment
+> verification: `email_logs`, `judge_conflicts`, and `sponsorships` had RLS
+> disabled and (on a real Supabase project — this doesn't show up against a
+> bare local Postgres instance) the standard broad default grants to
+> `anon`/`authenticated`, meaning anyone holding the public anon key could
+> read or write those tables directly via the REST API. It's covered by the
+> "through the highest-numbered file" instruction above, but is called out
+> here explicitly given the severity — do not skip it, and see
+> `PRODUCTION-DEPLOYMENT-PLAN.md` Step 2 for how to verify it actually took
+> effect (not just that the migration ran without error).
+
 > ⚠️ **`database-location-restructure.sql` is deliberately NOT in this list.**
 > It requires the `areas` table, which doesn't exist until
 > `migrations/067-create-missing-areas-table.sql` runs — so running it at

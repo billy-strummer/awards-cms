@@ -46,6 +46,32 @@ first running that migration will fail with "relation 'award_years' does not exi
 > the public anon key, bypassing `voting-proxy.js`'s rate-limiting entirely.
 > Do not skip this migration.
 
+> ⚠️ **Migrations 081–085 are all required, not optional.** Produced by the same
+> empirical risk-assessment pass as migration 080, each independently proven
+> exploitable with real anon-key calls and independently verified after fixing:
+> - **081** (`revoke-anon-execute-email-functions.sql`) — revokes anon/authenticated
+>   `EXECUTE` on 6 `SECURITY DEFINER` functions, including `send_single_email`/
+>   `send_test_email`, which had no internal auth check and would let anyone send
+>   arbitrary email through this platform's real Resend account.
+> - **082** (`fix-certificate-assets-storage-policies.sql`) — the `certificate-assets`
+>   storage bucket's write policies were scoped to `{public}` instead of
+>   `{authenticated}`; anyone could upload/overwrite/delete files with only the
+>   anon key (confirmed exploitable).
+> - **083** (`enable-security-invoker-on-views.sql`) — none of the 15 views in the
+>   schema had `security_invoker` set, so they ran with the view owner's
+>   privileges and silently bypassed RLS hardening already applied to their
+>   underlying tables (confirmed: real company/contact PII and a real guest's
+>   name/email leaked via views even though the base tables correctly blocked anon).
+> - **084** (`harden-sensitive-table-subset-rls.sql`) — 27 tables (`user_roles`,
+>   `webhooks`, `gdpr_requests`, `sponsor_contracts`, CRM/audit tables, etc.) still
+>   on the migration-000 permissive policy; confirmed exploitable including a real
+>   webhook signing secret readable in full via the anon key.
+> - **085** (`harden-table-assignments-rls.sql`) — same gap on `table_assignments`
+>   (event seating, including dietary requirements).
+>
+> See `SECURITY-FIX-MIGRATION-080.md` through `-085.md` for full proof-of-exploit
+> detail, browser-dependency analysis, and verification evidence for each.
+
 > ⚠️ **`database-location-restructure.sql` is deliberately NOT in this list.**
 > It requires the `areas` table, which doesn't exist until
 > `migrations/067-create-missing-areas-table.sql` runs — so running it at

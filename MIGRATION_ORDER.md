@@ -33,6 +33,19 @@ first running that migration will fail with "relation 'award_years' does not exi
 > `PRODUCTION-DEPLOYMENT-PLAN.md` Step 2 for how to verify it actually took
 > effect (not just that the migration ran without error).
 
+> ⚠️ **`migrations/080-enable-rls-vote-judging-integrity-tables.sql` is required, not optional.**
+> Same class of gap as migration 077, found during a follow-up empirical risk
+> assessment: `public_votes`, `judge_scores`, `shortlists`, `winner_documents`,
+> `winner_media`, and `deliberation_notes` had RLS *enabled* but only the
+> original migration-000 permissive policy (`USING (true)`), which is
+> functionally identical to having no RLS at all. Proven exploitable with
+> real anon-key REST calls: anonymous ballot-stuffing into `public_votes`,
+> and a confirmed, verified tamper of a real `judge_scores.total_score` value
+> — i.e., the two things this platform's entire product integrity depends on
+> (vote counts and blind judging) were directly manipulable by anyone with
+> the public anon key, bypassing `voting-proxy.js`'s rate-limiting entirely.
+> Do not skip this migration.
+
 > ⚠️ **`database-location-restructure.sql` is deliberately NOT in this list.**
 > It requires the `areas` table, which doesn't exist until
 > `migrations/067-create-missing-areas-table.sql` runs — so running it at

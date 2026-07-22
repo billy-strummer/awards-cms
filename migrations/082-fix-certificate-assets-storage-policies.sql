@@ -1,0 +1,58 @@
+-- ============================================================
+-- Migration 082: Scope certificate-assets storage write policies
+-- to authenticated (matching brand-assets)
+-- ============================================================
+-- Empirical investigation (Claude TEST CMS, 2026-07-22) proved that the
+-- certificate-assets bucket's INSERT/UPDATE/DELETE storage.objects
+-- policies -- named "Auth upload/update/delete certificate-assets",
+-- clearly intended to mean authenticated-only, matching the naming
+-- convention correctly used for the sibling brand-assets bucket -- were
+-- actually scoped to roles={public}, not {authenticated}. Likely a
+-- missing `TO authenticated` clause in migration 049.
+--
+-- Proof (real anon-key Storage API calls, not just inspection):
+--   - Uploaded a real file to certificate-assets using only the anon key
+--     (HTTP 200, real object created) and confirmed it was immediately,
+--     publicly readable at the public URL with the exact uploaded content.
+--   - Overwrote the same object with the anon key (HTTP 200, same
+--     object Id returned).
+--   - Deleted the same object with the anon key (HTTP 200 "Successfully
+--     deleted"), confirmed via an immediate 404 on re-fetch.
+--   All three succeeded with nothing but the public anon key -- no
+--   authentication of any kind.
+--
+-- Why the app doesn't already prevent this: api/certificates-qr.js
+-- writes to this bucket server-side with the service-role key
+-- (unaffected by any storage.objects RLS policy). winners.js's
+-- uploadCertBackground/uploadCertFont call _uploadToStorage(), which
+-- POSTs multipart form data (file/bucket/path) to /api/upload-proxy --
+-- but that endpoint only handles JSON `{action: ...}` requests
+-- (get_entry/get_existing_files/save_file_metadata/get_upload_token) and
+-- has no bucket-upload handler, so req.body.action is undefined for a
+-- multipart POST and the request 400s before ever reaching Supabase.
+-- This appears to be a pre-existing, unrelated functional bug in that
+-- specific admin feature (out of scope for this security pass -- noted
+-- separately, not fixed here). Either way, no code path -- working or
+-- broken -- creates its own Supabase client to write to this bucket
+-- directly with the anon/authenticated key, so nothing in the real app
+-- relies on the public role-scoping this migration removes.
+--
+-- Browser-side dependency check: confirmed via grep that the only
+-- frontend references to certificate-assets (winners.js) go through
+-- /api/upload-proxy (server-side), not a direct browser Supabase Storage
+-- client call. No feature depends on direct client-side write access to
+-- this bucket with the anon or authenticated key beyond what
+-- `TO authenticated` already allows.
+--
+-- Scope note: this migration only fixes the role-scoping bug (the
+-- specific, confirmed-exploitable finding). It deliberately does not add
+-- a file_size_limit or allowed_mime_types to certificate-assets --
+-- brand-assets has those set, but adding them here would be inventing a
+-- new restriction not already established for this bucket, rather than
+-- reusing an existing pattern, and is a separate hardening decision left
+-- for its own review.
+-- ============================================================
+
+ALTER POLICY "Auth upload certificate-assets" ON storage.objects TO authenticated;
+ALTER POLICY "Auth update certificate-assets" ON storage.objects TO authenticated;
+ALTER POLICY "Auth delete certificate-assets" ON storage.objects TO authenticated;

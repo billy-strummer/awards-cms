@@ -16,6 +16,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { sendEntryConfirmation, sendNominationConfirmation } = require('./email-automation');
 const { sendEmail } = require('./resend-email');
 const { wrapEmail } = require('./_lib/email-header');
+const { findMatchingOrganisation } = require('./_lib/organisation-matching');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
@@ -638,22 +639,40 @@ async function handleSubmitEntry(req, res) {
     contactPosition: sanitizeString(contactPosition || '', 200) || null,
   };
 
-  // 1. Find or create organisation
-  let organisationId = null;
-  const { data: existingOrgs } = await supabase
-    .from('organisations')
-    .select('id')
-    .ilike('company_name', safe.companyName)
+  // 1. Find matching award first -- its area_id scopes the organisation
+  // lookup below, so an organisation is never matched across unrelated
+  // areas just because a company name happens to coincide.
+  let awardId = null;
+  let awardAreaId = null;
+  let awardEntryFee = 0;
+  const { data: matchingAwards } = await supabase
+    .from('awards')
+    .select('id, entry_fee, area_id')
+    .eq('award_name', safe.awardCategory)
+    .eq('sector', safe.sector)
+    .eq('county', safe.countyCity)
+    .eq('status', 'Active')
+    .order('year', { ascending: false })
     .limit(1);
 
-  if (existingOrgs && existingOrgs.length > 0) {
-    organisationId = existingOrgs[0].id;
-  } else {
+  if (matchingAwards && matchingAwards.length > 0) {
+    awardId = matchingAwards[0].id;
+    awardAreaId = matchingAwards[0].area_id;
+    awardEntryFee = Number(matchingAwards[0].entry_fee) || 0;
+  }
+
+  // 2. Find or create organisation, scoped to the resolved award's area.
+  // If the area couldn't be resolved (awardAreaId is null), a new
+  // organisation is always created rather than matched -- see
+  // findMatchingOrganisation's contract in _lib/organisation-matching.js.
+  let organisationId = await findMatchingOrganisation(supabase, safe.companyName, awardAreaId);
+  if (!organisationId) {
     const { data: newOrg, error: orgError } = await supabase
       .from('organisations')
       .insert({
         company_name: safe.companyName,
         county_city: safe.countyCity,
+        area_id: awardAreaId,
         sector: safe.sector,
         email: safe.contactEmail,
         contact_name: safe.contactName,
@@ -669,24 +688,6 @@ async function handleSubmitEntry(req, res) {
       return res.status(500).json({ error: 'Could not save company details. Please try again.' });
     }
     organisationId = newOrg.id;
-  }
-
-  // 2. Find matching award
-  let awardId = null;
-  let awardEntryFee = 0;
-  const { data: matchingAwards } = await supabase
-    .from('awards')
-    .select('id, entry_fee')
-    .eq('award_name', safe.awardCategory)
-    .eq('sector', safe.sector)
-    .eq('county', safe.countyCity)
-    .eq('status', 'Active')
-    .order('year', { ascending: false })
-    .limit(1);
-
-  if (matchingAwards && matchingAwards.length > 0) {
-    awardId = matchingAwards[0].id;
-    awardEntryFee = Number(matchingAwards[0].entry_fee) || 0;
   }
 
   // 3. Generate entry number
@@ -899,22 +900,28 @@ async function handleSubmitNomination(req, res) {
   const companyName = isNewBusiness ? safe.businessName : safe.nomineeCompany;
   const nomineePerson = isNewBusiness ? safe.businessOwner : safe.nomineeName;
 
-  // 1. Find or create organisation for the nominee's company
-  let organisationId = null;
-  const { data: existingOrgs } = await supabase
-    .from('organisations')
+  // 1. Resolve the area for scoping the organisation lookup below. This
+  // flow has no award-matching step of its own to piggyback on (unlike
+  // handleSubmitEntry), so resolve directly against the areas table by name.
+  const { data: matchingAreas } = await supabase
+    .from('areas')
     .select('id')
-    .ilike('company_name', companyName)
+    .eq('display_name', safe.countyCity)
     .limit(1);
+  const nominationAreaId = matchingAreas && matchingAreas[0] ? matchingAreas[0].id : null;
 
-  if (existingOrgs && existingOrgs.length > 0) {
-    organisationId = existingOrgs[0].id;
-  } else {
+  // 2. Find or create organisation for the nominee's company, scoped to
+  // the resolved area. If the area couldn't be resolved (nominationAreaId
+  // is null), a new organisation is always created rather than matched --
+  // see findMatchingOrganisation's contract in _lib/organisation-matching.js.
+  let organisationId = await findMatchingOrganisation(supabase, companyName, nominationAreaId);
+  if (!organisationId) {
     const { data: newOrg, error: orgError } = await supabase
       .from('organisations')
       .insert({
         company_name: companyName,
         county_city: safe.countyCity,
+        area_id: nominationAreaId,
         contact_name: nomineePerson,
         website: isNewBusiness ? safe.businessWebsite : null,
         status: 'active',
@@ -929,10 +936,10 @@ async function handleSubmitNomination(req, res) {
     organisationId = newOrg.id;
   }
 
-  // 2. Generate entry number
+  // 3. Generate entry number
   const entryNumber = await generateEntryNumber();
 
-  // 3. Build supporting information block
+  // 4. Build supporting information block
   const supportParts = [];
   if (isNewBusiness) {
     if (safe.businessDescription) supportParts.push('Business Description: ' + safe.businessDescription);
@@ -950,7 +957,7 @@ async function handleSubmitNomination(req, res) {
   if (safe.supportingInfo) supportParts.push('Supporting Info: ' + safe.supportingInfo);
   const supportingInformation = supportParts.join('\n\n') || null;
 
-  // 4. Create entry
+  // 5. Create entry
   const currentYear = new Date().getFullYear();
   const entryTitle = isNewBusiness
     ? safe.businessName + ' - ' + safe.awardCategory

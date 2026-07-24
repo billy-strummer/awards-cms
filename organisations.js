@@ -4928,8 +4928,23 @@ const orgsModule = {
       return;
     }
 
-    // Build preview
-    const existingNames = new Set(STATE.allOrganisations.map((o) => (o.company_name || '').toLowerCase()));
+    // Build preview. Duplicate detection is scoped to the selected area --
+    // an organisation with the same name in a different area is not a
+    // duplicate, it's a separate organisation (mirrors the server-side
+    // matching helper's semantics in api/_lib/organisation-matching.js).
+    // If the selected area can't be resolved to a real area_id, treat every
+    // row as new rather than matching against other area-less records.
+    const selectedCounty = this._getSelectedCounty();
+    if (!selectedCounty) return;
+    const selectedArea = (locationModule._cachedAreas || []).find((a) => a.display_name === selectedCounty);
+    const selectedAreaId = selectedArea ? selectedArea.id : null;
+    const existingNames = selectedAreaId
+      ? new Set(
+          STATE.allOrganisations
+            .filter((o) => o.area_id === selectedAreaId)
+            .map((o) => (o.company_name || '').toLowerCase())
+        )
+      : new Set();
 
     let newCount = 0;
     let dupCount = 0;
@@ -5060,10 +5075,12 @@ const orgsModule = {
 
       const selectedCounty = this._getSelectedCounty();
       if (!selectedCounty) return;
+      const selectedArea = (locationModule._cachedAreas || []).find((a) => a.display_name === selectedCounty);
+      const selectedAreaId = selectedArea ? selectedArea.id : null;
 
       // Build records - tag each org with the selected county
       const records = rowsToImport.map((item) => {
-        const rec = { status: 'prospect', catchment_area: selectedCounty };
+        const rec = { status: 'prospect', catchment_area: selectedCounty, area_id: selectedAreaId };
         this._dbFields.forEach((field) => {
           if (item.record[field]) {
             let val = item.record[field].trim();
@@ -5099,9 +5116,13 @@ const orgsModule = {
       if (mergeRows.length > 0) {
         for (const item of mergeRows) {
           try {
-            const existingOrg = STATE.allOrganisations.find(
-              (o) => (o.company_name || '').toLowerCase() === (item.record.company_name || '').toLowerCase()
-            );
+            const existingOrg = selectedAreaId
+              ? STATE.allOrganisations.find(
+                  (o) =>
+                    o.area_id === selectedAreaId &&
+                    (o.company_name || '').toLowerCase() === (item.record.company_name || '').toLowerCase()
+                )
+              : null;
             if (existingOrg) {
               const updateData = {};
               this._dbFields.forEach((field) => {

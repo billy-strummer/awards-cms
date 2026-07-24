@@ -42,16 +42,20 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     range: mockRange.mockReturnThis(),
     limit: jest.fn(),
     maybeSingle: jest.fn(),
+    single: jest.fn(),
     then: (resolve) => resolve(resolveWith),
   };
   // Make all methods chainable by default
   Object.keys(obj).forEach((key) => {
-    if (typeof obj[key] === 'function' && key !== 'then' && key !== 'maybeSingle') {
+    if (typeof obj[key] === 'function' && key !== 'then' && key !== 'maybeSingle' && key !== 'single') {
       obj[key] = jest.fn(() => obj);
     }
   });
-  // maybeSingle resolves with the data directly
+  // maybeSingle/single resolve with the data directly (single resolves
+  // { data: <first row or the object itself>, error } the same shape
+  // callers already destructure as `{ data, error }`).
   obj.maybeSingle = jest.fn(() => Promise.resolve(resolveWith));
+  obj.single = jest.fn(() => Promise.resolve(resolveWith));
   obj.then = (resolve) => resolve(resolveWith);
   return obj;
 }
@@ -485,5 +489,150 @@ describe('Data Proxy API', () => {
     const res = createRes();
     await handler(req, res);
     expect(res.statusCode).toBe(200);
+  });
+
+  // --- award_area_import: organisation matching regression tests ---
+  // These prove the fix for the ILIKE-wildcard and cross-area-collision
+  // findings: organisation lookups must be escaped and scoped to the
+  // resolved area, via the shared api/_lib/organisation-matching helper.
+  describe('award_area_import operation', () => {
+    function importReq(overrides = {}) {
+      return createReq({
+        body: {
+          operation: 'award_area_import',
+          mode: 'validate',
+          areaId: 'area-1',
+          rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company' }],
+          ...overrides,
+        },
+      });
+    }
+
+    test('rejects an invalid mode', async () => {
+      const req = importReq({ mode: 'bogus' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects a missing areaId', async () => {
+      const req = importReq({ areaId: undefined });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects empty rows', async () => {
+      const req = importReq({ rows: [] });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects more than 2000 rows', async () => {
+      const req = importReq({ rows: Array.from({ length: 2001 }, () => ({ company_name: 'X', category: 'Y' })) });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('requires editor role or above', async () => {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'viewer' }, error: null, count: 1 });
+        return chainable();
+      });
+      const req = importReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('organisation lookup escapes wildcard characters and scopes by area_id', async () => {
+      // The shared chainable() helper above discards eq/ilike call args (it
+      // overwrites them with fresh local jest.fn()s per chain), so this test
+      // uses its own minimal, call-recording mock instead -- table-aware so
+      // the import runs its full validate->import path for one row and
+      // reaches the organisation lookup.
+      const recordedCalls = [];
+      function recordingChain(resolveWith) {
+        const chain = {};
+        [
+          'select',
+          'insert',
+          'update',
+          'delete',
+          'order',
+          'range',
+          'in',
+          'or',
+          'neq',
+          'gt',
+          'gte',
+          'lt',
+          'lte',
+          'like',
+        ].forEach((m) => {
+          chain[m] = (...args) => {
+            recordedCalls.push([m, ...args]);
+            return chain;
+          };
+        });
+        chain.eq = (...args) => {
+          recordedCalls.push(['eq', ...args]);
+          return chain;
+        };
+        chain.ilike = (...args) => {
+          recordedCalls.push(['ilike', ...args]);
+          return chain;
+        };
+        chain.limit = (...args) => {
+          recordedCalls.push(['limit', ...args]);
+          return chain;
+        };
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve(resolveWith);
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({
+            data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+            error: null,
+          });
+        }
+        if (table === 'organisations') return recordingChain({ data: [], error: null });
+        if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+        if (table === 'entries') return recordingChain({ data: [], error: null });
+        return recordingChain({ data: [], error: null });
+      });
+
+      try {
+        const req = importReq({
+          mode: 'import',
+          rows: [{ company_name: '100% Group Roofing Ltd', category: 'Roofing Company' }],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+
+        // The organisation lookup (via findMatchingOrganisation) must have
+        // escaped the wildcard before it reached ILIKE...
+        const ilikeCompanyNameCalls = recordedCalls.filter(([m, col]) => m === 'ilike' && col === 'company_name');
+        expect(ilikeCompanyNameCalls.length).toBeGreaterThan(0);
+        ilikeCompanyNameCalls.forEach(([, , pattern]) => {
+          expect(pattern).toBe('100\\% Group Roofing Ltd');
+        });
+
+        // ...and must have been scoped to the resolved area.
+        const areaIdEqCalls = recordedCalls.filter(([m, col]) => m === 'eq' && col === 'area_id');
+        expect(areaIdEqCalls.some(([, , val]) => val === 'area-1')).toBe(true);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
   });
 });

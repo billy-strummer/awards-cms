@@ -23,6 +23,7 @@ const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
 const { resolveCategory } = require('./_lib/award-categories');
+const { findMatchingOrganisation } = require('./_lib/organisation-matching');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
@@ -1470,13 +1471,7 @@ async function executeAwardAreaImport(body, user) {
   const rowResults = [];
 
   for (const r of validatedRows) {
-    const { data: existingOrgs, error: orgFindErr } = await supabase
-      .from('organisations')
-      .select('id')
-      .ilike('company_name', r.companyName)
-      .limit(1);
-    if (orgFindErr) throw orgFindErr;
-    let orgId = existingOrgs && existingOrgs[0] ? existingOrgs[0].id : null;
+    let orgId = await findMatchingOrganisation(supabase, r.companyName, area.id);
 
     const orgFields = {
       company_name: r.companyName,

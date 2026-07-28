@@ -20,6 +20,12 @@ None of the items below are required before merging Phase 1.
 - **Estimated effort:** Small — align to case-insensitive matching with proper escaping, plus one regression test.
 - **Independent of Phase 1:** Yes.
 
+### 1.3 `display_name` area lookups are not scoped by country
+- **Priority:** Low (future-proofing, not a current defect)
+- **Rationale:** `areas` has `UNIQUE(display_name, country)`, not `UNIQUE(display_name)` alone — a `display_name` is only guaranteed unique *within* a country, not across all of them. Three lookups key on `display_name` alone, without a `country` filter: `handleSubmitNomination()`'s area resolution (`entry-proxy.js`), and `organisations.js`'s CSV importer area resolution (used in both `_applyMapping()` and `executeCSVImport()`, via `(locationModule._cachedAreas || []).find((a) => a.display_name === selectedCounty)`). Today this is a non-issue: the dataset is UK-only and current UK county/city names in `areas` don't collide with each other. It becomes a real ambiguity only if a future territory introduces a `display_name` that duplicates an existing one under a different `country` — at that point `.limit(1)` (or `.find()`) could resolve to the wrong country's area, which would then incorrectly scope organisation matching to that area rather than failing safe.
+- **Estimated effort:** Small — add a `country` (or `region_id`) filter alongside each `display_name` lookup, once a concrete multi-country scenario exists to test against.
+- **Independent of Phase 1:** Yes.
+
 ---
 
 ## 2. Technical debt

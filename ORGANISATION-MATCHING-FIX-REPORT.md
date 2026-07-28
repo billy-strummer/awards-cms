@@ -97,7 +97,17 @@ The shared helper's contract is deliberately narrow: it performs a lookup and re
 | `tests/entry-proxy.test.js` | New escaping/area-scoping proof tests for both public handlers, plus a new test for the unresolvable-area fallback. Five pre-existing tests' mock sequences corrected — their fixtures assumed the pre-refactor call order (organisation lookup before award match) and, after the reorder, silently stopped exercising the "existing organisation reused" path their names claimed (they still passed only because they never asserted on `organisation_id`). | Test-only (existing tests corrected to match new, intended call order; no production behaviour affected by the test changes themselves). |
 | `tests/organisations.test.js` | Three new tests for `_applyMapping()`'s area-scoped duplicate detection, including the unresolvable-area fallback. | Test-only. |
 
-No database migration, schema change, or configuration change was made.
+No new database migration was added by this fix. However, this fix is **not deployable in isolation** — it depends on schema already introduced earlier on this branch, and that dependency is a three-migration chain, not a single migration:
+
+| Migration | Why this fix needs it |
+|---|---|
+| `migrations/067-create-missing-areas-table.sql` | Creates the `areas` table itself — the thing every `area_id` in this fix is a foreign key into. |
+| `migrations/068-add-area-id-to-awards-and-orgs.sql` | Adds the `area_id` column (FK → `areas`) to `award_years` and `organisations`. Without it, the inserts in `executeAwardAreaImport`, `handleSubmitEntry`, and `handleSubmitNomination` that now set `area_id` would fail outright. |
+| `migrations/069-refresh-awards-view.sql` | **Easy to overlook, but load-bearing for `handleSubmitEntry` specifically.** `awards` is a `SELECT * FROM award_years` view, frozen at `CREATE VIEW` time — it does **not** automatically pick up columns added to `award_years` afterwards. `handleSubmitEntry` resolves its scoping `area_id` by querying the `awards` view, not `award_years` directly (`.from('awards').select('id, entry_fee, area_id')...`). If 069 is skipped, that query returns `area_id: undefined` for every submission, which doesn't break anything (the helper's null-area fallback still applies), but it silently defeats area-scoping for that endpoint — every submission would fall back to "always create new organisation," never matching an existing one, until 069 is applied. |
+
+All three must be applied, **in that numeric order**, before or alongside this fix's code for the fix to behave as designed. `migrations/076-add-scale-critical-indexes.sql` (trigram index on `organisations.company_name`) is a separate, performance-only dependency — not required for correctness, only for query cost at higher data volumes.
+
+Beyond this pre-existing schema dependency, no new migration, schema change, or configuration change was introduced by this fix's own commits.
 
 ---
 
@@ -163,7 +173,7 @@ Performed against the live Supabase project (`htcsewpztvxafksdzuhp`, Claude TEST
 
 ### Why the implementation is considered safe to merge
 - Both originally confirmed defects (ILIKE wildcard matching, cross-area collision) are proven closed against the live database using the actual deployed code, not only against mocks.
-- The fix is application-logic-only — no schema migration, no new database objects, nothing that could fail independently of the application deploy.
+- This fix's own commits are application-logic-only — no new schema migration, no new database objects. It does, however, require migrations 067→068→069 (already on this branch, not introduced by this fix) to be applied first; see the schema dependency table in Section 4.
 - The read-only contract of the shared helper was independently verified to hold across all three server-side callers, eliminating the specific risk (public-endpoint write escalation) that the design phase identified as the primary danger of getting this fix wrong.
 - Full existing test suite, lint, and build all pass with zero regressions; new regression tests directly encode the two original proofs-of-exploit as permanent tests.
 - The implementation was scoped, reviewed, and re-verified across multiple independent passes (design review, dependency analysis, adversarial self-challenge, exhaustive call-site inventory, and a final ten-dimension code audit) before and after implementation, with every finding at each stage either resolved or explicitly and separately tracked rather than silently dropped.

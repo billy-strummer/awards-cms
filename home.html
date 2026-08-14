@@ -1583,8 +1583,9 @@
       width: 48px;
       height: 48px;
       border-radius: 10px;
-      background: rgba(201, 162, 39, 0.08);
-      border: 2px solid rgba(201, 162, 39, 0.3);
+      background: linear-gradient(135deg, rgba(201, 162, 39, 0.14), rgba(201, 162, 39, 0.05));
+      border: 2px solid #C9A227;
+      box-shadow: inset 1px 1px 0 rgba(255, 235, 180, 0.35), inset -1.5px -1.5px 0 rgba(0, 0, 0, 0.55);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1594,13 +1595,13 @@
     .social-link svg {
       width: 22px;
       height: 22px;
-      fill: var(--gold);
+      fill: url(#social-icon-gold-gradient);
       transition: fill var(--transition-fast);
     }
 
     .social-link:hover {
-      border-color: var(--gold);
-      background: rgba(201, 162, 39, 0.18);
+      border-color: #e0b93a;
+      background: linear-gradient(135deg, rgba(201, 162, 39, 0.26), rgba(201, 162, 39, 0.1));
     }
 
     .social-link:hover svg {
@@ -1612,7 +1613,7 @@
        solid blob, so they opt out of fill and use stroke color instead. */
     .social-link svg.icon-outline {
       fill: none;
-      stroke: var(--gold);
+      stroke: url(#social-icon-gold-gradient);
       transition: stroke var(--transition-fast);
     }
 
@@ -3010,6 +3011,16 @@
         <span class="footer-follow-label">Social Media</span>
 
         <div class="footer-social-icons">
+          <!-- Shared gold gradient paint server for the social icon glyphs below -->
+          <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+            <defs>
+              <linearGradient id="social-icon-gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f3d788"/>
+                <stop offset="45%" stop-color="#d8ab34"/>
+                <stop offset="100%" stop-color="#9c7318"/>
+              </linearGradient>
+            </defs>
+          </svg>
           <!-- LinkedIn -->
           <a href="#" class="social-link" aria-label="British Trade Awards on LinkedIn" rel="noopener noreferrer" target="_blank">
             <svg viewBox="0 0 24 24" role="img" aria-hidden="true">

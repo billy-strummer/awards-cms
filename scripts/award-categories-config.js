@@ -76,7 +76,7 @@ const STANDARD_CATEGORIES = {
     'Insulation & Energy Efficiency Company',
     'PV Installer',
     'Renewable Energy Specialist',
-    'Security System Installer',
+    'Security Systems Installer',
     'Smart Home & Automation Company',
   ],
 

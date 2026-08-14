@@ -918,17 +918,6 @@
         linear-gradient(to top,    rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.1) 70%);
     }
 
-    .cat-number {
-      position: absolute;
-      top: 20px;
-      left: 24px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      color: rgba(201, 162, 39, 0.6);
-      text-transform: uppercase;
-    }
-
     /* Gold accent line that grows on hover */
     .cat-accent {
       width: 32px;
@@ -1560,6 +1549,13 @@
       gap: 12px;
     }
 
+    .footer-links-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
     .footer-links {
       display: flex;
       gap: 20px;
@@ -1575,6 +1571,12 @@
 
     .footer-links a:hover {
       color: var(--gold);
+    }
+
+    .footer-links-top a {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.75);
     }
 
     .social-link {
@@ -1748,6 +1750,10 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
+      }
+
+      .footer-links-wrap {
+        align-items: flex-start;
       }
 
       .footer-links {
@@ -2412,7 +2418,7 @@
     <!-- Desktop Nav -->
     <nav class="header-nav" aria-label="Main navigation">
       <a href="#categories">Categories</a>
-      <a href="#regions">Regions</a>
+      <a href="#regions">Locations</a>
       <a href="#find-a-trade">Find a Trade</a>
       <a href="about.html">About</a>
     </nav>
@@ -2436,7 +2442,7 @@
 <nav class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
   <div class="mobile-menu-inner">
     <a href="#categories" class="mobile-nav-link">Categories</a>
-    <a href="#regions" class="mobile-nav-link">Regions</a>
+    <a href="#regions" class="mobile-nav-link">Locations</a>
     <a href="#find-a-trade" class="mobile-nav-link">Find a Trade</a>
     <a href="about.html" class="mobile-nav-link">About</a>
     <a href="submit-entry.html" class="btn-gold">Enter Now</a>
@@ -2925,6 +2931,27 @@
 
 
 <!-- ============================================================
+     SECTION — ABOUT (anchor target)
+============================================================ -->
+<section id="about" aria-labelledby="about-heading" style="background: var(--bg-secondary); padding: var(--section-pad) 0;">
+  <div class="container">
+    <div style="max-width: 760px; margin: 0 auto; text-align: center;">
+      <h2 class="section-heading reveal" id="about-heading">
+        About <span class="gold-underline">British Trade Awards</span>
+      </h2>
+      <p class="reveal reveal-delay-1" style="margin-top: 24px; color: rgba(255,255,255,0.75); font-size: 1.05rem; line-height: 1.8;">
+        A competition to find the champions of construction and building services across England, Scotland and Wales &mdash; voted by the public. Every trade. Every corner of Britain.
+      </p>
+      <div class="reveal reveal-delay-2" style="margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+        <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
+        <a href="about.html" class="btn-ghost">Read Our Story</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
      NEWSLETTER / REMINDER SIGNUP
 ============================================================ -->
 <section id="newsletter" aria-labelledby="newsletter-heading">
@@ -2934,7 +2961,7 @@
         Be First to <span class="gold-underline">Know</span>
       </h2>
       <p class="newsletter-sub reveal reveal-delay-1">
-        Get notified when entries open, shortlists are announced, and tickets go on sale.
+        Stay ahead of the curve. Sign up for the latest British Trade Awards news and upcoming events.
       </p>
       <form class="newsletter-form reveal reveal-delay-2" id="newsletter-form" novalidate aria-label="Newsletter signup">
         <label for="newsletter-email" class="visually-hidden">Your email address</label>
@@ -2952,27 +2979,6 @@
       <p class="newsletter-success" id="newsletter-success" role="status" aria-live="polite">
         You're on the list! We'll be in touch.
       </p>
-    </div>
-  </div>
-</section>
-
-
-<!-- ============================================================
-     SECTION — ABOUT (anchor target)
-============================================================ -->
-<section id="about" aria-labelledby="about-heading" style="background: var(--bg-secondary); padding: var(--section-pad) 0;">
-  <div class="container">
-    <div style="max-width: 760px; margin: 0 auto; text-align: center;">
-      <h2 class="section-heading reveal" id="about-heading">
-        About <span class="gold-underline">British Trade Awards</span>
-      </h2>
-      <p class="reveal reveal-delay-1" style="margin-top: 24px; color: rgba(255,255,255,0.75); font-size: 1.05rem; line-height: 1.8;">
-        A competition to find the champions of construction and building services across England, Scotland and Wales &mdash; voted by the public. Every trade. Every corner of Britain.
-      </p>
-      <div class="reveal reveal-delay-2" style="margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-        <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
-        <a href="about.html" class="btn-ghost">Read Our Story</a>
-      </div>
     </div>
   </div>
 </section>
@@ -3020,16 +3026,29 @@
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.057zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
           </a>
+
+          <!-- TikTok -->
+          <a href="#" class="social-link" aria-label="British Trade Awards on TikTok" rel="noopener noreferrer" target="_blank">
+            <svg viewBox="0 0 16 16" role="img" aria-hidden="true">
+              <path d="M9 0h1.98c.144.715.54 1.617 1.235 2.512C12.895 3.389 13.797 4 15 4v2c-1.753 0-3.07-.814-4-1.829V11a5 5 0 1 1-5-5v2a3 3 0 1 0 3 3z"/>
+            </svg>
+          </a>
         </div>
       </div>
 
-      <!-- Legal links (right-justified) -->
-      <div class="footer-links" role="list" aria-label="Legal and policy links">
-        <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
-        <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
-        <a href="#" role="listitem">Contact Us</a>
-        <a href="#" role="listitem">Sitemap</a>
-        <a href="cookie-policy.html" role="listitem">Cookie Policy</a>
+      <!-- Legal + info links (right-justified), two tiers -->
+      <div class="footer-links-wrap">
+        <div class="footer-links footer-links-top" role="list" aria-label="Company links">
+          <a href="about.html" role="listitem">About Us</a>
+          <a href="#" role="listitem">FAQs</a>
+          <a href="#" role="listitem">Contact Us</a>
+        </div>
+        <div class="footer-links footer-links-bottom" role="list" aria-label="Legal and policy links">
+          <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
+          <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+          <a href="cookie-policy.html" role="listitem">Cookie Policy</a>
+          <a href="#" role="listitem">Sitemap</a>
+        </div>
       </div>
     </div>
 

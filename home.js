@@ -35,7 +35,6 @@
         grid.innerHTML = sectors
           .map(function (sector, idx) {
             const m = metaMap[sector] || {};
-            const num = String(idx + 1).padStart(2, '0');
             const img = m.image ? 'images/categories/' + esc(m.image) : '';
             return (
               '<a href="public-voting.html?sector=' +
@@ -51,9 +50,6 @@
               '">' +
               (img ? '<img class="cat-bg-img" src="' + img + '" alt="" loading="lazy">' : '') +
               '<div class="cat-box-inner">' +
-              '<span class="cat-number" aria-hidden="true">' +
-              num +
-              '</span>' +
               '<div class="cat-accent" aria-hidden="true"></div>' +
               '<h3 class="cat-name">' +
               esc(m.displayName || sector) +

@@ -79,7 +79,7 @@
       'Insulation & Energy Efficiency Company',
       'PV Installer',
       'Renewable Energy Specialist',
-      'Security System Installer',
+      'Security Systems Installer',
       'Smart Home & Automation Company',
     ],
     'SPECIALIST TRADES': [
@@ -641,7 +641,7 @@
       'This category recognises excellence in solar photovoltaic services, including design, supply and installation of solar panel systems, battery storage, inverters, monitoring systems and grid connection management. Winners demonstrate exceptional technical expertise, regulatory compliance and safe working practices, and excellent customer satisfaction.',
     'Renewable Energy Specialist':
       'This category recognises excellence in renewable energy services, including solar PV, battery storage, heat pumps, biomass systems and hybrid solutions, alongside energy assessments, system design and optimisation to reduce carbon emissions. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
-    'Security System Installer':
+    'Security Systems Installer':
       'This category recognises excellence in security system installation services, including intruder alarms, CCTV, access control, video doorbells, monitoring options and integrated security solutions. Winners demonstrate exceptional technical expertise, regulatory compliance, safe working practices, and excellent customer satisfaction.',
     'Smart Home & Automation Company':
       'This category recognises excellence in smart home services, including design and installation of lighting control, heating automation, audio-visual systems, security integration, voice control and whole-home automation platforms. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',

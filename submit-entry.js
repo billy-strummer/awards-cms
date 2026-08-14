@@ -79,7 +79,7 @@
       'Insulation & Energy Efficiency Company',
       'PV Installer',
       'Renewable Energy Specialist',
-      'Security System Installer',
+      'Security Systems Installer',
       'Smart Home & Automation Company',
     ],
     'SPECIALIST TRADES': [
@@ -143,7 +143,7 @@
       'Insulation & Energy Efficiency Company',
       'PV Installer',
       'Renewable Energy Specialist',
-      'Security System Installer',
+      'Security Systems Installer',
     ],
     'SPECIALIST TRADES': [
       'Locksmith',

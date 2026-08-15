@@ -590,6 +590,9 @@
         rgba(10, 10, 10, 0.95) 100%
       );
       z-index: 1;
+      /* Purely decorative -- must not intercept clicks meant for elements
+         painted beneath it, e.g. #video-sound-toggle inside #video-wrapper. */
+      pointer-events: none;
     }
 
     /* Hero Content */

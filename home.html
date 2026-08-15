@@ -503,6 +503,31 @@
       box-shadow: 0 0 48px rgba(201,162,39,0.14);
     }
 
+    /* Mute/unmute toggle — bottom-right corner of the video */
+    #video-sound-toggle {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 4;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(10, 10, 10, 0.55);
+      border: 1.5px solid rgba(201, 162, 39, 0.6);
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    #video-sound-toggle:hover,
+    #video-sound-toggle:focus-visible {
+      border-color: var(--gold);
+      background: rgba(10, 10, 10, 0.8);
+    }
+
     /* End-screen overlay — fades in when video ends */
     #video-end-screen {
       position: absolute;
@@ -2482,6 +2507,12 @@
     >
       <source src="/hero-video.mp4" type="video/mp4">
     </video>
+    <!-- Muted for autoplay to work (required by browser policy); this lets
+         visitors opt in to sound with one click. -->
+    <button type="button" id="video-sound-toggle" aria-label="Unmute video" aria-pressed="false">
+      <svg class="icon-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      <svg class="icon-unmuted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+    </button>
     <!-- Shown when video ends: freeze + CTA -->
     <div id="video-end-screen" aria-hidden="true">
       <a href="submit-entry.html" class="end-screen-link" aria-label="Enter British Trade Awards">
@@ -3137,6 +3168,29 @@
       if (window.innerWidth >= 769) return;
       endScreen.classList.add('visible');
       endScreen.setAttribute('aria-hidden', 'false');
+    });
+  })();
+</script>
+
+<script>
+  // Sound toggle: the video autoplays muted (required by browser autoplay
+  // policy), so this lets a visitor opt in to audio with one click -- the
+  // click itself counts as the user interaction browsers require before
+  // allowing unmuted playback.
+  (function () {
+    const video = document.getElementById('hero-video');
+    const btn = document.getElementById('video-sound-toggle');
+    if (!video || !btn) return;
+    const iconMuted = btn.querySelector('.icon-muted');
+    const iconUnmuted = btn.querySelector('.icon-unmuted');
+
+    btn.addEventListener('click', function () {
+      video.muted = !video.muted;
+      const isMuted = video.muted;
+      btn.setAttribute('aria-label', isMuted ? 'Unmute video' : 'Mute video');
+      btn.setAttribute('aria-pressed', String(!isMuted));
+      iconMuted.style.display = isMuted ? '' : 'none';
+      iconUnmuted.style.display = isMuted ? 'none' : '';
     });
   })();
 </script>

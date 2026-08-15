@@ -295,7 +295,15 @@ const reportsAnalytics = {
     el('reportsTotal', fAwards.length);
     el('reportsTotalOrgs', fOrgs.length);
     el('reportsTotalWinners', fWinners.length);
-    el('reportsTotalEntries', fEntries.length);
+    // Entries aren't eagerly loaded into STATE.allEntries (unlike awards/orgs/
+    // winners) to avoid fetching potentially thousands of rows on every
+    // dashboard visit. If it's still empty, use the accurate server-side count
+    // dashboardModule already fetched rather than showing a misleading 0.
+    const entriesTotal =
+      year === 'all' && entries.length === 0 && typeof STATE._reportsEntriesCount === 'number'
+        ? STATE._reportsEntriesCount
+        : fEntries.length;
+    el('reportsTotalEntries', entriesTotal);
 
     this.renderPipelineChart(fOrgs);
     this.renderSectorChart(fOrgs);
@@ -1068,6 +1076,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
+  // --- Forgot Password Form ---
+  const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+  if (forgotPasswordForm)
+    forgotPasswordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      authModule.handleForgotPassword();
+    });
+
   // --- Logout ---
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn)
@@ -1533,9 +1549,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 7: Error Handling + Sentry Monitoring
   // ==========================================
   // Initialize Sentry if available (loaded via CDN in index.html)
-  if (typeof Sentry !== 'undefined' && window.SENTRY_DSN) {
+  const sentryDsn = document.querySelector('meta[name="sentry-dsn"]')?.content || '';
+  if (typeof Sentry !== 'undefined' && sentryDsn) {
     Sentry.init({
-      dsn: window.SENTRY_DSN,
+      dsn: sentryDsn,
       environment: window.location.hostname === 'localhost' ? 'development' : 'production',
       release: 'awards-cms@2.1.0',
       integrations: [Sentry.browserTracingIntegration()],
@@ -2102,7 +2119,6 @@ document.addEventListener('DOMContentLoaded', function () {
           reports: 'Reports',
           marketing: 'Marketing',
           settings: 'Settings',
-          bitcoin: 'Markets',
         };
         document.title = tabTitles[tabName] ? `${tabTitles[tabName]} · BTA Admin` : 'British Trade Awards Admin';
       }

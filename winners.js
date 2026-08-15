@@ -359,6 +359,8 @@ const winnersModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredWinners.length;
     count.textContent = displayCount;
+    const winnersCountLabel = document.getElementById('winnersCountLabel');
+    if (winnersCountLabel) winnersCountLabel.textContent = utils.pluralize(displayCount, 'winner');
     utils.renderRowCount('winnersRowCount', STATE.filteredWinners.length, displayCount, 'winners');
 
     // Server-side: data is already one page; client-side: slice locally
@@ -823,7 +825,7 @@ const winnersModule = {
         // Close modal and reload
         bootstrap.Modal.getInstance(document.getElementById('uploadMediaModal'))?.hide();
         await this.loadWinners();
-        utils.showToast('Media uploaded successfully!', 'success');
+        utils.showToast('Media uploaded successfully', 'success');
       });
     } catch (error) {
       console.error('Error uploading media:', error);
@@ -913,7 +915,7 @@ const winnersModule = {
 
         await this.loadWinners();
         bootstrap.Modal.getInstance(document.getElementById('viewMediaModal'))?.hide();
-        utils.showToast('Media deleted successfully!', 'success');
+        utils.showToast('Media deleted successfully', 'success');
       });
     } catch (error) {
       console.error('Error deleting media:', error);
@@ -4241,13 +4243,16 @@ const winnersModule = {
       try {
         /* selectAll: justified — small reference list for modal dropdown */
         const orgs = await apiClient.selectAll('organisations', {
-          select: 'id, name',
-          sort: { column: 'name', ascending: true },
+          select: 'id, company_name',
+          sort: { column: 'company_name', ascending: true },
         });
         orgSelect.innerHTML =
           '<option value="">— Select Organisation —</option>' +
           (orgs || [])
-            .map((o) => `<option value="${o.id}">${utils.escapeHtml ? utils.escapeHtml(o.name) : o.name}</option>`)
+            .map(
+              (o) =>
+                `<option value="${o.id}">${utils.escapeHtml ? utils.escapeHtml(o.company_name) : o.company_name}</option>`
+            )
             .join('');
       } catch (e) {
         orgSelect.innerHTML = '<option value="">Failed to load organisations</option>';
@@ -4320,8 +4325,7 @@ const winnersModule = {
     const orgId = document.getElementById('addWinnerOrgSelect')?.value?.trim();
     const awardId = document.getElementById('addWinnerAwardSelect')?.value?.trim();
     const year = parseInt(document.getElementById('addWinnerYear')?.value, 10);
-    const placement = document.getElementById('addWinnerPlacement')?.value || 'Winner';
-    const notes = document.getElementById('addWinnerNotes')?.value?.trim() || null;
+    const winnerStory = document.getElementById('addWinnerStory')?.value?.trim() || null;
 
     if (!orgId || !awardId || !year) {
       utils.showToast('Please fill in all required fields.', 'warning');
@@ -4338,13 +4342,12 @@ const winnersModule = {
         organisation_id: orgId,
         award_id: awardId,
         year,
-        placement,
-        notes,
-        status: 'Pending',
+        winner_story: winnerStory,
+        winner_status: 'pending',
       });
 
       bootstrap.Modal.getInstance(document.getElementById('addWinnerModal'))?.hide();
-      utils.showToast('Winner added successfully.', 'success');
+      utils.showToast('Winner added successfully', 'success');
       await this.loadWinners();
     } catch (err) {
       utils.showToast('Failed to add winner: ' + err.message, 'error');

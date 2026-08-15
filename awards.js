@@ -906,6 +906,8 @@ const awardsModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : STATE.filteredAwards.length;
     count.textContent = displayCount;
+    const countLabel = document.getElementById('awardsCountLabel');
+    if (countLabel) countLabel.textContent = utils.pluralize(displayCount, 'award');
     utils.renderRowCount('awardsRowCount', STATE.filteredAwards.length, displayCount, 'awards');
 
     if (STATE.filteredAwards.length === 0) {
@@ -1408,8 +1410,10 @@ const awardsModule = {
     el('statsActiveAwards', awards.filter((a) => a.status?.toLowerCase() === 'active').length);
     el('statsWithNominees', awards.filter((a) => (a._assignmentCounts?.total || 0) > 0).length);
     el('statsWithWinners', awards.filter((a) => (a._assignmentCounts?.winner || 0) > 0).length);
-    el('statsCounties', [...new Set(awards.map((a) => a.area_id || a.country).filter(Boolean))].length);
-    el('statsSectors', [...new Set(awards.map((a) => a.sector).filter(Boolean))].length);
+    el(
+      'awardsEntriesCount',
+      awards.reduce((sum, a) => sum + (a._assignmentCounts?.total || 0), 0)
+    );
   },
 
   /**
@@ -1483,7 +1487,7 @@ const awardsModule = {
     // Update save button for create mode
     const saveBtnLabel = document.getElementById('awardFormSaveBtnLabel');
     const saveBtnIcon = document.getElementById('awardFormSaveBtnIcon');
-    if (saveBtnLabel) saveBtnLabel.textContent = 'Create Award';
+    if (saveBtnLabel) saveBtnLabel.textContent = 'Save Award';
     if (saveBtnIcon) {
       saveBtnIcon.className = 'bi bi-plus-lg me-1';
     }
@@ -2009,7 +2013,7 @@ const awardsModule = {
             : `Award created: ${awardData.award_name} (${awardData.area_id ? locationModule.getAreaName(awardData.area_id) : awardData.country || ''}, ${awardData.year})`
         );
 
-        utils.showToast(id ? 'Award updated successfully!' : 'Award created successfully!', 'success');
+        utils.showToast(id ? 'Award updated successfully' : 'Award created successfully', 'success');
         await this.loadAwards();
         if (typeof updateTabCounts === 'function') updateTabCounts();
         if (!id && typeof dashboardModule !== 'undefined' && dashboardModule._initGettingStartedBanner) {

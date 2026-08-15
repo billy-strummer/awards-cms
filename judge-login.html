@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
+  <meta name="supabase-url" content="">
+  <meta name="supabase-anon-key" content="">
   <title>Judge Login - British Trade Awards</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
@@ -162,26 +164,46 @@
   </div>
 
   <script>
-    const supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+    // Named `sb`, not `supabase` — the CDN SDK script above already declares a
+    // global `window.supabase` (the library namespace with `.createClient`),
+    // so `const supabase = window.supabase.createClient(...)` here would
+    // throw "Identifier 'supabase' has already been declared" and abort this
+    // entire script before the login form's submit handler is ever wired up.
+    //
+    // Declared here but only assigned inside DOMContentLoaded below —
+    // SUPABASE_CONFIG comes from config.js, which is loaded as type="module"
+    // (deferred) while this is a plain classic script, so referencing
+    // SUPABASE_CONFIG immediately at parse time (before the module has run)
+    // would throw "SUPABASE_CONFIG is not defined". Modules are guaranteed to
+    // finish executing before DOMContentLoaded fires, so waiting for that
+    // event makes SUPABASE_CONFIG safe to read.
+    let sb;
 
-    // Check if already logged in as judge
-    (async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Verify this user has a judge role
-        const { data: role } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('email', session.user.email)
-          .single();
+    document.addEventListener('DOMContentLoaded', () => {
+      sb = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey);
 
-        if (role && (role.role === 'judge' || role.role === 'admin' || role.role === 'super_admin')) {
-          localStorage.setItem('judgeEmail', session.user.email);
-          window.location.href = '/judge-portal.html';
-          return;
+      // Check if already logged in as judge
+      (async function checkSession() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          // Verify this user has a judge role
+          const { data: role } = await sb
+            .from('user_roles')
+            .select('role')
+            .eq('email', session.user.email)
+            .single();
+
+          if (role && (role.role === 'judge' || role.role === 'admin' || role.role === 'super_admin')) {
+            localStorage.setItem('judgeEmail', session.user.email);
+            window.location.href = '/judge-portal.html';
+            return;
+          }
         }
-      }
-    })();
+      })();
+
+      document.getElementById('judgeLoginForm').addEventListener('submit', handleLogin);
+      document.getElementById('magicLinkForm').addEventListener('submit', handleMagicLink);
+    });
 
     function showError(msg) {
       const el = document.getElementById('loginError');
@@ -211,18 +233,18 @@
 
       try {
         // Authenticate with Supabase
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
         // Verify judge role
-        const { data: role } = await supabase
+        const { data: role } = await sb
           .from('user_roles')
           .select('role')
           .eq('email', email)
           .single();
 
         if (!role || !['judge', 'admin', 'super_admin'].includes(role.role)) {
-          await supabase.auth.signOut();
+          await sb.auth.signOut();
           throw new Error('You do not have judge access. Contact the admin to be assigned as a judge.');
         }
 
@@ -248,7 +270,7 @@
       btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
       try {
-        const { error } = await supabase.auth.signInWithOtp({
+        const { error } = await sb.auth.signInWithOtp({
           email,
           options: { emailRedirectTo: window.location.origin + '/judge-portal.html' }
         });
@@ -261,10 +283,6 @@
         btn.innerHTML = '<i class="bi bi-envelope me-1"></i>Send Link';
       }
     }
-
-    // Wire up form submit handlers via addEventListener
-    document.getElementById('judgeLoginForm').addEventListener('submit', handleLogin);
-    document.getElementById('magicLinkForm').addEventListener('submit', handleMagicLink);
   </script>
 
   <footer id="sf" role="contentinfo">

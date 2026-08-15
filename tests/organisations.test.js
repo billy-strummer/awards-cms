@@ -4681,6 +4681,66 @@ describe('Organisations Module - _applyMapping()', () => {
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('Organisation Name'), 'error');
     spy.mockRestore();
   });
+
+  function setCsvCounty(value) {
+    let countySelect = document.getElementById('csvCountySelect');
+    if (!countySelect) {
+      countySelect = document.createElement('select');
+      countySelect.id = 'csvCountySelect';
+      document.body.appendChild(countySelect);
+    }
+    countySelect.innerHTML = `<option value="${value}">${value}</option>`;
+    countySelect.value = value;
+  }
+
+  beforeEach(() => {
+    orgsModule._csvColumnMap = { 0: 'company_name' };
+    // _applyMapping reads/writes several DOM elements that live in the real
+    // partial; stub the ones it touches directly so these tests can run
+    // against the bare jsdom fixture without loading the whole modal markup.
+    [
+      'csvStep2',
+      'csvStep3',
+      'csvPreviewCount',
+      'csvNewCount',
+      'csvDuplicateCount',
+      'csvPreviewHeader',
+      'csvPreviewBody',
+      'csvImportBtn',
+      'csvImportBtnCount',
+    ].forEach((id) => {
+      if (!document.getElementById(id)) {
+        const el = document.createElement(id === 'csvImportBtn' ? 'button' : 'div');
+        el.id = id;
+        document.body.appendChild(el);
+      }
+    });
+  });
+
+  test('does not flag a same-named organisation in a different area as a duplicate', () => {
+    setCsvCounty('Kent');
+    STATE.allOrganisations = [makeOrg({ company_name: 'Acme Ltd', area_id: 'area-essex' })];
+    orgsModule._csvData = [['Acme Ltd']];
+    orgsModule._applyMapping();
+    expect(orgsModule._csvPreviewRows[0].isDuplicate).toBe(false);
+  });
+
+  test('flags a same-named organisation in the same area as a duplicate', () => {
+    setCsvCounty('Kent');
+    STATE.allOrganisations = [makeOrg({ company_name: 'Acme Ltd', area_id: 'area-kent' })];
+    orgsModule._csvData = [['Acme Ltd']];
+    orgsModule._applyMapping();
+    expect(orgsModule._csvPreviewRows[0].isDuplicate).toBe(true);
+  });
+
+  test('treats every row as new when the selected area cannot be resolved', () => {
+    setCsvCounty('Not A Real Area');
+    // Even an organisation with a null area_id must not be treated as a match.
+    STATE.allOrganisations = [makeOrg({ company_name: 'Acme Ltd', area_id: null })];
+    orgsModule._csvData = [['Acme Ltd']];
+    orgsModule._applyMapping();
+    expect(orgsModule._csvPreviewRows[0].isDuplicate).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -142,6 +142,13 @@ CREATE TABLE IF NOT EXISTS cms_audit_logs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- database-multiuser-tables-setup.sql already created a minimal cms_audit_logs
+-- table (with entity_type instead of entity); backfill columns missing from that version.
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS entity TEXT;
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS ip_address TEXT;
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE cms_audit_logs ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+
 CREATE INDEX IF NOT EXISTS idx_cms_audit_logs_action ON cms_audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_cms_audit_logs_entity ON cms_audit_logs(entity);
 CREATE INDEX IF NOT EXISTS idx_cms_audit_logs_created ON cms_audit_logs(created_at DESC);
@@ -199,6 +206,20 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- database-multiuser-tables-setup.sql already created a minimal user_preferences
+-- table for the key/value pattern (id, key, value, updated_at); backfill the
+-- column-per-setting fields this migration also needs. Migration 017 later adds
+-- the composite (user_email, key) unique index and drops any bare user_email
+-- unique constraint, so leave user_email unconstrained here.
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS user_email TEXT;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS dark_mode BOOLEAN DEFAULT false;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS column_visibility JSONB DEFAULT '{}';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS filter_presets JSONB DEFAULT '[]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS saved_views JSONB DEFAULT '[]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS custom_column_order JSONB DEFAULT '[]';
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS page_size INT DEFAULT 50;
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now();
+
 -- 12. Scheduled Reports (move from localStorage)
 CREATE TABLE IF NOT EXISTS scheduled_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -227,7 +248,9 @@ BEGIN
   ])
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow authenticated full access on %I" ON %I', tbl, tbl);
     EXECUTE format('CREATE POLICY "Allow authenticated full access on %I" ON %I FOR ALL TO authenticated USING (true) WITH CHECK (true)', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Allow anon read on %I" ON %I', tbl, tbl);
     EXECUTE format('CREATE POLICY "Allow anon read on %I" ON %I FOR SELECT TO anon USING (true)', tbl, tbl);
   END LOOP;
 END $$;

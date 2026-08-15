@@ -826,16 +826,24 @@ module.exports = async function handler(req, res) {
 
   const action = req.query.action || req.body?.action;
 
-  // Resend webhook actions bypass JWT auth — verified via shared secret instead
+  // Resend webhook actions bypass JWT auth — verified via shared secret instead.
+  // Without this secret configured, anyone could POST a fake bounce/complaint
+  // event to permanently suppress any email address (email_suppressions is an
+  // upsert keyed on email) — so a missing secret must refuse the request, not
+  // silently skip verification.
   if (action === 'resend-bounce' || action === 'resend-complaint') {
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const signature = req.headers['x-resend-signature'] || '';
-      const payload = JSON.stringify(req.body);
-      const expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
-      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
+    if (!webhookSecret) {
+      console.error('[email-automation] RESEND_WEBHOOK_SECRET is not configured — refusing webhook');
+      return res.status(500).json({ error: 'Webhook verification is not configured' });
+    }
+    const signature = req.headers['x-resend-signature'] || '';
+    const payload = JSON.stringify(req.body);
+    const expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+    const signatureBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expected);
+    if (signatureBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
+      return res.status(401).json({ error: 'Invalid webhook signature' });
     }
     return handleResendSuppressionEvent(req, res);
   }

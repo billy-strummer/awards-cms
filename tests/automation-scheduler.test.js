@@ -7,16 +7,6 @@
 // Mocks
 // ==========================================
 
-// Mock node-cron so it doesn't schedule real cron jobs on require()
-const mockCronSchedule = jest.fn();
-jest.mock(
-  'node-cron',
-  () => ({
-    schedule: mockCronSchedule,
-  }),
-  { virtual: true }
-);
-
 // Mock email-automation
 const mockSendDeadlineReminders = jest.fn();
 const mockSendWinnerAnnouncements = jest.fn();
@@ -118,16 +108,155 @@ describe('Automation Scheduler', () => {
     mockFromCallIndex = 0;
   });
 
-  // --- startScheduler ---
+  // --- runJudgingDeadlineCheck ---
 
-  describe('startScheduler', () => {
-    test('logs startup messages without errors', () => {
+  describe('runJudgingDeadlineCheck', () => {
+    test('returns deadlineFound: false when no active judging deadline exists', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const result = await scheduler.runJudgingDeadlineCheck();
+      expect(result).toEqual({ deadlineFound: false });
+      expect(mockGenerateAllShortlists).not.toHaveBeenCalled();
+    });
+
+    test('does not generate shortlists when the deadline is still days away', async () => {
+      const future = new Date();
+      future.setDate(future.getDate() + 5);
+      mockFromResults.push(chainable({ data: [{ judging_deadline: future.toISOString() }], error: null }));
+      const result = await scheduler.runJudgingDeadlineCheck();
+      expect(result.deadlineFound).toBe(true);
+      expect(result.shortlistsGenerated).toBe(false);
+      expect(mockGenerateAllShortlists).not.toHaveBeenCalled();
+    });
+
+    test('generates shortlists when the deadline is reached today', async () => {
+      const today = new Date();
+      mockFromResults.push(chainable({ data: [{ judging_deadline: today.toISOString() }], error: null }));
+      mockGenerateAllShortlists.mockResolvedValue([{ awardId: 'a1', shortlistCount: 3 }]);
+      const result = await scheduler.runJudgingDeadlineCheck();
+      expect(result.shortlistsGenerated).toBe(true);
+      expect(mockGenerateAllShortlists).toHaveBeenCalledTimes(1);
+    });
+
+    test('still generates shortlists when the deadline has already passed (retry-safety)', async () => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 3);
+      mockFromResults.push(chainable({ data: [{ judging_deadline: yesterday.toISOString() }], error: null }));
+      mockGenerateAllShortlists.mockResolvedValue([]);
+      const result = await scheduler.runJudgingDeadlineCheck();
+      expect(result.shortlistsGenerated).toBe(true);
+      expect(mockGenerateAllShortlists).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // --- runDailyAutomation ---
+  // This is the real production entry point, invoked once per day by Vercel
+  // Cron via api/judge-automation.js's cron-tick action. mockFromResults is
+  // deliberately left empty for the "nothing to do" tests below — mockFrom's
+  // fallback returns an empty chainable() for every call, which every
+  // sub-task already handles gracefully as "nothing found this run".
+
+  describe('runDailyAutomation', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('runs only the daily tasks on a non-Monday, non-Sunday day', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-07-22T09:00:00Z')); // Wednesday
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      scheduler.startScheduler();
-      expect(consoleSpy).toHaveBeenCalledWith('Automation scheduler started');
-      expect(consoleSpy).toHaveBeenCalledWith('Daily tasks: 9:00 AM GMT');
-      expect(consoleSpy).toHaveBeenCalledWith('Weekly tasks: Monday 8:00 AM GMT');
-      expect(consoleSpy).toHaveBeenCalledWith('Judging checks: 10:00 AM GMT');
+
+      const summary = await scheduler.runDailyAutomation();
+
+      expect(summary.dayOfWeek).toBe(3); // Wednesday
+      expect(summary.tasksRun).toEqual(
+        expect.arrayContaining([
+          'entryDeadlineReminders',
+          'deadlineReminders',
+          'paymentReminders',
+          'scheduledCampaigns',
+          'judgingDeadlineCheck',
+        ])
+      );
+      expect(summary.tasksRun).not.toContain('judgeProgressReports');
+      expect(summary.tasksRun).not.toContain('weeklyStats');
+      expect(summary.tasksRun).not.toContain('retentionCleanup');
+      Object.values(summary.results).forEach((r) => expect(r.status).toBe('ok'));
+
+      consoleSpy.mockRestore();
+    });
+
+    test('also runs the weekly tasks on Monday (Europe/London)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-07-20T09:00:00Z')); // Monday
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const summary = await scheduler.runDailyAutomation();
+
+      expect(summary.dayOfWeek).toBe(1);
+      expect(summary.tasksRun).toContain('judgeProgressReports');
+      expect(summary.tasksRun).toContain('weeklyStats');
+      expect(summary.tasksRun).not.toContain('retentionCleanup');
+
+      consoleSpy.mockRestore();
+    });
+
+    test('also runs retention cleanup on Sunday (Europe/London)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-07-19T09:00:00Z')); // Sunday
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const summary = await scheduler.runDailyAutomation();
+
+      expect(summary.dayOfWeek).toBe(0);
+      expect(summary.tasksRun).toContain('retentionCleanup');
+      expect(summary.tasksRun).not.toContain('judgeProgressReports');
+
+      consoleSpy.mockRestore();
+    });
+
+    test('one failing task does not prevent the others from running (reliability)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-07-19T09:00:00Z')); // Sunday, so retentionCleanup runs too
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      // Make specifically retention cleanup's first query (cms_audit_logs) throw,
+      // while every other task's queries keep resolving normally — isolates the
+      // failure to just that one task rather than whichever task happens to run first.
+      // mockImplementation (not mockImplementationOnce) persists across
+      // jest.clearAllMocks(), so it's explicitly restored below.
+      const defaultMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'cms_audit_logs') {
+          throw new Error('connection lost');
+        }
+        return chainable();
+      });
+
+      let summary;
+      try {
+        summary = await scheduler.runDailyAutomation();
+      } finally {
+        mockFrom.mockImplementation(defaultMockFromImpl);
+      }
+
+      expect(summary.results.retentionCleanup.status).toBe('error');
+      expect(summary.results.retentionCleanup.error).toBe('connection lost');
+      // Every other task still completed despite the failure above
+      expect(summary.results.paymentReminders.status).toBe('ok');
+      expect(summary.results.scheduledCampaigns.status).toBe('ok');
+      expect(summary.results.judgingDeadlineCheck.status).toBe('ok');
+
+      consoleSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('is safe to invoke twice in a row (idempotency smoke test)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-07-22T09:00:00Z')); // Wednesday
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const first = await scheduler.runDailyAutomation();
+      const second = await scheduler.runDailyAutomation();
+
+      Object.values(first.results).forEach((r) => expect(r.status).toBe('ok'));
+      Object.values(second.results).forEach((r) => expect(r.status).toBe('ok'));
+
       consoleSpy.mockRestore();
     });
   });
@@ -491,262 +620,6 @@ describe('Automation Scheduler', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error generating weekly stats:', expect.any(Error));
       consoleErrorSpy.mockRestore();
-    });
-  });
-
-  // --- setupAutomationEndpoints ---
-
-  describe('setupAutomationEndpoints', () => {
-    let mockApp;
-    let registeredRoutes;
-
-    beforeEach(() => {
-      registeredRoutes = {};
-      mockApp = {
-        post: jest.fn((path, handler) => {
-          registeredRoutes[`POST ${path}`] = handler;
-        }),
-        get: jest.fn((path, handler) => {
-          registeredRoutes[`GET ${path}`] = handler;
-        }),
-      };
-    });
-
-    test('registers all expected routes', () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-
-      expect(mockApp.post).toHaveBeenCalledTimes(4);
-      expect(mockApp.get).toHaveBeenCalledTimes(1);
-      expect(registeredRoutes['POST /api/automation/trigger-winner-announcements']).toBeDefined();
-      expect(registeredRoutes['POST /api/automation/trigger-judge-assignments']).toBeDefined();
-      expect(registeredRoutes['POST /api/automation/trigger-shortlist-generation']).toBeDefined();
-      expect(registeredRoutes['POST /api/automation/trigger-payment-reminders']).toBeDefined();
-      expect(registeredRoutes['GET /api/automation/status']).toBeDefined();
-    });
-
-    test('winner announcements endpoint returns success', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-winner-announcements'];
-
-      mockSendWinnerAnnouncements.mockResolvedValue(3);
-      mockGenerateAllWinnerCertificates.mockResolvedValue([{ success: true }, { success: true }]);
-
-      const req = {};
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        emailsSent: 3,
-        certificatesGenerated: 2,
-      });
-    });
-
-    test('winner announcements endpoint returns 500 on error', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-winner-announcements'];
-
-      mockSendWinnerAnnouncements.mockRejectedValue(new Error('Failed'));
-
-      const req = {};
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'Failed' });
-    });
-
-    test('judge assignments endpoint passes awardId from body', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-judge-assignments'];
-
-      mockAssignJudgesToEntries.mockResolvedValue({ assigned: 10, conflicts: 2 });
-
-      const req = { body: { awardId: 'award-xyz' } };
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(mockAssignJudgesToEntries).toHaveBeenCalledWith('award-xyz');
-      expect(res.json).toHaveBeenCalledWith({ assigned: 10, conflicts: 2 });
-    });
-
-    test('judge assignments endpoint returns 500 on error', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-judge-assignments'];
-
-      mockAssignJudgesToEntries.mockRejectedValue(new Error('No judges'));
-
-      const req = { body: {} };
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({ error: 'No judges' });
-    });
-
-    test('shortlist generation endpoint returns success', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-shortlist-generation'];
-
-      mockGenerateAllShortlists.mockResolvedValue([{ awardId: 'a1', shortlistCount: 5 }]);
-      mockSendShortlistNotifications.mockResolvedValue();
-
-      const req = { body: {} };
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        results: expect.any(Array),
-      });
-    });
-
-    test('shortlist generation endpoint returns 500 on error', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-shortlist-generation'];
-
-      mockGenerateAllShortlists.mockRejectedValue(new Error('Generation failed'));
-
-      const req = { body: {} };
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-    });
-
-    test('payment reminders endpoint returns success', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['POST /api/automation/trigger-payment-reminders'];
-
-      // Mock the DB call inside sendPaymentReminders
-      mockFromResults.push(chainable({ data: [], error: null }));
-
-      const req = {};
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      await handler(req, res);
-      consoleSpy.mockRestore();
-
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        message: 'Payment reminders processed',
-      });
-    });
-
-    test('status endpoint returns scheduler info', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['GET /api/automation/status'];
-
-      // Mock getJudgingDeadline DB call
-      const futureDate = new Date('2026-06-15T00:00:00.000Z');
-      mockFromResults.push(
-        chainable({
-          data: [{ judging_deadline: futureDate.toISOString() }],
-          error: null,
-        })
-      );
-
-      const req = {};
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          scheduler: 'running',
-          timezone: 'Europe/London',
-          dailyTasks: '09:00 GMT',
-          weeklyTasks: 'Monday 08:00 GMT',
-          judgingChecks: '10:00 GMT',
-        })
-      );
-    });
-
-    test('status endpoint returns null deadline when none found', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['GET /api/automation/status'];
-
-      // Mock getJudgingDeadline returning null
-      mockFromResults.push(chainable({ data: [], error: null }));
-
-      const req = {};
-      const res = { json: jest.fn(), status: jest.fn().mockReturnThis() };
-
-      await handler(req, res);
-
-      const response = res.json.mock.calls[0][0];
-      expect(response.nextJudgingDeadline).toBeNull();
-    });
-
-    test('status endpoint returns 500 on error', async () => {
-      scheduler.setupAutomationEndpoints(mockApp);
-      const handler = registeredRoutes['GET /api/automation/status'];
-
-      // getJudgingDeadline catches its own errors, so we force the outer try to fail
-      // by making res.json throw
-      const req = {};
-      const res = {
-        json: jest.fn().mockImplementationOnce(() => {
-          throw new Error('Serialization error');
-        }),
-        status: jest.fn().mockReturnThis(),
-      };
-
-      // Mock getJudgingDeadline to return null (empty result)
-      mockFromResults.push(chainable({ data: [], error: null }));
-
-      await handler(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenLastCalledWith({ error: 'Serialization error' });
-    });
-  });
-
-  // --- cron.schedule registration ---
-  // Note: cron.schedule is called at module load time, before beforeEach clears mocks.
-  // We capture the call args once, then assert against the captured data.
-
-  describe('cron job registration', () => {
-    // Capture the calls made during module load (before any clearAllMocks)
-    const cronCalls = mockCronSchedule.mock.calls.slice();
-
-    test('registers 5 cron schedules', () => {
-      expect(cronCalls).toHaveLength(5);
-    });
-
-    test('daily tasks schedule is 0 9 * * *', () => {
-      const dailyCall = cronCalls.find((c) => c[0] === '0 9 * * *');
-      expect(dailyCall).toBeDefined();
-      expect(typeof dailyCall[1]).toBe('function');
-      expect(dailyCall[2]).toEqual({ timezone: 'Europe/London' });
-    });
-
-    test('weekly tasks schedule is 0 8 * * 1', () => {
-      const weeklyCall = cronCalls.find((c) => c[0] === '0 8 * * 1');
-      expect(weeklyCall).toBeDefined();
-      expect(typeof weeklyCall[1]).toBe('function');
-      expect(weeklyCall[2]).toEqual({ timezone: 'Europe/London' });
-    });
-
-    test('judging check schedule is 0 10 * * *', () => {
-      const judgingCall = cronCalls.find((c) => c[0] === '0 10 * * *');
-      expect(judgingCall).toBeDefined();
-      expect(typeof judgingCall[1]).toBe('function');
-      expect(judgingCall[2]).toEqual({ timezone: 'Europe/London' });
-    });
-
-    test('retention cleanup schedule is 0 2 * * 0', () => {
-      const retentionCall = cronCalls.find((c) => c[0] === '0 2 * * 0');
-      expect(retentionCall).toBeDefined();
-      expect(typeof retentionCall[1]).toBe('function');
-      expect(retentionCall[2]).toEqual({ timezone: 'Europe/London' });
     });
   });
 });

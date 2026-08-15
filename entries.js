@@ -321,7 +321,15 @@ const entriesModule = {
     // Use server total count when in server pagination mode
     const displayCount = this._serverPagination ? this._pagination.count : this.filteredEntries.length;
     countSpan.textContent = String(displayCount);
-    utils.renderRowCount('entriesRowCount', this.filteredEntries.length, displayCount, 'entries');
+    utils.renderRowCount(
+      'entriesRowCount',
+      this.filteredEntries.length,
+      displayCount,
+      'entries',
+      undefined,
+      undefined,
+      'entry'
+    );
 
     if (this.filteredEntries.length === 0) {
       const hasFilters = !!(
@@ -361,7 +369,7 @@ const entriesModule = {
 
     tbody.innerHTML = pageEntries
       .map((entry) => {
-        const companyName = entry.organisations?.company_name || 'Unknown';
+        const companyName = entry.organisations?.company_name || 'Unknown Organisation';
         const awardName = entry.awards?.award_name || entry.award_category || 'Unknown';
         const _statusBadge = this.getStatusBadge(entry.status);
         const paymentBadge = this.getPaymentBadge(entry.payment_status);
@@ -933,7 +941,7 @@ const entriesModule = {
                 <h5 class="modal-title mb-1">
                   <i class="bi bi-file-earmark-text me-2"></i>${utils.escapeHtml(entry.entry_title)}
                 </h5>
-                <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Company')} | ${utils.escapeHtml(entry.entry_number)}</small>
+                <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Organisation')} | ${utils.escapeHtml(entry.entry_number)}</small>
               </div>
               <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -1739,7 +1747,7 @@ const entriesModule = {
                   <h5 class="modal-title mb-1">
                     <i class="bi bi-pencil me-2"></i>Edit Entry: ${utils.escapeHtml(entry.entry_number)}
                   </h5>
-                  <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Company')}</small>
+                  <small>${utils.escapeHtml(entry.organisations?.company_name || 'Unknown Organisation')}</small>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
@@ -2480,7 +2488,7 @@ const entriesModule = {
 
       const votingUrl = `${window.location.origin}/vote.html?entry=${encodeURIComponent(entry.entry_number)}`;
       const safeVotingUrl = utils.escapeHtml(votingUrl);
-      const companyName = entry.organisations?.company_name || 'Nominee';
+      const companyName = entry.organisations?.company_name || 'Unknown Organisation';
 
       // Create modal HTML
       const modalHtml = `
@@ -2807,368 +2815,9 @@ const entriesModule = {
     }
   },
 
-  importEntriesCSV() {
-    this.importNomineesCSV();
-  },
-
-  /**
-   * Import nominees from CSV files.
-   *
-   * Location hierarchy (three levels, most specific wins for county_city):
-   *   Region       = broad UK area    e.g. "South East", "East of England"
-   *   County       = county           e.g. "Bedfordshire", "Hampshire"
-   *   Catchment Area / City = town    e.g. "Bedford", "Southampton"
-   *
-   * Other expected columns (case-insensitive, comma or tab delimited):
-   *   NominationDate, Sector, Category Name, Company Name,
-   *   Website URL, Direct Email, Phone Number, Contact Name,
-   *   Business or Contact Address, Rank, Notes
-   *
-   * Each row creates an organisation (if new) + an entry with
-   * is_public=true, allow_public_voting=true, status='shortlisted'.
-   */
-  async importNomineesCSV() {
-    // ── Column header aliases ─────────────────────────────────────
-    // Location stored as: catchment_area (most specific) → county → broad_region
-    const ALIASES = {
-      nominationdate: 'nomination_date',
-      'nomination date': 'nomination_date',
-      date: 'nomination_date',
-      // Broad UK region (South East, East of England, etc.)
-      region: 'broad_region',
-      'broad region': 'broad_region',
-      'uk region': 'broad_region',
-      // County (Bedfordshire, Hampshire, etc.)
-      county: 'county',
-      'county/city': 'county',
-      'county / city': 'county',
-      // Specific city / town (Bedford, Southampton, etc.)
-      'catchment area': 'catchment_area',
-      catchment: 'catchment_area',
-      city: 'catchment_area',
-      town: 'catchment_area',
-      area: 'catchment_area',
-      sector: 'sector',
-      'category name': 'category',
-      category: 'category',
-      'award category': 'category',
-      award: 'category',
-      'company name': 'company_name',
-      company: 'company_name',
-      'business name': 'company_name',
-      organisation: 'company_name',
-      'website url': 'website',
-      website: 'website',
-      url: 'website',
-      'direct email': 'email',
-      email: 'email',
-      'email address': 'email',
-      'phone number': 'phone',
-      phone: 'phone',
-      telephone: 'phone',
-      'contact name': 'contact_name',
-      contact: 'contact_name',
-      name: 'contact_name',
-      'business or contact address': 'address',
-      address: 'address',
-      rank: 'rank',
-      ranking: 'rank',
-      notes: 'notes',
-      note: 'notes',
-      comments: 'notes',
-    };
-
-    // ── CSV parser (handles comma and tab, respects quoted fields) ─
-    function parseCSVLine(line, delim) {
-      const result = [];
-      let cur = '';
-      let inQ = false;
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (inQ) {
-          if (ch === '"' && line[i + 1] === '"') {
-            cur += '"';
-            i++;
-          } else if (ch === '"') inQ = false;
-          else cur += ch;
-        } else {
-          if (ch === '"') {
-            inQ = true;
-          } else if (ch === delim) {
-            result.push(cur.trim());
-            cur = '';
-          } else cur += ch;
-        }
-      }
-      result.push(cur.trim());
-      return result;
-    }
-
-    function detectDelim(header) {
-      const tabs = (header.match(/\t/g) || []).length;
-      const commas = (header.match(/,/g) || []).length;
-      return tabs > commas ? '\t' : ',';
-    }
-
-    // ── Generate next available entry numbers ──────────────────────
-    async function fetchNextEntryBase() {
-      const year = new Date().getFullYear();
-      const prefix = `BTA-${year}-`;
-      try {
-        const res = await apiClient.select('entries', {
-          select: 'entry_number',
-          filters: {},
-          sort: { column: 'created_at', ascending: false },
-          page: 1,
-          pageSize: 1,
-        });
-        const rows = res.data || [];
-        const last = rows.find((r) => (r.entry_number || '').startsWith(prefix));
-        if (last) {
-          const num = parseInt((last.entry_number || '').replace(prefix, ''), 10);
-          return isNaN(num) ? 1 : num + 1;
-        }
-      } catch (_) {
-        /* fall through */
-      }
-      return 1;
-    }
-
-    // ── Open file picker ──────────────────────────────────────────
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv,.tsv,.txt';
-    input.multiple = true;
-
-    input.onchange = async (e) => {
-      const files = Array.from(e.target.files || []);
-      if (!files.length) return;
-
-      const allRows = [];
-
-      for (const file of files) {
-        const text = await file.text();
-        const lines = text.split(/\r?\n/).filter((l) => l.trim());
-        if (lines.length < 2) {
-          utils.showToast(`${file.name}: no data rows — skipped`, 'warning');
-          continue;
-        }
-
-        const delim = detectDelim(lines[0]);
-        const rawHeaders = parseCSVLine(lines[0], delim);
-        const colMap = {};
-        rawHeaders.forEach((h, idx) => {
-          const norm = h.toLowerCase().trim().replace(/\s+/g, ' ');
-          if (ALIASES[norm]) colMap[idx] = ALIASES[norm];
-        });
-
-        for (let i = 1; i < lines.length; i++) {
-          const vals = parseCSVLine(lines[i], delim);
-          if (vals.every((v) => !v)) continue;
-          const row = { _source: file.name };
-          Object.entries(colMap).forEach(([idx, field]) => {
-            row[field] = vals[parseInt(idx)] || '';
-          });
-          if (row.company_name) allRows.push(row);
-        }
-      }
-
-      if (!allRows.length) {
-        utils.showToast('No valid rows found (Company Name column is required)', 'warning');
-        return;
-      }
-
-      // ── Preview modal ─────────────────────────────────────────────
-      const previewHtml = `
-        <div class="modal fade" id="nomineeImportModal" tabindex="-1">
-          <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-              <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Import Nominees — Preview</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-              </div>
-              <div class="modal-body p-0">
-                <div class="p-3 bg-light border-bottom d-flex align-items-center gap-3">
-                  <span class="badge bg-success fs-6">${allRows.length} nominee rows detected</span>
-                  <small class="text-muted">Each row will create an organisation (if new) + a shortlisted entry marked public for voting.</small>
-                </div>
-                <div class="table-responsive">
-                  <table class="table table-sm table-hover mb-0" style="font-size:.82rem;">
-                    <thead class="table-dark">
-                      <tr>
-                        <th>#</th>
-                        <th>Company</th>
-                        <th>Category</th>
-                        <th>Sector</th>
-                        <th>Region / City</th>
-                        <th>Contact</th>
-                        <th>Email</th>
-                        <th>Source file</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${allRows
-                        .map(
-                          (r, i) => `
-                        <tr>
-                          <td class="text-muted">${i + 1}</td>
-                          <td><strong>${utils.escapeHtml(r.company_name || '')}</strong></td>
-                          <td>${utils.escapeHtml(r.category || '—')}</td>
-                          <td>${utils.escapeHtml(r.sector || '—')}</td>
-                          <td>${utils.escapeHtml(r.catchment_area || r.county || r.broad_region || '—')}</td>
-                          <td>${utils.escapeHtml(r.contact_name || '—')}</td>
-                          <td>${utils.escapeHtml(r.email || '—')}</td>
-                          <td class="text-muted small">${utils.escapeHtml(r._source || '')}</td>
-                        </tr>`
-                        )
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="confirmNomineeImportBtn">
-                  <i class="bi bi-cloud-upload me-2"></i>Import ${allRows.length} Nominees
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>`;
-
-      document.getElementById('nomineeImportModal')?.remove();
-      document.body.insertAdjacentHTML('beforeend', previewHtml);
-      const modal = new bootstrap.Modal(document.getElementById('nomineeImportModal'));
-      modal.show();
-
-      // ── Confirm import ─────────────────────────────────────────────
-      document.getElementById('confirmNomineeImportBtn').onclick = async () => {
-        modal.hide();
-        utils.showLoading();
-
-        let imported = 0;
-        let skipped = 0;
-        const errors = [];
-        const year = new Date().getFullYear();
-        const prefix = `BTA-${year}-`;
-        let nextNum = await fetchNextEntryBase();
-
-        for (const row of allRows) {
-          try {
-            // 1. Find or create organisation
-            let orgId = null;
-            const orgSearch = await apiClient.select('organisations', {
-              select: 'id',
-              filters: { 'company_name@ilike': row.company_name },
-              page: 1,
-              pageSize: 1,
-            });
-            if (orgSearch.data && orgSearch.data.length > 0) {
-              orgId = orgSearch.data[0].id;
-            } else {
-              const orgInsert = await apiClient.insert('organisations', {
-                company_name: row.company_name.trim(),
-                website: row.website || null,
-                email: row.email || null,
-                contact_name: row.contact_name || null,
-                contact_phone: row.phone || null,
-                county_city: row.catchment_area || row.county || row.broad_region || null,
-                sector: row.sector || null,
-                status: 'nominee',
-              });
-              orgId = orgInsert?.data?.id || orgInsert?.id || null;
-            }
-
-            // 2. Check for duplicate entry (same org + category)
-            if (orgId && row.category) {
-              const dupCheck = await apiClient.select('entries', {
-                select: 'id',
-                filters: { organisation_id: orgId, award_category: row.category },
-                page: 1,
-                pageSize: 1,
-              });
-              if (dupCheck.data && dupCheck.data.length > 0) {
-                skipped++;
-                continue;
-              }
-            }
-
-            // 3. Generate entry number
-            const entryNumber = `${prefix}${String(nextNum).padStart(4, '0')}`;
-            nextNum++;
-
-            // 4. Insert entry
-            const entryTitle = `${row.company_name.trim()}${row.category ? ' — ' + row.category : ''}`;
-
-            // Most specific location wins for county_city (used for public page filtering)
-            const countyCity = row.catchment_area || row.county || row.broad_region || null;
-
-            // Derive selected_country from the broad region name
-            // (Scotland,* → scotland | Wales,* → wales | else → england)
-            let selectedCountry = 'england';
-            const regionLower = (row.broad_region || '').toLowerCase();
-            if (regionLower.startsWith('scotland')) selectedCountry = 'scotland';
-            else if (regionLower.startsWith('wales')) selectedCountry = 'wales';
-            else if (regionLower.startsWith('northern ireland')) selectedCountry = 'northern-ireland';
-
-            const supportingInfo = [
-              row.notes ? `Notes: ${row.notes}` : '',
-              row.rank ? `Rank: ${row.rank}` : '',
-              row.address ? `Address: ${row.address}` : '',
-              row.county && row.catchment_area ? `County: ${row.county}` : '',
-              row.broad_region ? `Region: ${row.broad_region}` : '',
-            ]
-              .filter(Boolean)
-              .join('\n');
-
-            let subDate = null;
-            if (row.nomination_date) {
-              const d = new Date(row.nomination_date);
-              if (!isNaN(d.getTime())) subDate = d.toISOString();
-            }
-
-            await apiClient.insert('entries', {
-              entry_number: entryNumber,
-              organisation_id: orgId,
-              entry_title: entryTitle,
-              entry_description: row.notes || null,
-              contact_name: row.contact_name || null,
-              contact_email: row.email || null,
-              contact_phone: row.phone || null,
-              award_category: row.category || null,
-              sector: row.sector || null,
-              county_city: countyCity,
-              selected_country: selectedCountry,
-              supporting_information: supportingInfo || null,
-              status: 'shortlisted',
-              is_public: true,
-              allow_public_voting: true,
-              is_self_nomination: false,
-              year: year,
-              submission_date: subDate || new Date().toISOString(),
-              payment_status: 'waived',
-              public_votes: 0,
-            });
-            imported++;
-          } catch (err) {
-            console.error('Nominee import row error:', err);
-            errors.push(`${row.company_name}: ${err.message}`);
-          }
-        }
-
-        utils.hideLoading();
-
-        const msg = `Imported ${imported} nominees${skipped ? `, skipped ${skipped} duplicates` : ''}${errors.length ? `, ${errors.length} errors` : ''}.`;
-        utils.showToast(msg, errors.length ? 'warning' : 'success');
-        if (errors.length) console.warn('Nominee import errors:', errors);
-
-        await this.loadEntries();
-        this.applyFilters();
-      };
-    };
-
-    input.click();
-  },
+  // Note: bulk nominee CSV import lives in the Award Areas tab (nominee-uploads.js
+  // + api/data-proxy.js award_area_import), not here — this used to duplicate that
+  // pipeline client-side with a separate, unwired implementation.
 
   toggleScoreLeaderboard() {
     const section = document.getElementById('scoreLeaderboardSection');

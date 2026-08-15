@@ -10,6 +10,7 @@
  * - Score-based ranking
  */
 
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
@@ -609,6 +610,43 @@ async function getJudgingStatsEndpoint(req, res) {
 }
 
 /**
+ * Constant-time comparison of a bearer token against CRON_SECRET.
+ * Rejects (rather than throwing) if lengths differ, since
+ * crypto.timingSafeEqual requires equal-length buffers.
+ * @param {string} provided - The token from the Authorization header.
+ * @returns {boolean} True if it matches CRON_SECRET.
+ */
+function isValidCronSecret(provided) {
+  const expected = process.env.CRON_SECRET;
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * Runs the daily automation tick (see api/_lib/automation-scheduler.js).
+ * Triggered by Vercel Cron (see vercel.json's `crons` array) once per day;
+ * can also be triggered manually with the same Authorization header for
+ * testing. Authenticated via CRON_SECRET, not a user JWT, since Vercel Cron
+ * has no user session to present.
+ * @param {Object} req - Request object.
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function cronTickEndpoint(req, res) {
+  try {
+    const { runDailyAutomation } = require('./_lib/automation-scheduler');
+    const summary = await runDailyAutomation();
+    return res.status(200).json({ success: true, ...summary });
+  } catch (error) {
+    console.error('[cron-tick] automation run failed:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+}
+
+/**
  * Vercel serverless handler — routes by query action.
  */
 module.exports = async function handler(req, res) {
@@ -617,11 +655,29 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Verify authentication for all actions
+  const action = req.query.action || req.body?.action;
+
+  // The scheduled automation tick is triggered by Vercel Cron (a machine,
+  // not a logged-in admin), so it authenticates via a shared secret
+  // (CRON_SECRET) instead of a user JWT — same pattern already used for the
+  // Resend webhook in api/email-automation.js. Checked before the normal
+  // verifyAuth() call below so a cron invocation never needs a user session.
+  if (action === 'cron-tick') {
+    const authHeader = req.headers['authorization'] || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!process.env.CRON_SECRET) {
+      console.error('[cron-tick] CRON_SECRET is not configured — refusing to run automation');
+      return res.status(500).json({ error: 'CRON_SECRET is not configured' });
+    }
+    if (!isValidCronSecret(provided)) {
+      return res.status(401).json({ error: 'Invalid or missing cron authorization' });
+    }
+    return cronTickEndpoint(req, res);
+  }
+
+  // Every other action requires an authenticated admin user
   const user = await verifyAuth(req, res);
   if (!user) return;
-
-  const action = req.query.action || req.body?.action;
 
   switch (action) {
     case 'assign-judges':
@@ -647,3 +703,5 @@ module.exports.assignJudgesEndpoint = assignJudgesEndpoint;
 module.exports.generateShortlistEndpoint = generateShortlistEndpoint;
 module.exports.generateAllShortlistsEndpoint = generateAllShortlistsEndpoint;
 module.exports.getJudgingStatsEndpoint = getJudgingStatsEndpoint;
+module.exports.cronTickEndpoint = cronTickEndpoint;
+module.exports.isValidCronSecret = isValidCronSecret;

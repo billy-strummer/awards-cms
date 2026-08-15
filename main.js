@@ -67,9 +67,6 @@ import './nominee-uploads.js';
 
 import './nominee-voting.js'; // sets window.nomineeVoting — no named export (plain-script compatible)
 
-// BTC price widget
-import './btc-module.js';
-
 // Application initialization (must be last)
 export { reportsScheduler } from './app.js';
 

@@ -16,7 +16,11 @@ ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS ceremony_start_time 
 ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS auto_schedule BOOLEAN DEFAULT FALSE;
 
 -- 4. Update the running_order_full view
-CREATE OR REPLACE VIEW running_order_full AS
+-- item_type was just appended to running_order, which shifts the position of
+-- ro.*'s expanded columns relative to the view's previous definition; DROP first
+-- since CREATE OR REPLACE VIEW can't reorder/rename existing view columns.
+DROP VIEW IF EXISTS running_order_full;
+CREATE VIEW running_order_full AS
 SELECT
   ro.*,
   o.company_name,

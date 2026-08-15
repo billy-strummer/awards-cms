@@ -377,6 +377,12 @@ if (typeof window !== 'undefined') {
   window.COUNTIES_CITIES = COUNTIES_CITIES;
   window.REGIONS = COUNTIES_CITIES;
   window.SECTORS = SECTORS;
+  // Same reasoning — judge-login.html/judge-portal.js, check-in-app.js,
+  // and reset-password.js all reference window.SUPABASE_CONFIG /
+  // window.STATE directly from non-module scripts, but nothing was ever
+  // attaching either to window, so those references were always undefined.
+  window.SUPABASE_CONFIG = SUPABASE_CONFIG;
+  window.STATE = STATE;
 }
 
 // REGIONS kept as backward-compat alias for COUNTIES_CITIES

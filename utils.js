@@ -260,6 +260,17 @@ const utils = {
     return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   },
 
+  /**
+   * Pick singular or plural form based on count (regular "-s" plurals only).
+   * @param {number} count
+   * @param {string} singular - e.g. "award"
+   * @param {string} [plural] - Defaults to singular + "s"
+   * @returns {string}
+   */
+  pluralize(count, singular, plural) {
+    return count === 1 ? singular : plural || `${singular}s`;
+  },
+
   // H7: Highlight search term matches within text
   highlightMatch(text, query) {
     if (!text) return '';
@@ -1778,18 +1789,21 @@ const utils = {
 
   /**
    * Render a consistent row count summary (LOW-1)
+   * @param {string} singular - Singular form for irregular plurals (e.g. "entry" for "entries")
    */
-  renderRowCount(containerId, shown, total, label, page, pageSize) {
+  renderRowCount(containerId, shown, total, label, page, pageSize, singular) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    const word = label || 'records';
+    const noun = total === 1 ? singular || word.replace(/s$/, '') : word;
     if (shown < total && page && pageSize) {
       const from = (page - 1) * pageSize + 1;
       const to = Math.min(page * pageSize, total);
-      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${noun}</span>`;
     } else if (shown < total) {
-      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${noun}</span>`;
     } else {
-      el.innerHTML = `<span class="text-muted small">${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">${total} ${noun}</span>`;
     }
   },
 
@@ -3520,6 +3534,18 @@ const apiClient = {
    */
   async rpc(rpcName, rpcParams = {}) {
     return this._call({ operation: 'rpc', rpcName, rpcParams });
+  },
+
+  /**
+   * Call a custom named operation on the server-side proxy (anything beyond
+   * the standard select/insert/update/upsert/delete/rpc verbs, e.g. batch
+   * import pipelines). Params are merged alongside `operation` in the body.
+   * @param {string} operation - The operation name the data-proxy handler switches on
+   * @param {Object} [params={}] - Operation-specific payload
+   * @returns {Promise<Object>}
+   */
+  async post(operation, params = {}) {
+    return this._call({ operation, ...params });
   },
 
   /**

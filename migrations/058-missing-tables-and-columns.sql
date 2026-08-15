@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS record_notes (
 CREATE INDEX IF NOT EXISTS record_notes_record_idx ON record_notes(table_name, record_id);
 
 ALTER TABLE record_notes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "record_notes_service_all" ON record_notes FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "record_notes_auth_read" ON record_notes FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "record_notes_auth_insert" ON record_notes FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "record_notes_service_all" ON record_notes FOR ALL TO service_role USING (true);
+CREATE POLICY "record_notes_auth_read" ON record_notes FOR SELECT TO authenticated USING (true);
+CREATE POLICY "record_notes_auth_insert" ON record_notes FOR INSERT TO authenticated WITH CHECK (true);
 
 -- ────────────────────────────────────────────────────────────
 -- media_videos: video assets in the media gallery
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS media_videos (
 );
 
 ALTER TABLE media_videos ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "media_videos_service_all" ON media_videos FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "media_videos_auth_all" ON media_videos FOR ALL TO authenticated USING (true);
+CREATE POLICY "media_videos_service_all" ON media_videos FOR ALL TO service_role USING (true);
+CREATE POLICY "media_videos_auth_all" ON media_videos FOR ALL TO authenticated USING (true);
 
 -- ────────────────────────────────────────────────────────────
 -- social_media_templates: email/social post templates
@@ -59,8 +59,8 @@ CREATE TABLE IF NOT EXISTS social_media_templates (
 );
 
 ALTER TABLE social_media_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "social_media_templates_service_all" ON social_media_templates FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "social_media_templates_auth_all" ON social_media_templates FOR ALL TO authenticated USING (true);
+CREATE POLICY "social_media_templates_service_all" ON social_media_templates FOR ALL TO service_role USING (true);
+CREATE POLICY "social_media_templates_auth_all" ON social_media_templates FOR ALL TO authenticated USING (true);
 
 -- ────────────────────────────────────────────────────────────
 -- email_list_members: view alias for email_list_subscribers
@@ -129,12 +129,12 @@ CREATE TABLE IF NOT EXISTS nominee_upload_rows (
 );
 
 ALTER TABLE nominee_upload_batches ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nominee_upload_batches_service_all" ON nominee_upload_batches FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "nominee_upload_batches_auth_all" ON nominee_upload_batches FOR ALL TO authenticated USING (true);
+CREATE POLICY "nominee_upload_batches_service_all" ON nominee_upload_batches FOR ALL TO service_role USING (true);
+CREATE POLICY "nominee_upload_batches_auth_all" ON nominee_upload_batches FOR ALL TO authenticated USING (true);
 
 ALTER TABLE nominee_upload_rows ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "nominee_upload_rows_service_all" ON nominee_upload_rows FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "nominee_upload_rows_auth_all" ON nominee_upload_rows FOR ALL TO authenticated USING (true);
+CREATE POLICY "nominee_upload_rows_service_all" ON nominee_upload_rows FOR ALL TO service_role USING (true);
+CREATE POLICY "nominee_upload_rows_auth_all" ON nominee_upload_rows FOR ALL TO authenticated USING (true);
 
 -- ────────────────────────────────────────────────────────────
 -- custom_sectors and custom_categories
@@ -158,11 +158,11 @@ CREATE TABLE IF NOT EXISTS custom_categories (
 );
 
 ALTER TABLE custom_sectors ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "custom_sectors_service_all" ON custom_sectors FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "custom_sectors_auth_read" ON custom_sectors FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "custom_sectors_anon_read" ON custom_sectors FOR SELECT TO anon USING (is_active = true);
+CREATE POLICY "custom_sectors_service_all" ON custom_sectors FOR ALL TO service_role USING (true);
+CREATE POLICY "custom_sectors_auth_read" ON custom_sectors FOR SELECT TO authenticated USING (true);
+CREATE POLICY "custom_sectors_anon_read" ON custom_sectors FOR SELECT TO anon USING (is_active = true);
 
 ALTER TABLE custom_categories ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "custom_categories_service_all" ON custom_categories FOR ALL TO service_role USING (true);
-CREATE POLICY IF NOT EXISTS "custom_categories_auth_read" ON custom_categories FOR SELECT TO authenticated USING (true);
-CREATE POLICY IF NOT EXISTS "custom_categories_anon_read" ON custom_categories FOR SELECT TO anon USING (is_active = true);
+CREATE POLICY "custom_categories_service_all" ON custom_categories FOR ALL TO service_role USING (true);
+CREATE POLICY "custom_categories_auth_read" ON custom_categories FOR SELECT TO authenticated USING (true);
+CREATE POLICY "custom_categories_anon_read" ON custom_categories FOR SELECT TO anon USING (is_active = true);

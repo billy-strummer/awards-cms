@@ -19,9 +19,11 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
+const { resolveCategory } = require('./_lib/award-categories');
+const { findMatchingOrganisation } = require('./_lib/organisation-matching');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
@@ -1293,6 +1295,434 @@ async function executeNomineeUpload(body, user) {
   return { batchId, csvRowCount, storedRowCount, verified: storedRowCount === csvRowCount };
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Award Areas CSV import — the CMS's single pipeline for bulk-importing
+ * nominees into a specific Area (county/city/London borough). Every row
+ * becomes a real organisation + a published entry, never a staging/raw-data
+ * blob — this is what makes the import actually show up on the website.
+ *
+ * mode: 'validate' — run every check, return row-indexed errors, write nothing.
+ * mode: 'import'   — re-validate (never trust the client) then commit; refuses
+ *                     to write anything if validation still fails.
+ *
+ * Award (award_years) records are found-or-created per category+area+year —
+ * that's the one thing this auto-creates, since "the administrator should
+ * never need to create these manually" per area. Categories themselves are
+ * never auto-created: an unrecognised category is always a validation error.
+ */
+async function executeAwardAreaImport(body, user) {
+  const { mode, areaId, rows, filename } = body;
+  const duplicateStrategy = ['skip', 'update', 'replace'].includes(body.duplicateStrategy)
+    ? body.duplicateStrategy
+    : 'skip';
+  // Same convention as executeQuery's insert path: only stamp tenant_id when
+  // the caller is in a real (non-'default') tenant context, so rows created
+  // here are visible in the same tenant-scoped list views as everything else.
+  const tenantId = body.tenantId && body.tenantId !== 'default' ? body.tenantId : null;
+
+  if (mode !== 'validate' && mode !== 'import') {
+    throw new Error('award_area_import: mode must be "validate" or "import"');
+  }
+  if (!areaId) throw new Error('award_area_import: areaId is required');
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('award_area_import: rows must be a non-empty array');
+  if (rows.length > 2000) throw new Error('award_area_import: maximum 2000 rows per import');
+
+  const { data: area, error: areaErr } = await supabase
+    .from('areas')
+    .select('id, display_name, country, area_type')
+    .eq('id', areaId)
+    .maybeSingle();
+  if (areaErr) throw areaErr;
+  if (!area) throw new Error('award_area_import: unknown area — it may have been deleted');
+
+  // ── Validate every row ──────────────────────────────────────────
+  const errors = [];
+  const seenCompanyNames = new Map(); // normalised name -> first row number
+  const validatedRows = [];
+
+  rows.forEach((raw, idx) => {
+    const rowNum = idx + 1;
+    const companyName = String(raw.company_name || '').trim();
+    const category = String(raw.category || '').trim();
+    const email = String(raw.email || '').trim();
+
+    if (!companyName) errors.push({ row: rowNum, field: 'company_name', message: 'Missing organisation name' });
+    if (!category) errors.push({ row: rowNum, field: 'category', message: 'Missing award category' });
+
+    let resolvedCategory = null;
+    if (category) {
+      resolvedCategory = resolveCategory(category);
+      if (!resolvedCategory) {
+        errors.push({
+          row: rowNum,
+          field: 'category',
+          message: `Unknown award category "${category}" — it doesn't match any existing category`,
+        });
+      }
+    }
+
+    if (email && !EMAIL_RE.test(email)) {
+      errors.push({ row: rowNum, field: 'email', message: `Invalid email address "${email}"` });
+    }
+
+    // Keyed on company+category, not company alone — the same organisation
+    // legitimately appears on multiple rows when it's nominated in more than
+    // one category (a common, expected pattern), so only an exact repeat of
+    // the same company AND the same category is a true duplicate row.
+    if (companyName && category) {
+      const key = `${companyName.toLowerCase()}::${(resolvedCategory ? resolvedCategory.category : category).toLowerCase()}`;
+      if (seenCompanyNames.has(key)) {
+        errors.push({
+          row: rowNum,
+          field: 'company_name',
+          message: `Duplicate of row ${seenCompanyNames.get(key)} in this file ("${companyName}" — "${category}")`,
+        });
+      } else {
+        seenCompanyNames.set(key, rowNum);
+      }
+    }
+
+    validatedRows.push({
+      row: rowNum,
+      companyName,
+      category,
+      resolvedCategory,
+      email: email || null,
+      contactName: raw.contact_name ? String(raw.contact_name).trim().slice(0, 255) : null,
+      phone: raw.phone ? String(raw.phone).trim().slice(0, 50) : null,
+      website: raw.website ? String(raw.website).trim().slice(0, 500) : null,
+      notes: raw.notes ? String(raw.notes).trim().slice(0, 2000) : null,
+    });
+  });
+
+  if (mode === 'validate' || errors.length > 0) {
+    return { mode: 'validate', valid: errors.length === 0, errors, rowCount: rows.length, area };
+  }
+
+  // ── Import — errors is empty at this point ──────────────────────
+  const countrySlug = (area.country || 'england').toLowerCase().replace(/\s+/g, '-');
+  const yearNow = new Date().getFullYear();
+  const awardCache = new Map(); // category name -> award_id (found-or-created once per import)
+
+  async function getOrCreateAward(resolved) {
+    if (awardCache.has(resolved.category)) return awardCache.get(resolved.category);
+
+    // Match on area_id (always populated, including for awards created via the
+    // Add Award form) rather than the legacy free-text `county` column, which
+    // that form never fills in — matching on county here would miss existing
+    // awards and create duplicates.
+    const { data: existing, error: findErr } = await supabase
+      .from('award_years')
+      .select('id')
+      .eq('award_name', resolved.category)
+      .eq('area_id', area.id)
+      .eq('year', yearNow)
+      .maybeSingle();
+    if (findErr) throw findErr;
+    if (existing) {
+      awardCache.set(resolved.category, existing.id);
+      return existing.id;
+    }
+
+    const { data: created, error: createErr } = await supabase
+      .from('award_years')
+      .insert({
+        award_name: resolved.category,
+        sector: resolved.sector,
+        county: area.display_name,
+        country: area.country,
+        area_id: area.id,
+        year: yearNow,
+        status: 'Active',
+        is_active: true,
+        show_on_website: true,
+        tenant_id: tenantId,
+      })
+      .select('id')
+      .single();
+    if (createErr) throw createErr;
+    awardCache.set(resolved.category, created.id);
+    return created.id;
+  }
+
+  // Sequential entry numbers: BTA-<year>-0001, continuing from the highest
+  // existing number this year (best-effort — a rare race against a
+  // simultaneous import could skip/reuse a number, which is harmless since
+  // entry_number has no uniqueness constraint).
+  const prefix = `BTA-${yearNow}-`;
+  const { data: lastEntryRows } = await supabase
+    .from('entries')
+    .select('entry_number')
+    .ilike('entry_number', `${prefix}%`)
+    .order('entry_number', { ascending: false })
+    .limit(1);
+  let nextNum = 1;
+  if (lastEntryRows && lastEntryRows[0]) {
+    const n = parseInt(String(lastEntryRows[0].entry_number).replace(prefix, ''), 10);
+    if (!isNaN(n)) nextNum = n + 1;
+  }
+
+  let orgsCreated = 0;
+  let orgsUpdated = 0;
+  let orgsReplaced = 0;
+  let orgsSkipped = 0;
+  const rowResults = [];
+
+  for (const r of validatedRows) {
+    let orgId = await findMatchingOrganisation(supabase, r.companyName, area.id);
+
+    const orgFields = {
+      company_name: r.companyName,
+      website: r.website,
+      email: r.email,
+      contact_name: r.contactName,
+      contact_phone: r.phone,
+      county_city: area.display_name,
+      country: area.country,
+      area_id: area.id,
+      sector: r.resolvedCategory.sector,
+      status: 'active',
+      tenant_id: tenantId,
+    };
+
+    if (!orgId) {
+      const { data: newOrg, error: insErr } = await supabase
+        .from('organisations')
+        .insert(orgFields)
+        .select('id')
+        .single();
+      if (insErr) throw insErr;
+      orgId = newOrg.id;
+      orgsCreated++;
+    } else if (duplicateStrategy === 'update') {
+      const { data: currentOrg } = await supabase.from('organisations').select('*').eq('id', orgId).maybeSingle();
+      const patch = {};
+      for (const [k, v] of Object.entries(orgFields)) {
+        if (v != null && (currentOrg?.[k] == null || currentOrg[k] === '')) patch[k] = v;
+      }
+      if (Object.keys(patch).length) await supabase.from('organisations').update(patch).eq('id', orgId);
+      orgsUpdated++;
+    } else if (duplicateStrategy === 'replace') {
+      await supabase.from('organisations').update(orgFields).eq('id', orgId);
+      orgsReplaced++;
+    } else {
+      // duplicateStrategy === 'skip' and the organisation already existed —
+      // leave its fields untouched, but still proceed to create this row's
+      // entry below. "Skip" means don't overwrite the organisation, not
+      // "ignore every nomination after this company's first row" — the same
+      // company legitimately gets its own entry per category it's entered in.
+      orgsSkipped++;
+    }
+
+    const awardId = await getOrCreateAward(r.resolvedCategory);
+
+    const { data: existingEntry } = await supabase
+      .from('entries')
+      .select('id')
+      .eq('organisation_id', orgId)
+      .eq('award_id', awardId)
+      .maybeSingle();
+    if (existingEntry) {
+      rowResults.push({ row: r.row, action: 'entry_exists', organisationId: orgId, awardId });
+      continue;
+    }
+
+    const entryNumber = `${prefix}${String(nextNum).padStart(4, '0')}`;
+    nextNum++;
+
+    const { error: entryErr } = await supabase.from('entries').insert({
+      entry_number: entryNumber,
+      organisation_id: orgId,
+      award_id: awardId,
+      entry_title: `${r.companyName} — ${r.resolvedCategory.category}`,
+      contact_name: r.contactName,
+      contact_email: r.email,
+      contact_phone: r.phone,
+      award_category: r.resolvedCategory.category,
+      sector: r.resolvedCategory.sector,
+      county_city: area.display_name,
+      selected_country: countrySlug,
+      supporting_information: r.notes,
+      status: 'shortlisted',
+      is_public: true,
+      allow_public_voting: true,
+      is_self_nomination: false,
+      year: yearNow,
+      submission_date: new Date().toISOString(),
+      payment_status: 'waived',
+      public_votes: 0,
+      tenant_id: tenantId,
+    });
+    if (entryErr) throw entryErr;
+
+    rowResults.push({ row: r.row, action: 'imported', organisationId: orgId, awardId, entryNumber });
+  }
+
+  const entriesCreated = rowResults.filter((r) => r.action === 'imported').length;
+
+  // Audit trail — best-effort, doesn't fail the import if it errors.
+  try {
+    await supabase.from('nominee_upload_batches').insert({
+      filename: filename ? String(filename).slice(0, 255) : 'upload.csv',
+      area: area.display_name,
+      country: area.country,
+      category: null,
+      csv_row_count: rows.length,
+      stored_row_count: entriesCreated,
+      uploaded_by: user.email || null,
+    });
+  } catch (_auditErr) {
+    /* audit trail is best-effort */
+  }
+
+  return {
+    mode: 'import',
+    valid: true,
+    area,
+    totals: {
+      rows: rows.length,
+      entriesCreated,
+      organisationsCreated: orgsCreated,
+      organisationsUpdated: orgsUpdated,
+      organisationsReplaced: orgsReplaced,
+      skipped: orgsSkipped,
+      alreadyEntered: rowResults.filter((r) => r.action === 'entry_exists').length,
+    },
+    rowResults,
+  };
+}
+
+// ============================================
+// USER MANAGEMENT — super_admin only
+// ============================================
+// Uses Supabase's own Auth Admin API (service-role client already
+// initialised above) plus the existing user_roles table that rbacModule
+// already reads from — no separate/duplicate auth system. Roles come from
+// the same ROLE_HIERARCHY used everywhere else in this file.
+
+const VALID_ROLES = new Set(ROLE_HIERARCHY);
+
+/**
+ * List every Supabase Auth user alongside their CMS role and derived status.
+ * @returns {Promise<{users: Array<Object>}>}
+ */
+async function executeUserList() {
+  const { data: authData, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 200 });
+  if (authErr) throw authErr;
+
+  const { data: roleRows, error: roleErr } = await supabase.from('user_roles').select('email, role');
+  if (roleErr) throw roleErr;
+  const roleMap = new Map((roleRows || []).map((r) => [(r.email || '').toLowerCase(), r.role]));
+
+  const now = Date.now();
+  const users = (authData?.users || [])
+    .map((u) => {
+      const isBanned = u.banned_until && new Date(u.banned_until).getTime() > now;
+      const status = isBanned ? 'disabled' : u.email_confirmed_at ? 'active' : 'invited';
+      return {
+        id: u.id,
+        email: u.email,
+        role: roleMap.get((u.email || '').toLowerCase()) || 'viewer',
+        status,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at || null,
+      };
+    })
+    .sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+
+  return { users };
+}
+
+/**
+ * Invite a new user by email via Supabase's built-in invite email, and
+ * assign their initial CMS role.
+ * @param {{email: string, role: string}} body
+ * @returns {Promise<{invited: boolean, userId: string}>}
+ */
+async function executeUserInvite(body) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const role = String(body.role || 'viewer').toLowerCase();
+
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+  if (!VALID_ROLES.has(role)) throw new Error(`Invalid role "${role}"`);
+
+  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+  if (error) throw error;
+
+  const { error: roleErr } = await supabase.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (roleErr) throw roleErr;
+
+  return { invited: true, userId: data.user.id };
+}
+
+/**
+ * Change an existing user's CMS role.
+ * @param {{email: string, role: string}} body
+ * @param {Object} actingUser - The authenticated caller making this change.
+ * @returns {Promise<{updated: boolean}>}
+ */
+async function executeUserSetRole(body, actingUser) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const role = String(body.role || '').toLowerCase();
+
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+  if (!VALID_ROLES.has(role)) throw new Error(`Invalid role "${role}"`);
+  if (email === (actingUser.email || '').toLowerCase() && role !== 'super_admin') {
+    throw new Error('You cannot change your own role away from Super Admin — ask another Super Admin to do this');
+  }
+
+  const { error } = await supabase.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (error) throw error;
+  return { updated: true };
+}
+
+/**
+ * Disable or reactivate a user's ability to sign in, without deleting their
+ * account or any data. Uses Supabase Auth's native ban mechanism (reversible).
+ * @param {{userId: string, disable: boolean}} body
+ * @param {Object} actingUser - The authenticated caller making this change.
+ * @returns {Promise<{updated: boolean, disabled: boolean}>}
+ */
+async function executeUserSetStatus(body, actingUser) {
+  const userId = body.userId;
+  const disable = !!body.disable;
+  if (!userId || typeof userId !== 'string') throw new Error('userId is required');
+
+  const { data: targetData, error: getErr } = await supabase.auth.admin.getUserById(userId);
+  if (getErr) throw getErr;
+  if ((targetData?.user?.email || '').toLowerCase() === (actingUser.email || '').toLowerCase()) {
+    throw new Error('You cannot disable your own account');
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    ban_duration: disable ? '876000h' : 'none', // ~100 years, matches Supabase's own convention for an effectively-indefinite ban
+  });
+  if (error) throw error;
+  return { updated: true, disabled: disable };
+}
+
+/**
+ * Send a password reset email to a user via Supabase Auth.
+ * @param {{email: string}} body
+ * @returns {Promise<{sent: boolean}>}
+ */
+async function executeUserResetPassword(body) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+  return { sent: true };
+}
+
 /**
  * Execute a smart segment query against the organisations table.
  * Queries ALL organisations in the database (not just the current page).
@@ -1591,6 +2021,43 @@ module.exports = async function handler(req, res) {
       await supabase.from('nominee_upload_rows').delete().eq('batch_id', batchId);
       await supabase.from('nominee_upload_batches').delete().eq('id', batchId);
       return res.status(200).json({ deleted: true });
+    }
+
+    // 7b. Award Areas CSV import — validates and/or imports nominees into a
+    // specific area, creating real organisations + entries.
+    if (body.operation === 'award_area_import') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Award Areas import requires editor role or above' });
+      }
+      const importResult = await executeAwardAreaImport(body, user);
+      return res.status(200).json(importResult);
+    }
+
+    // 7c. User management — invite, role changes, disable/reactivate, password
+    // reset. Super Admin only, regardless of what any other check would allow.
+    if (
+      ['user_list', 'user_invite', 'user_set_role', 'user_set_status', 'user_reset_password'].includes(body.operation)
+    ) {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'User management requires Super Admin role' });
+      }
+      if (body.operation === 'user_list') {
+        return res.status(200).json(await executeUserList());
+      }
+      if (body.operation === 'user_invite') {
+        return res.status(200).json(await executeUserInvite(body));
+      }
+      if (body.operation === 'user_set_role') {
+        return res.status(200).json(await executeUserSetRole(body, user));
+      }
+      if (body.operation === 'user_set_status') {
+        return res.status(200).json(await executeUserSetStatus(body, user));
+      }
+      if (body.operation === 'user_reset_password') {
+        return res.status(200).json(await executeUserResetPassword(body));
+      }
     }
 
     // 8. Handle smart segment server-side query

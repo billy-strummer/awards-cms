@@ -263,10 +263,10 @@ describe('Entry Proxy API', () => {
   test('creates entry with existing organisation', async () => {
     // 0. DB rate-limit check (count=0 → allowed)
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // 1. Existing org lookup: found
+    // 1. Award match (resolved first -- its area_id scopes the org lookup)
+    mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
+    // 2. Org lookup, scoped to area-1: found
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
-    // 2. Award match
-    mockFromResults.push(chainable({ data: [{ id: 'award-1' }], error: null }));
     // 3. Entry number generation
     mockFromResults.push(chainable({ data: [{ entry_number: 'BTA-2026-0005' }], error: null }));
     // 4. Entry insert
@@ -286,15 +286,15 @@ describe('Entry Proxy API', () => {
     expect(res.body.entry).toHaveProperty('entry_number');
   });
 
-  test('creates entry and new organisation when org not found', async () => {
+  test('creates entry and new organisation when org not found in the resolved area', async () => {
     // 0. DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // 1. Existing org lookup: not found
+    // 1. Award match (resolved area-1)
+    mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
+    // 2. Org lookup, scoped to area-1: not found
     mockFromResults.push(chainable({ data: [], error: null }));
-    // 2. Org insert
+    // 3. Org insert
     mockFromResults.push(chainable({ data: { id: 'new-org-1' }, error: null }));
-    // 3. Award match: none
-    mockFromResults.push(chainable({ data: [], error: null }));
     // 4. Entry number generation
     mockFromResults.push(chainable({ data: [], error: null }));
     // 5. Entry insert
@@ -312,9 +312,42 @@ describe('Entry Proxy API', () => {
     expect(res.body.success).toBe(true);
   });
 
+  test('creates a new organisation without matching when no award (and so no area) resolves', async () => {
+    // This is the "unresolvable area ⇒ never match, always create" fallback:
+    // no award match means no area_id, so findMatchingOrganisation must
+    // short-circuit and never even query organisations for a match.
+    mockFromResults.push(chainable({ count: 0, error: null }));
+    // 1. Award match: none found -- no area_id available
+    mockFromResults.push(chainable({ data: [], error: null }));
+    // 2. Org insert (no org lookup call is made at all)
+    mockFromResults.push(chainable({ data: { id: 'new-org-2' }, error: null }));
+    // 3. Entry number generation
+    mockFromResults.push(chainable({ data: [], error: null }));
+    // 4. Entry insert
+    mockFromResults.push(
+      chainable({
+        data: { id: 'entry-4', entry_number: 'BTA-2026-0001' },
+        error: null,
+      })
+    );
+
+    const req = createReq({ body: validEntryBody() });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    // Exactly 4 tables were queried: entries (rate-limit), awards, organisations (insert only), entries (number+insert).
+    // If an organisation lookup had incorrectly been attempted, a 5th
+    // chain would have been consumed here and the org insert mock
+    // would instead have received the org-lookup's resolveWith, breaking
+    // organisationId downstream -- covered structurally by success here.
+  });
+
   test('returns 500 when organisation creation fails', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
+    // Award match (resolved area-1)
+    mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // Org lookup: not found
     mockFromResults.push(chainable({ data: [], error: null }));
     // Org insert: fails
@@ -360,10 +393,10 @@ describe('Entry Proxy API', () => {
   test('accepts entry with all optional fields', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // Org lookup
+    // Award match (resolved area-1)
+    mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
+    // Org lookup, scoped to area-1: found
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
-    // Award match
-    mockFromResults.push(chainable({ data: [], error: null }));
     // Entry number gen
     mockFromResults.push(chainable({ data: [], error: null }));
     // Entry insert
@@ -397,10 +430,10 @@ describe('Entry Proxy API', () => {
   test('falls back to base columns when extended insert fails', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // Org lookup
+    // Award match (resolved area-1)
+    mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
+    // Org lookup, scoped to area-1: found
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
-    // Award match
-    mockFromResults.push(chainable({ data: [], error: null }));
     // Entry number gen
     mockFromResults.push(chainable({ data: [], error: null }));
     // First entry insert fails (extended columns)
@@ -426,10 +459,10 @@ describe('Entry Proxy API', () => {
   test('returns 500 when both extended and fallback entry inserts fail', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // Org lookup
+    // Award match (resolved area-1)
+    mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
+    // Org lookup, scoped to area-1: found
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
-    // Award match
-    mockFromResults.push(chainable({ data: [], error: null }));
     // Entry number gen
     mockFromResults.push(chainable({ data: [], error: null }));
     // First entry insert fails (extended columns)
@@ -444,5 +477,81 @@ describe('Entry Proxy API', () => {
     expect(res.statusCode).toBe(500);
     expect(res.body.error).toContain('Could not save your entry');
     consoleSpy.mockRestore();
+  });
+
+  // --- Organisation matching: escaping + area-scoping regression tests ---
+  // These prove the fix for the ILIKE-wildcard and cross-area-collision
+  // findings on the two public, unauthenticated submission endpoints.
+  describe('organisation matching (submit_entry)', () => {
+    test('escapes wildcard characters and scopes the lookup to the resolved award area', async () => {
+      mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(
+        chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-somerset' }], error: null })
+      ); // award match
+      const orgLookupChain = chainable({ data: [], error: null }); // org lookup: no match
+      mockFromResults.push(orgLookupChain);
+      mockFromResults.push(chainable({ data: { id: 'new-org-1' }, error: null })); // org insert
+      mockFromResults.push(chainable({ data: [], error: null })); // entry number gen
+      mockFromResults.push(chainable({ data: { id: 'entry-5', entry_number: 'BTA-2026-0001' }, error: null })); // entry insert
+
+      const req = createReq({ body: validEntryBody({ companyName: '100% Group Roofing Ltd' }) });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(orgLookupChain.ilike).toHaveBeenCalledWith('company_name', '100\\% Group Roofing Ltd');
+      expect(orgLookupChain.eq).toHaveBeenCalledWith('area_id', 'area-somerset');
+    });
+  });
+
+  describe('organisation matching (submit_nomination)', () => {
+    function validNominationBody(overrides = {}) {
+      return {
+        action: 'submit_nomination',
+        awardCategory: 'Roofing Company',
+        nominatorEmail: 'nominator@example.com',
+        nominatorName: 'Jane Nominator',
+        nominationReason: 'This nominee has done excellent, award-worthy work all year.',
+        nomineeName: 'John Nominee',
+        nomineeCompany: 'Test Nominee Ltd',
+        county_city: 'Somerset',
+        ...overrides,
+      };
+    }
+
+    test('escapes wildcard characters and scopes the lookup to the resolved area', async () => {
+      mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(chainable({ data: [{ id: 'area-somerset' }], error: null })); // areas lookup by display_name
+      const orgLookupChain = chainable({ data: [], error: null }); // org lookup: no match
+      mockFromResults.push(orgLookupChain);
+      mockFromResults.push(chainable({ data: { id: 'new-org-2' }, error: null })); // org insert
+      mockFromResults.push(chainable({ data: [], error: null })); // entry number gen
+      mockFromResults.push(chainable({ data: { id: 'entry-6', entry_number: 'BTA-2026-0001' }, error: null })); // entry insert
+
+      const req = createReq({ body: validNominationBody({ nomineeCompany: 'AB_Services Ltd' }) });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(orgLookupChain.ilike).toHaveBeenCalledWith('company_name', 'AB\\_Services Ltd');
+      expect(orgLookupChain.eq).toHaveBeenCalledWith('area_id', 'area-somerset');
+    });
+
+    test('creates a new organisation without matching when the area cannot be resolved', async () => {
+      mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(chainable({ data: [], error: null })); // areas lookup: no match for this county
+      // No organisation-lookup chain is pushed -- findMatchingOrganisation
+      // must short-circuit and never call .from('organisations') to look up.
+      mockFromResults.push(chainable({ data: { id: 'new-org-3' }, error: null })); // org insert
+      mockFromResults.push(chainable({ data: [], error: null })); // entry number gen
+      mockFromResults.push(chainable({ data: { id: 'entry-7', entry_number: 'BTA-2026-0001' }, error: null })); // entry insert
+
+      const req = createReq({ body: validNominationBody({ county_city: 'Nowhereshire' }) });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
   });
 });

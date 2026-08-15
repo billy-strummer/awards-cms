@@ -57,6 +57,29 @@ CREATE TABLE IF NOT EXISTS invoices (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal invoices
+-- table; backfill columns missing from that stub version.
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id) ON DELETE SET NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS award_id UUID REFERENCES award_years(id) ON DELETE SET NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS package_type VARCHAR(50);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_rate DECIMAL(5,2) DEFAULT 20.00;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS terms TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS footer_text TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS billing_contact_name VARCHAR(255);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS billing_email VARCHAR(255);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS billing_phone VARCHAR(50);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS billing_address TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_date TIMESTAMPTZ;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS viewed_date TIMESTAMPTZ;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS reminder_sent_count INTEGER DEFAULT 0;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS last_reminder_sent TIMESTAMPTZ;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- ============================================
 -- INVOICE LINE ITEMS TABLE
@@ -77,6 +100,12 @@ CREATE TABLE IF NOT EXISTS invoice_line_items (
 
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal invoice_line_items
+-- table; backfill columns missing from that stub version.
+ALTER TABLE invoice_line_items ADD COLUMN IF NOT EXISTS item_name VARCHAR(255) NOT NULL;
+ALTER TABLE invoice_line_items ADD COLUMN IF NOT EXISTS line_total DECIMAL(10,2) NOT NULL;
+ALTER TABLE invoice_line_items ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
 
 -- ============================================
 -- PAYMENTS TABLE
@@ -116,6 +145,20 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal payments
+-- table; backfill columns missing from that stub version.
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'GBP';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_gateway VARCHAR(50);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(255);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'completed';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS refunded_amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS refund_date DATE;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS refund_reason TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS processed_by VARCHAR(255);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- ============================================
 -- PAYMENT REMINDERS TABLE
@@ -140,6 +183,17 @@ CREATE TABLE IF NOT EXISTS payment_reminders (
 
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal payment_reminders
+-- table; backfill columns missing from that stub version.
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS reminder_type VARCHAR(50) NOT NULL;
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS sent_date TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS sent_to VARCHAR(255) NOT NULL;
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS subject VARCHAR(500);
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS message TEXT;
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS delivered BOOLEAN DEFAULT false;
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS opened BOOLEAN DEFAULT false;
+ALTER TABLE payment_reminders ADD COLUMN IF NOT EXISTS clicked BOOLEAN DEFAULT false;
+
 
 -- ============================================
 -- INDEXES FOR PERFORMANCE

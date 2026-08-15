@@ -108,6 +108,14 @@ const authModule = {
         // Load RBAC permissions on session restore
         if (typeof rbacModule !== 'undefined') {
           await rbacModule.loadUserRole(session.user.email);
+          // Judges have their own dedicated portal (judge-portal.html) with no
+          // access to the internal admin modules — the main dashboard would
+          // otherwise show them a wall of "Role cannot select" console errors
+          // from widgets querying tables they have no read permission for.
+          if (rbacModule.currentRole === 'judge') {
+            window.location.href = '/judge-portal.html';
+            return;
+          }
         }
         this.showDashboard();
         this.startInactivityTimer();
@@ -177,6 +185,12 @@ const authModule = {
       // Load RBAC permissions before showing dashboard
       if (typeof rbacModule !== 'undefined') {
         await rbacModule.loadUserRole(data.user.email);
+        // Judges belong in their own portal, not the internal admin shell —
+        // see the matching check in checkSession() for why.
+        if (rbacModule.currentRole === 'judge') {
+          window.location.href = '/judge-portal.html';
+          return;
+        }
       }
       this.showDashboard();
       utils.showToast('Login successful!', 'success');
@@ -208,6 +222,81 @@ const authModule = {
     } finally {
       loginBtn.disabled = false;
       loginBtn.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In';
+    }
+  },
+
+  /**
+   * Switch the login card from the sign-in form to the "forgot password" form.
+   */
+  showForgotPassword() {
+    document.getElementById('loginForm').classList.add('d-none');
+    document.getElementById('forgotPasswordForm').classList.remove('d-none');
+    const messageDiv = document.getElementById('forgotPasswordMessage');
+    messageDiv.classList.add('d-none');
+    const emailInput = document.getElementById('forgotPasswordEmail');
+    // Carry over whatever email the user had already typed on the sign-in form.
+    emailInput.value = document.getElementById('loginEmail').value.trim();
+    emailInput.focus();
+  },
+
+  /**
+   * Switch the login card back from "forgot password" to the sign-in form.
+   */
+  showLoginForm() {
+    document.getElementById('forgotPasswordForm').classList.add('d-none');
+    document.getElementById('loginForm').classList.remove('d-none');
+    document.getElementById('loginEmail').focus();
+  },
+
+  /**
+   * Request a password-reset email via Supabase Auth's own
+   * resetPasswordForEmail — no parallel auth system, no admin privileges
+   * needed (a user can always request a reset for their own address).
+   * The same confirmation message is shown whether or not the address is a
+   * real account, matching Supabase's own behaviour, so this can't be used
+   * to enumerate valid admin emails.
+   * @returns {Promise<void>}
+   */
+  async handleForgotPassword() {
+    const email = document.getElementById('forgotPasswordEmail').value.trim();
+    const messageDiv = document.getElementById('forgotPasswordMessage');
+    const btn = document.getElementById('forgotPasswordBtn');
+
+    if (!email || !utils.isValidEmail(email)) {
+      messageDiv.className = 'alert alert-danger';
+      messageDiv.textContent = 'Please enter a valid email address.';
+      messageDiv.classList.remove('d-none');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending…';
+
+    try {
+      const { error } = await STATE.client.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password.html`,
+      });
+      // Supabase does not error for an email with no matching account —
+      // deliberately show the same message either way.
+      if (error && error.message && !error.message.toLowerCase().includes('rate limit')) throw error;
+
+      messageDiv.className = 'alert alert-success';
+      messageDiv.textContent =
+        error && error.message
+          ? 'Too many reset requests sent recently — please wait a few minutes and try again.'
+          : "If an account exists for that email, we've sent a link to reset your password. Check your inbox (and spam folder).";
+      messageDiv.classList.remove('d-none');
+    } catch (error) {
+      console.error('Password reset request error:', error);
+      messageDiv.className = 'alert alert-danger';
+      messageDiv.textContent =
+        error.message && error.message.includes('Failed to fetch')
+          ? 'Cannot connect to server. Please check your internet connection and try again.'
+          : 'Something went wrong sending the reset email. Please try again shortly.';
+      messageDiv.classList.remove('d-none');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send me-2"></i>Send Reset Link';
     }
   },
 
@@ -324,6 +413,8 @@ const authModule = {
     this.hideSplash();
     document.getElementById('loginPage').classList.remove('d-none');
     document.getElementById('dashboardPage').classList.add('d-none');
+    document.getElementById('forgotPasswordForm')?.classList.add('d-none');
+    document.getElementById('loginForm')?.classList.remove('d-none');
     document.getElementById('loginEmail').focus();
   },
 

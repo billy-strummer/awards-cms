@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://s3.tradingview.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://*.tradingview.com wss://*.tradingview.com https://*.tradingview-widget.com wss://*.tradingview-widget.com https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com https://s3.tradingview.com https://*.tradingview.com https://*.tradingview-widget.com; object-src 'none'; base-uri 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://js.stripe.com https://browser.sentry-cdn.com https://cdn.sheetjs.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: blob: https://*.supabase.co https://i.ytimg.com https://*.tile.openstreetmap.org https://*.britishtradeawards.com https://britishtradeawards.com; font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.resend.com https://*.sentry.io wss://*.supabase.co https://www.youtube.com https://vimeo.com https://api.company-information.service.gov.uk https://*.stripe.com https://*.vercel-scripts.com https://*.vercel-insights.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://browser.sentry-cdn.com; frame-src 'self' https://js.stripe.com https://www.youtube.com; object-src 'none'; base-uri 'self'">
   <!-- Supabase credentials — injected per environment, never hardcoded -->
   <meta name="supabase-url" content="">
   <meta name="supabase-anon-key" content="">
+  <!-- Sentry DSN — injected per environment; Sentry stays disabled if unset -->
+  <meta name="sentry-dsn" content="">
   <title>British Trade Awards Admin</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🏆</text></svg>">
   
@@ -64,7 +66,7 @@
           </div>
           
           <div id="loginError" class="alert alert-danger d-none" role="alert"></div>
-          
+
           <form id="loginForm" data-on-submit="authModule.handleLogin">
             <div class="mb-3">
               <label for="loginEmail" class="form-label">Email</label>
@@ -73,20 +75,43 @@
                 <input type="email" class="form-control" id="loginEmail" placeholder="admin@britishtrade.com" required autocomplete="username">
               </div>
             </div>
-            
-            <div class="mb-4">
+
+            <div class="mb-2">
               <label for="loginPassword" class="form-label">Password</label>
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-lock"></i></span>
                 <input type="password" class="form-control" id="loginPassword" placeholder="Enter password" required autocomplete="current-password">
               </div>
             </div>
-            
+
+            <div class="text-end mb-3">
+              <button type="button" class="btn btn-link btn-sm p-0" data-action="authModule.showForgotPassword">Forgot password?</button>
+            </div>
+
             <button type="submit" id="loginBtn" class="btn btn-primary w-100 py-2">
               <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
             </button>
           </form>
-          
+
+          <!-- Forgot Password form — hidden by default, toggled in place of loginForm -->
+          <form id="forgotPasswordForm" class="d-none" data-on-submit="authModule.handleForgotPassword">
+            <p class="text-muted small mb-3">Enter your account email and we'll send you a link to reset your password.</p>
+            <div id="forgotPasswordMessage" class="alert d-none" role="alert"></div>
+            <div class="mb-3">
+              <label for="forgotPasswordEmail" class="form-label">Email</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control" id="forgotPasswordEmail" placeholder="admin@britishtrade.com" required autocomplete="username">
+              </div>
+            </div>
+            <button type="submit" id="forgotPasswordBtn" class="btn btn-primary w-100 py-2 mb-2">
+              <i class="bi bi-send me-2"></i>Send Reset Link
+            </button>
+            <button type="button" class="btn btn-link btn-sm w-100" data-action="authModule.showLoginForm">
+              <i class="bi bi-arrow-left me-1"></i>Back to Sign In
+            </button>
+          </form>
+
           <div class="text-center mt-4">
             <small class="text-muted">
               <i class="bi bi-shield-check me-1"></i>Secure admin access
@@ -105,6 +130,12 @@
     <!-- Top Navigation Bar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top" style="z-index: 1001;">
       <div class="container-fluid">
+        <button id="mobileSidebarToggle"
+                class="btn btn-outline-light d-lg-none me-2"
+                aria-label="Open navigation menu"
+                aria-expanded="false">
+          <i class="bi bi-list fs-5"></i>
+        </button>
         <a class="navbar-brand fw-bold" href="#">
           <i class="bi bi-trophy-fill me-2"></i>British Trade Awards
         </a>
@@ -213,6 +244,10 @@
               <span class="sidebar-label">Awards</span>
               <span class="sidebar-badge" id="awardsTabCount"></span>
             </button>
+            <button class="sidebar-nav-link" id="award-areas-tab" data-bs-toggle="tab" data-bs-target="#award-areas" type="button" role="tab" aria-controls="award-areas" aria-selected="false" title="Award Areas">
+              <i class="bi bi-geo-alt sidebar-icon"></i>
+              <span class="sidebar-label">Award Areas</span>
+            </button>
             <button class="sidebar-nav-link" id="entries-tab" data-bs-toggle="tab" data-bs-target="#entries" type="button" role="tab" aria-controls="entries" aria-selected="false" title="Entries">
               <i class="bi bi-file-earmark-text sidebar-icon"></i>
               <span class="sidebar-label">Entries</span>
@@ -276,14 +311,6 @@
               <span class="sidebar-label">Settings</span>
             </button>
             <span class="sidebar-sub-label d-none" id="settingsSubLabel"></span>
-          </div>
-
-          <!-- Markets (hidden by default — RBAC shows for admin/superadmin) -->
-          <div class="sidebar-group d-none" id="markets-nav-item">
-            <button class="sidebar-nav-link" id="markets-tab" data-bs-toggle="tab" data-bs-target="#bitcoin" type="button" role="tab" aria-controls="bitcoin" aria-selected="false" title="Markets">
-              <i class="bi bi-graph-up-arrow sidebar-icon"></i>
-              <span class="sidebar-label">Markets</span>
-            </button>
           </div>
 
         </div><!-- /.sidebar-nav -->

@@ -10,7 +10,7 @@ const path = require('path');
 
 const DIST_DIR = path.join(__dirname, 'dist');
 
-// JS files in load order (must match index.html script tags)
+// JS files in load order (must match src/partials/99-shell-foot.html script tags)
 const JS_FILES = [
   'config.js',
   'utils.js',
@@ -58,7 +58,6 @@ const JS_FILES = [
   'winner-announcements.js',
   'ui-init.js',
   'app.js',
-  'btc-module.js',
 ];
 
 const CSS_FILES = ['styles.css', 'modern-theme.css', 'assignments-styles.css'];
@@ -228,27 +227,21 @@ async function build() {
     console.log(`  CSS: ${(totalCssSize / 1024).toFixed(0)}KB (concatenated, not minified)`);
   }
 
-  // 3. Assemble HTML from src/partials/ (or fall back to root index.html)
+  // 3. Assemble HTML from src/partials/
   const partialsManifest = path.join(__dirname, 'src', 'partials', 'manifest.json');
-  let html;
-
-  if (fs.existsSync(partialsManifest)) {
-    const partials = JSON.parse(fs.readFileSync(partialsManifest, 'utf8'));
-    const partialsDir = path.join(__dirname, 'src', 'partials');
-    html = partials
-      .map((file) => {
-        const filePath = path.join(partialsDir, file);
-        if (!fs.existsSync(filePath)) throw new Error(`Partial not found: src/partials/${file}`);
-        return fs.readFileSync(filePath, 'utf8');
-      })
-      .join('');
-    console.log(`  HTML: assembled from ${partials.length} partial(s) in src/partials/`);
-  } else {
-    const indexPath = path.join(__dirname, 'index.html');
-    if (!fs.existsSync(indexPath)) throw new Error('index.html not found and no partials manifest');
-    html = fs.readFileSync(indexPath, 'utf8');
-    console.log('  HTML: using root index.html (no partials manifest found)');
+  if (!fs.existsSync(partialsManifest)) {
+    throw new Error('src/partials/manifest.json not found — cannot assemble index.html');
   }
+  const partials = JSON.parse(fs.readFileSync(partialsManifest, 'utf8'));
+  const partialsDir = path.join(__dirname, 'src', 'partials');
+  let html = partials
+    .map((file) => {
+      const filePath = path.join(partialsDir, file);
+      if (!fs.existsSync(filePath)) throw new Error(`Partial not found: src/partials/${file}`);
+      return fs.readFileSync(filePath, 'utf8');
+    })
+    .join('');
+  console.log(`  HTML: assembled from ${partials.length} partial(s) in src/partials/`);
 
   // Replace custom CSS block: everything from <!-- Custom Styles --> to </head>
   html = html.replace(
@@ -256,13 +249,13 @@ async function build() {
     '<!-- Custom Styles -->\n  <link rel="stylesheet" href="app.min.css">\n</head>'
   );
 
-  // Replace app script block: everything from <!-- Application Scripts --> to the last
-  // bundled script (btc-module.js follows app.js). Keep only one bundled script tag.
+  // Replace app script block: everything from <!-- Application Scripts --> to the
+  // bundled app.js tag. Keep only one bundled script tag.
   // Also inject <link rel="prefetch"> hints for all lazy chunks so the browser
   // downloads them at idle time and serves them from cache on first tab click.
   const chunkPrefetches = LAZY_CHUNKS.map((c) => `  <link rel="prefetch" as="script" href="${c.outfile}">`).join('\n');
   html = html.replace(
-    /\s*<!-- Application Scripts[\s\S]*?<script src="btc-module\.js"><\/script>/,
+    /\s*<!-- Application Scripts[\s\S]*?<script src="app\.js"><\/script>/,
     `\n${chunkPrefetches}\n  <script type="module" src="app.min.js"></script>`
   );
 
@@ -275,9 +268,17 @@ async function build() {
     `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
   );
 
+  // Inject Sentry DSN (optional — error monitoring stays disabled if unset)
+  const sentryDsn = process.env.SENTRY_DSN || '';
+  html = html.replace('<meta name="sentry-dsn" content="">', `<meta name="sentry-dsn" content="${sentryDsn}">`);
+
+  // Used below to rewrite relative og:image paths on public pages into absolute URLs
+  const appUrl = process.env.APP_URL || '';
+
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), html);
   console.log('  HTML: rewrote index.html to use bundled app.min.js + app.min.css');
   if (supabaseUrl) console.log('  Supabase: credentials injected from environment');
+  console.log(`  Sentry: ${sentryDsn ? 'DSN injected from environment' : 'disabled (SENTRY_DSN not set)'}`);
 
   // 4. Copy public-facing pages and their assets
   // These standalone pages have their own JS/CSS (not part of the admin bundle)
@@ -292,9 +293,8 @@ async function build() {
     'submit-entry.js',
     'vote.html',
     'public-voting.html',
-    'award-nominees.html',
-    'company-profile.html',
-    'award_companies.html',
+    'reset-password.html',
+    'reset-password.js',
     'judge-portal.html',
     'judge-login.html',
     'winners-portal.html',
@@ -335,25 +335,58 @@ async function build() {
     const dest = path.join(DIST_DIR, file);
     if (fs.existsSync(src)) {
       fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.copyFileSync(src, dest);
+      if (file.endsWith('.html')) {
+        // Most public pages talk to Supabase only via /api/*-proxy (server-side,
+        // no browser credentials needed), but a few — judge-login.html,
+        // judge-portal.html, reset-password.html, check-in.html — create a
+        // browser-side Supabase client directly for auth/realtime and need
+        // real values in their <meta name="supabase-*"> tags. Patching every
+        // public page the same way index.html already gets patched is a
+        // harmless no-op for pages without those tags.
+        let pageHtml = fs.readFileSync(src, 'utf8');
+        pageHtml = pageHtml.replace(
+          '<meta name="supabase-url" content="">',
+          `<meta name="supabase-url" content="${supabaseUrl}">`
+        );
+        pageHtml = pageHtml.replace(
+          '<meta name="supabase-anon-key" content="">',
+          `<meta name="supabase-anon-key" content="${supabaseAnonKey}">`
+        );
+        // og:image must be an absolute URL — social platforms' link-preview
+        // crawlers don't resolve relative paths against the page's own URL,
+        // so a relative og:image silently fails to render in shared links.
+        if (appUrl) {
+          pageHtml = pageHtml.replace(
+            /(<meta property="og:image" content=")(?!https?:\/\/)([^"]+)(")/,
+            `$1${appUrl.replace(/\/$/, '')}/$2$3`
+          );
+          // og:url is likewise required by link-preview crawlers and was
+          // missing from every public page except home.html — add it right
+          // after og:type on any page that has Open Graph tags but no og:url.
+          if (/<meta property="og:title"/.test(pageHtml) && !/<meta property="og:url"/.test(pageHtml)) {
+            pageHtml = pageHtml.replace(
+              /(<meta property="og:type" content="[^"]*">)/,
+              `$1\n  <meta property="og:url" content="${appUrl.replace(/\/$/, '')}/${file}">`
+            );
+          }
+        }
+        fs.writeFileSync(dest, pageHtml);
+      } else {
+        fs.copyFileSync(src, dest);
+      }
       copiedCount++;
     }
   });
 
   // Copy any JS files referenced by public pages that aren't in the bundle
   const publicJsFiles = [
-    'vote.js',
     'public-voting.js',
     'nominee-voting.js',
     'judge-portal.js',
-    'judge-login.js',
     'winners-portal-app.js',
     'check-in-app.js',
     'register-app.js',
     'upload-documents.js',
-    'company-profile-app.js',
-    'award-nominees-app.js',
-    'award-companies-app.js',
     'submit-entry-payment.js',
     'nominate.js',
     'industry-leader.js',

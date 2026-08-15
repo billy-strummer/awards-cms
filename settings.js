@@ -9,8 +9,16 @@ const settingsModule = {
   async init() {
     this.applyDensity();
 
-    // Initialize all sections independently so one failure doesn't block the rest
-    const safe = (fn) => fn().catch((e) => console.error('Settings init error:', e));
+    // Initialize all sections independently so one failure doesn't block the
+    // rest. A 15s timeout guards against a section that never settles at all
+    // (e.g. a stuck request) — without it, a single hung call here silently
+    // stops every section listed after it from ever initializing, since nothing
+    // downstream of `await Promise.all(...)` runs until every entry resolves.
+    const safe = (fn) =>
+      Promise.race([
+        fn(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Settings section timed out')), 15000)),
+      ]).catch((e) => console.error('Settings init error:', e));
 
     await Promise.all([
       safe(() => this.updateSystemInfo()),
@@ -41,6 +49,21 @@ const settingsModule = {
     this.renderCurrentUserRole();
     this.loadMfaStatus();
     this.loadWebhooks();
+
+    // Users sub-tab is Super Admin only — hidden by default in the HTML,
+    // revealed here rather than relying on the generic sidebar module-gating
+    // (which only covers top-level tabs, not sub-tabs within Settings).
+    const usersNavItem = document.getElementById('settingsUsersNavItem');
+    if (usersNavItem) {
+      const isSuperAdmin = typeof rbacModule !== 'undefined' && rbacModule.currentRole === 'super_admin';
+      usersNavItem.classList.toggle('d-none', !isSuperAdmin);
+      // Awaited (not fire-and-forget like the rest of this tail section) so it
+      // runs after the ~8 concurrent calls above have already fired, rather
+      // than piling a 9th simultaneous request onto them — supabase-js's
+      // client-side session lock can be forcibly stolen from a pending
+      // request when too many callers contend for it at the same instant.
+      if (isSuperAdmin) await safe(() => this.loadUsers());
+    }
   },
 
   /**
@@ -2009,6 +2032,213 @@ const settingsModule = {
         .join('');
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Error loading activity log: ${e.message}</td></tr>`;
+    }
+  },
+
+  // ============================================
+  // USER MANAGEMENT (Settings > Users) — Super Admin only
+  // ============================================
+  _users: [],
+  _userRoleLabels: {
+    super_admin: 'Super Admin',
+    admin: 'Admin',
+    editor: 'Editor',
+    viewer: 'Viewer',
+    judge: 'Judge',
+    marketing: 'Marketing',
+    finance: 'Finance',
+  },
+
+  /**
+   * Load every CMS user (Supabase Auth account + assigned role + status).
+   * @returns {Promise<void>}
+   */
+  async loadUsers() {
+    const tbody = document.getElementById('settingsUsersTableBody');
+    if (!tbody) return;
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center py-4"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></td></tr>';
+    try {
+      const result = await apiClient.post('user_list');
+      this._users = result.users || [];
+      this._renderUsersTable();
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Error loading users: ${utils.escapeHtml(e.message)}</td></tr>`;
+    }
+  },
+
+  /**
+   * Render the loaded user list into the Users table.
+   * @returns {void}
+   */
+  _renderUsersTable() {
+    const tbody = document.getElementById('settingsUsersTableBody');
+    const countEl = document.getElementById('settingsUsersCount');
+    if (!tbody) return;
+    if (countEl) countEl.textContent = String(this._users.length);
+
+    if (this._users.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="text-center text-muted py-4">No users yet — click "Invite User" to add your first team member.</td></tr>';
+      return;
+    }
+
+    const statusBadge = {
+      active: '<span class="badge bg-success">Active</span>',
+      invited: '<span class="badge bg-warning text-dark">Invited — pending</span>',
+      disabled: '<span class="badge bg-secondary">Disabled</span>',
+    };
+
+    tbody.innerHTML = this._users
+      .map((u) => {
+        const lastSignIn = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-GB') : 'Never';
+        const roleOptions = Object.entries(this._userRoleLabels)
+          .map(([val, label]) => `<option value="${val}" ${u.role === val ? 'selected' : ''}>${label}</option>`)
+          .join('');
+        const isDisabled = u.status === 'disabled';
+        return `<tr>
+        <td>${utils.escapeHtml(u.email)}</td>
+        <td>
+          <select class="form-select form-select-sm" style="width:auto;"
+                  data-on-change="settingsModule.changeUserRole" data-args='["${utils.escapeHtml(u.email)}"]'
+                  aria-label="Role for ${utils.escapeHtml(u.email)}">
+            ${roleOptions}
+          </select>
+        </td>
+        <td>${statusBadge[u.status] || utils.escapeHtml(u.status)}</td>
+        <td class="small text-muted">${lastSignIn}</td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" data-action="settingsModule.resetUserPassword"
+                    data-args='["${utils.escapeHtml(u.email)}"]' title="Send password reset email">
+              <i class="bi bi-key"></i>
+            </button>
+            <button class="btn btn-outline-${isDisabled ? 'success' : 'danger'}" data-action="settingsModule.toggleUserStatus"
+                    data-args='["${u.id}", "${utils.escapeHtml(u.email)}", ${isDisabled}]'
+                    title="${isDisabled ? 'Reactivate' : 'Disable'} this user">
+              <i class="bi bi-${isDisabled ? 'unlock' : 'lock'}"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+      })
+      .join('');
+  },
+
+  /**
+   * Open the "Invite User" modal with blank defaults.
+   * @returns {void}
+   */
+  openInviteUserModal() {
+    const emailEl = document.getElementById('inviteUserEmail');
+    const roleEl = document.getElementById('inviteUserRole');
+    if (emailEl) emailEl.value = '';
+    if (roleEl) roleEl.value = 'viewer';
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('inviteUserModal'));
+    modal.show();
+  },
+
+  /**
+   * Send an invitation email to a new user and assign their initial role.
+   * @returns {Promise<void>}
+   */
+  async inviteUser() {
+    const email = document.getElementById('inviteUserEmail')?.value.trim();
+    const role = document.getElementById('inviteUserRole')?.value;
+    if (!email) {
+      utils.showToast('Enter an email address', 'error');
+      return;
+    }
+    try {
+      utils.showLoading();
+      await apiClient.post('user_invite', { email, role });
+      bootstrap.Modal.getInstance(document.getElementById('inviteUserModal'))?.hide();
+      utils.showToast(`Invitation sent to ${email}`, 'success');
+      await this.loadUsers();
+    } catch (e) {
+      utils.showToast('Failed to invite user: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Change an existing user's role via the inline dropdown in the Users table.
+   * @param {string} email
+   * @param {string} role - New role value (from the select's data-on-change).
+   * @returns {Promise<void>}
+   */
+  async changeUserRole(email, role) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Change Role',
+        message: `Change ${email}'s role to "${this._userRoleLabels[role] || role}"?`,
+        confirmText: 'Change Role',
+      }))
+    ) {
+      this._renderUsersTable(); // revert the dropdown to its previous value
+      return;
+    }
+    try {
+      await apiClient.post('user_set_role', { email, role });
+      utils.showToast(`${email}'s role updated`, 'success');
+      await this.loadUsers();
+    } catch (e) {
+      utils.showToast('Failed to change role: ' + e.message, 'error');
+      await this.loadUsers();
+    }
+  },
+
+  /**
+   * Disable or reactivate a user's ability to sign in.
+   * @param {string} userId
+   * @param {string} email
+   * @param {boolean} isCurrentlyDisabled
+   * @returns {Promise<void>}
+   */
+  async toggleUserStatus(userId, email, isCurrentlyDisabled) {
+    const disable = !isCurrentlyDisabled;
+    if (
+      !(await utils.confirmDialog({
+        title: disable ? 'Disable User' : 'Reactivate User',
+        message: disable
+          ? `Disable ${email}? They will immediately lose the ability to sign in. Their account and data are kept — you can reactivate at any time.`
+          : `Reactivate ${email}? They will be able to sign in again immediately.`,
+        confirmText: disable ? 'Disable' : 'Reactivate',
+        danger: disable,
+      }))
+    ) {
+      return;
+    }
+    try {
+      await apiClient.post('user_set_status', { userId, disable });
+      utils.showToast(`${email} ${disable ? 'disabled' : 'reactivated'}`, 'success');
+      await this.loadUsers();
+    } catch (e) {
+      utils.showToast(`Failed to ${disable ? 'disable' : 'reactivate'} user: ` + e.message, 'error');
+    }
+  },
+
+  /**
+   * Send a password reset email to a user.
+   * @param {string} email
+   * @returns {Promise<void>}
+   */
+  async resetUserPassword(email) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Reset Password',
+        message: `Send a password reset email to ${email}?`,
+        confirmText: 'Send Reset Email',
+      }))
+    ) {
+      return;
+    }
+    try {
+      await apiClient.post('user_reset_password', { email });
+      utils.showToast(`Password reset email sent to ${email}`, 'success');
+    } catch (e) {
+      utils.showToast('Failed to send reset email: ' + e.message, 'error');
     }
   },
 };

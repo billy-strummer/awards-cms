@@ -20,15 +20,14 @@
     });
   }
 
-  // ── Video end-screen: mobile only ───────────────────────────────────────
-  // On desktop the Enter Now button is already visible directly below the
-  // video, so the overlay would be redundant.
+  // ── Video end-screen ────────────────────────────────────────────────────
+  // Once the hero video finishes, the whole video area becomes a clickable
+  // link through to Enter Now -- on all screen sizes, including mobile.
   (function () {
     const video = document.getElementById('hero-video');
     const endScreen = document.getElementById('video-end-screen');
     if (!video || !endScreen) return;
     video.addEventListener('ended', function () {
-      if (window.innerWidth >= 769) return;
       endScreen.classList.add('visible');
       endScreen.setAttribute('aria-hidden', 'false');
     });

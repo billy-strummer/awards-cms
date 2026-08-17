@@ -2447,12 +2447,10 @@
     <!-- Logo -->
     <a href="home.html" class="header-logo" aria-label="British Trade Awards — home">
       <!-- White version (shown at top of page, transparent dark header) -->
-      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-white"
-           onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; document.getElementById('header-logo-fallback').style.display='block'">
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-white">
       <!-- Gold+white version (shown when scrolled, frosted header) -->
       <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards" class="logo-dark"
-           style="display:none"
-           onerror="this.style.display='none'">
+           style="display:none">
       <!-- Fallback text logo -->
       <span id="header-logo-fallback" class="logo-text" style="display:none">
         British Trade Awards
@@ -2514,53 +2512,17 @@
       <source src="/hero-video.mp4" type="video/mp4">
     </video>
     <!-- The video is marked muted so the browser's native autoplay starts it
-         immediately with zero JS dependency. A script (run inline right here,
-         before any other page script) then tries to upgrade to unmuted
+         immediately with zero JS dependency. hero-video-init.js (loaded right
+         here, before any other page script) then tries to upgrade to unmuted
          playback where the browser allows it. Either way, this button lets a
-         visitor mute/unmute with one click. -->
+         visitor mute/unmute with one click. Note: this MUST be an external
+         script (not inline) -- the site's CSP has no 'unsafe-inline' in
+         script-src, so an inline <script> here would be silently blocked. -->
     <button type="button" id="video-sound-toggle" aria-label="Unmute video" aria-pressed="false">
       <svg class="icon-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
       <svg class="icon-unmuted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
     </button>
-    <script>
-      // Runs immediately (inline, right after the elements it controls) so the
-      // unmuted-upgrade attempt and the mute button are live before any other
-      // page script (home-data.js, home.js) has even started loading.
-      (function () {
-        var video = document.getElementById('hero-video');
-        var btn = document.getElementById('video-sound-toggle');
-        if (!video || !btn) return;
-        var iconMuted = btn.querySelector('.icon-muted');
-        var iconUnmuted = btn.querySelector('.icon-unmuted');
-
-        function syncButtonToState() {
-          var isMuted = video.muted;
-          btn.setAttribute('aria-label', isMuted ? 'Unmute video' : 'Mute video');
-          btn.setAttribute('aria-pressed', String(!isMuted));
-          iconMuted.style.display = isMuted ? '' : 'none';
-          iconUnmuted.style.display = isMuted ? 'none' : '';
-        }
-
-        // Native `muted` attribute means the video is already autoplaying by
-        // the time this runs. Try to upgrade to unmuted playback; if the
-        // browser blocks it, silently stay muted (video keeps playing either way).
-        video.muted = false;
-        var playAttempt = video.play();
-        if (playAttempt && typeof playAttempt.catch === 'function') {
-          playAttempt.catch(function () {
-            video.muted = true;
-          }).then(syncButtonToState);
-        } else {
-          syncButtonToState();
-        }
-
-        btn.addEventListener('click', function () {
-          video.muted = !video.muted;
-          if (!video.muted) video.play().catch(function () {});
-          syncButtonToState();
-        });
-      })();
-    </script>
+    <script src="/hero-video-init.js"></script>
     <!-- Shown when video ends: freeze + CTA -->
     <div id="video-end-screen" aria-hidden="true">
       <a href="submit-entry.html" class="end-screen-link" aria-label="Enter British Trade Awards">
@@ -3205,88 +3167,10 @@
 
 <script src="home.js"></script>
 
-<script>
-  // Video end-screen: mobile only — on desktop the Enter Now button is already
-  // visible directly below the video, so the overlay would be redundant.
-  (function () {
-    const video = document.getElementById('hero-video');
-    const endScreen = document.getElementById('video-end-screen');
-    if (!video || !endScreen) return;
-    video.addEventListener('ended', function () {
-      if (window.innerWidth >= 769) return;
-      endScreen.classList.add('visible');
-      endScreen.setAttribute('aria-hidden', 'false');
-    });
-  })();
-</script>
-
-<script>
-  // ── Countdown timer ──────────────────────────────────────────────────────────
-  // Target: 1 September 2026 00:00:00 UTC (entries open)
-  (function () {
-    var target = Date.UTC(2026, 6, 1, 0, 0, 0); // month is 0-indexed: 6 = July
-    var block = document.getElementById('countdown-block');
-    var openMsg = document.getElementById('countdown-open-msg');
-    var elDays = document.getElementById('cd-days');
-    var elHours = document.getElementById('cd-hours');
-    var elMins = document.getElementById('cd-mins');
-    var elSecs = document.getElementById('cd-secs');
-
-    if (!block || !elDays) return;
-
-    function pad(n) {
-      return n < 10 ? '0' + n : String(n);
-    }
-
-    function tick() {
-      var now = Date.now();
-      var diff = target - now;
-      if (diff <= 0) {
-        block.style.display = 'none';
-        if (openMsg) openMsg.style.display = 'block';
-        clearInterval(timer);
-        return;
-      }
-      var totalSecs = Math.floor(diff / 1000);
-      var days  = Math.floor(totalSecs / 86400);
-      var hours = Math.floor((totalSecs % 86400) / 3600);
-      var mins  = Math.floor((totalSecs % 3600) / 60);
-      var secs  = totalSecs % 60;
-      elDays.textContent  = days;
-      elHours.textContent = pad(hours);
-      elMins.textContent  = pad(mins);
-      elSecs.textContent  = pad(secs);
-    }
-
-    tick();
-    var timer = setInterval(tick, 1000);
-  })();
-</script>
-
-<script>
-  // ── Newsletter form ───────────────────────────────────────────────────────────
-  (function () {
-    var form = document.getElementById('newsletter-form');
-    var input = document.getElementById('newsletter-email');
-    var successMsg = document.getElementById('newsletter-success');
-    if (!form) return;
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var email = input ? input.value.trim() : '';
-      // Basic email validation
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        input.focus();
-        input.style.borderColor = 'rgba(255,80,80,0.8)';
-        setTimeout(function () { input.style.borderColor = ''; }, 2000);
-        return;
-      }
-      // No real API call — show success state
-      form.style.display = 'none';
-      if (successMsg) successMsg.classList.add('visible');
-    });
-  })();
-</script>
+<!-- Logo fallback, video end-screen, countdown timer, newsletter form --
+     external because the site's CSP has no 'unsafe-inline' in script-src,
+     so inline <script> blocks are silently blocked in real browsers. -->
+<script src="/home-inline.js"></script>
 
 
 </body>

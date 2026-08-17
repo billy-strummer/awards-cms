@@ -365,6 +365,8 @@ async function build() {
     'home.js',
     'home2.js',
     'home-data.js',
+    'hero-video-init.js',
+    'home-inline.js',
   ];
 
   publicJsFiles.forEach((file) => {

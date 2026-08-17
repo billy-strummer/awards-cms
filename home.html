@@ -2506,19 +2506,61 @@
     <video
       id="hero-video"
       autoplay
+      muted
       playsinline
       preload="auto"
       aria-hidden="true"
     >
       <source src="/hero-video.mp4" type="video/mp4">
     </video>
-    <!-- Autoplays with sound where the browser allows it; falls back to muted
-         autoplay if the browser blocks unmuted autoplay (see script below).
-         Either way, this button lets a visitor mute/unmute with one click. -->
-    <button type="button" id="video-sound-toggle" aria-label="Mute video" aria-pressed="true">
-      <svg class="icon-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-      <svg class="icon-unmuted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+    <!-- The video is marked muted so the browser's native autoplay starts it
+         immediately with zero JS dependency. A script (run inline right here,
+         before any other page script) then tries to upgrade to unmuted
+         playback where the browser allows it. Either way, this button lets a
+         visitor mute/unmute with one click. -->
+    <button type="button" id="video-sound-toggle" aria-label="Unmute video" aria-pressed="false">
+      <svg class="icon-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      <svg class="icon-unmuted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
     </button>
+    <script>
+      // Runs immediately (inline, right after the elements it controls) so the
+      // unmuted-upgrade attempt and the mute button are live before any other
+      // page script (home-data.js, home.js) has even started loading.
+      (function () {
+        var video = document.getElementById('hero-video');
+        var btn = document.getElementById('video-sound-toggle');
+        if (!video || !btn) return;
+        var iconMuted = btn.querySelector('.icon-muted');
+        var iconUnmuted = btn.querySelector('.icon-unmuted');
+
+        function syncButtonToState() {
+          var isMuted = video.muted;
+          btn.setAttribute('aria-label', isMuted ? 'Unmute video' : 'Mute video');
+          btn.setAttribute('aria-pressed', String(!isMuted));
+          iconMuted.style.display = isMuted ? '' : 'none';
+          iconUnmuted.style.display = isMuted ? 'none' : '';
+        }
+
+        // Native `muted` attribute means the video is already autoplaying by
+        // the time this runs. Try to upgrade to unmuted playback; if the
+        // browser blocks it, silently stay muted (video keeps playing either way).
+        video.muted = false;
+        var playAttempt = video.play();
+        if (playAttempt && typeof playAttempt.catch === 'function') {
+          playAttempt.catch(function () {
+            video.muted = true;
+          }).then(syncButtonToState);
+        } else {
+          syncButtonToState();
+        }
+
+        btn.addEventListener('click', function () {
+          video.muted = !video.muted;
+          if (!video.muted) video.play().catch(function () {});
+          syncButtonToState();
+        });
+      })();
+    </script>
     <!-- Shown when video ends: freeze + CTA -->
     <div id="video-end-screen" aria-hidden="true">
       <a href="submit-entry.html" class="end-screen-link" aria-label="Enter British Trade Awards">
@@ -3174,53 +3216,6 @@
       if (window.innerWidth >= 769) return;
       endScreen.classList.add('visible');
       endScreen.setAttribute('aria-hidden', 'false');
-    });
-  })();
-</script>
-
-<script>
-  // Sound toggle: the video is NOT marked muted in HTML, so the browser
-  // attempts autoplay WITH sound first. Most browsers only allow unmuted
-  // autoplay once a visitor has already interacted with the site (or has
-  // a high enough media engagement score for this origin), so this falls
-  // back to muted autoplay when the browser blocks the unmuted attempt --
-  // that way the video always plays, with sound whenever the browser
-  // permits it. The button always reflects real state and lets a visitor
-  // mute/unmute with one click either way.
-  (function () {
-    const video = document.getElementById('hero-video');
-    const btn = document.getElementById('video-sound-toggle');
-    if (!video || !btn) return;
-    const iconMuted = btn.querySelector('.icon-muted');
-    const iconUnmuted = btn.querySelector('.icon-unmuted');
-
-    function syncButtonToState() {
-      const isMuted = video.muted;
-      btn.setAttribute('aria-label', isMuted ? 'Unmute video' : 'Mute video');
-      btn.setAttribute('aria-pressed', String(!isMuted));
-      iconMuted.style.display = isMuted ? '' : 'none';
-      iconUnmuted.style.display = isMuted ? 'none' : '';
-    }
-
-    video.muted = false;
-    const playAttempt = video.play();
-    if (playAttempt && typeof playAttempt.catch === 'function') {
-      playAttempt
-        .catch(function () {
-          // Browser blocked unmuted autoplay -- fall back to muted so the
-          // video still plays automatically, matching the site's existing
-          // autoplay behaviour.
-          video.muted = true;
-          video.play().catch(function () {});
-        })
-        .then(syncButtonToState);
-    } else {
-      syncButtonToState();
-    }
-
-    btn.addEventListener('click', function () {
-      video.muted = !video.muted;
-      syncButtonToState();
     });
   })();
 </script>

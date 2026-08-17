@@ -44,7 +44,7 @@
       --transition-med:    0.3s ease;
       --transition-slow:   0.5s ease;
 
-      --header-h: 90px;
+      --header-h: 76px;
       --section-pad: clamp(20px, 2.5vw, 40px);
     }
 
@@ -361,7 +361,7 @@
     }
 
     .header-cta .btn-gold {
-      padding: 14px 36px;
+      padding: 10px 32px;
       font-size: 0.9rem;
     }
 
@@ -497,7 +497,7 @@
     #video-wrapper {
       position: relative;
       line-height: 0;
-      border: 2px solid var(--gold);
+      border: 4px solid var(--gold);
       border-radius: var(--radius-md);
       overflow: hidden;
       box-shadow: 0 0 48px rgba(201,162,39,0.14);
@@ -1063,8 +1063,8 @@
     }
 
     .country-flag {
-      width: 96px;
-      height: 64px;
+      width: 160px;
+      height: 107px;
       object-fit: cover;
       border-radius: 6px;
       margin: 0 auto 16px;
@@ -1072,10 +1072,11 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .chip-flag {
-      width: 22px;
-      height: 15px;
+      width: 34px;
+      align-self: stretch;
+      margin: -6px 0 -6px -8px;
       object-fit: cover;
-      border-radius: 2px;
+      border-radius: 0;
       flex-shrink: 0;
     }
 
@@ -1215,6 +1216,7 @@
       gap: 7px;
       width: 100%;
       box-sizing: border-box;
+      overflow: hidden;
       transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     }
 
@@ -1565,7 +1567,7 @@
 
     .footer-follow-label {
       font-family: var(--font-body);
-      font-size: 0.8rem;
+      font-size: 1.1rem;
       font-weight: 600;
       color: rgba(255, 255, 255, 0.75);
       white-space: nowrap;
@@ -1776,7 +1778,7 @@
         gap: 12px;
       }
 
-      .country-flag { width: 72px; height: 48px; }
+      .country-flag { width: 110px; height: 73px; }
       .country-card { padding: 24px 16px; }
 
       .find-trade-row {
@@ -1847,6 +1849,7 @@
       /* Regional accordion — max-height set by JS */
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 4px 10px; font-size: 0.75rem; }
+      .chip-flag { margin: -4px 0 -4px -10px; }
 
       /* Country cards — 3 columns on small screens */
       .country-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -1858,7 +1861,7 @@
         padding: 14px 8px;
         text-align: center;
       }
-      .country-flag { width: 52px; height: 34px; margin: 0; }
+      .country-flag { width: 80px; height: 53px; margin: 0; }
       .country-name { font-size: 0.9rem; margin-bottom: 0; }
       .country-explore { font-size: 0.75rem; margin-top: 0; }
 
@@ -2396,7 +2399,7 @@
       #video-wrapper {
         order: 2;
         width: calc(100% - clamp(40px, 6vw, 80px));
-        max-width: 1200px;
+        max-width: 820px;
         margin: 0 auto;
         aspect-ratio: 16 / 9;
       }
@@ -3009,7 +3012,7 @@
         Be First to <span class="gold-underline">Know</span>
       </h2>
       <p class="newsletter-sub reveal reveal-delay-1">
-        Stay ahead of the curve. Sign up for the latest British Trade Awards news and upcoming events.
+        Stay ahead of the curve. Sign up for our latest news and events.
       </p>
       <form class="newsletter-form reveal reveal-delay-2" id="newsletter-form" novalidate aria-label="Newsletter signup">
         <label for="newsletter-email" class="visually-hidden">Your email address</label>

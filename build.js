@@ -312,6 +312,7 @@ async function build() {
     'privacy-policy.html',
     'terms-and-conditions.html',
     'cookie-policy.html',
+    'faqs.html',
     'become-a-sponsor.html',
   ];
 

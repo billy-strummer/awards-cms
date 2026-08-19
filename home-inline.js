@@ -34,9 +34,12 @@
   })();
 
   // ── Countdown timer ──────────────────────────────────────────────────────
-  // Target: 1 September 2026 00:00:00 UTC (entries open)
+  // Target: 1 June 2027 00:00:00 UTC -- matches the "Voting" end date shown
+  // in the Key Dates list directly above it. Placeholder target to confirm
+  // the countdown mechanism itself works correctly; update alongside the
+  // Key Dates list if the voting window changes.
   (function () {
-    const target = Date.UTC(2026, 6, 1, 0, 0, 0); // month is 0-indexed: 6 = July
+    const target = Date.UTC(2027, 5, 1, 0, 0, 0); // month is 0-indexed: 5 = June
     const block = document.getElementById('countdown-block');
     const openMsg = document.getElementById('countdown-open-msg');
     const elDays = document.getElementById('cd-days');

@@ -1299,7 +1299,7 @@
     .nominee-vote-btn {
       margin-top: auto;
       padding: 9px 18px;
-      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
       color: #1a1100;
       border-radius: var(--radius-sm);
       font-weight: 700;
@@ -2102,10 +2102,11 @@
     .how-step {
       flex: 1 1 0;
       min-width: 0;
+      min-height: 420px;
       background: #1a1a1a;
       border: 2px solid var(--gold);
       border-radius: var(--radius-xl);
-      padding: clamp(20px, 2.5vw, 28px);
+      padding: clamp(28px, 3vw, 36px) clamp(20px, 2.5vw, 28px);
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -2127,7 +2128,7 @@
 
     .how-step-number {
       font-family: var(--font-display);
-      font-size: clamp(2.1rem, 3vw, 2.75rem);
+      font-size: clamp(2.6rem, 3.6vw, 3.4rem);
       font-weight: 900;
       color: var(--gold);
       line-height: 1;
@@ -2161,7 +2162,7 @@
     .how-step-icon .crown-icon-mask {
       width: 88px;
       height: 81px;
-      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
       -webkit-mask-image: url('images/icons/crown-gold.png');
       mask-image: url('images/icons/crown-gold.png');
       -webkit-mask-size: contain;
@@ -2212,6 +2213,9 @@
       .how-steps {
         flex-direction: column;
         align-items: stretch;
+      }
+      .how-step {
+        min-height: auto;
       }
       .how-step-arrow svg {
         transform: rotate(90deg);

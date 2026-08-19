@@ -643,13 +643,8 @@
     }
 
     .hero-cta-group .btn-gold {
-      font-size: 0.9rem;
-      padding: 16px 40px;
-    }
-
-    .hero-cta-group .btn-ghost {
-      font-size: 0.9rem;
-      padding: 14px 36px;
+      font-size: 1.05rem;
+      padding: 20px 56px;
     }
 
     /* Scroll indicator */
@@ -1793,8 +1788,7 @@
         align-items: center;
         gap: 12px;
       }
-      .hero-cta-group .btn-gold,
-      .hero-cta-group .btn-ghost { width: 100%; max-width: 280px; justify-content: center; }
+      .hero-cta-group .btn-gold { width: 100%; max-width: 320px; justify-content: center; }
       .hero-scroll-hint { display: none; }
 
       /* Feature boxes */
@@ -2039,6 +2033,15 @@
     /* ============================================================
        COUNTDOWN TIMER (inside Key Dates feature box)
     ============================================================ */
+    .countdown-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 16px 0 2px;
+    }
+
     .countdown-block {
       display: flex;
       gap: 10px;
@@ -2082,74 +2085,117 @@
     }
 
     /* ============================================================
-       HOW IT WORKS
+       HOW IT WORKS — "Road to Recognition"
     ============================================================ */
     #how-it-works {
       background: var(--bg-primary);
     }
 
     .how-steps {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 10px;
       margin-top: clamp(40px, 6vw, 72px);
-      position: relative;
-    }
-
-    /* Connecting line between steps */
-    .how-steps::before {
-      content: '';
-      position: absolute;
-      top: 2.25rem;
-      left: calc(33.333% / 2 + 20px);
-      right: calc(33.333% / 2 + 20px);
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,162,39,0.4), transparent);
-      pointer-events: none;
     }
 
     .how-step {
-      padding: 0 clamp(16px, 3vw, 36px);
-      text-align: center;
-      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+      background: #1a1a1a;
+      border: 2px solid var(--gold);
+      border-radius: var(--radius-xl);
+      padding: clamp(20px, 2.5vw, 28px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color var(--transition-med), transform var(--transition-med), box-shadow var(--transition-med);
+    }
+
+    .how-step:hover {
+      border-color: var(--gold-light);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(201, 162, 39, 0.15);
+    }
+
+    .how-step-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
 
     .how-step-number {
       font-family: var(--font-display);
-      font-size: clamp(2.5rem, 4vw, 3.5rem);
+      font-size: clamp(2.1rem, 3vw, 2.75rem);
       font-weight: 900;
       color: var(--gold);
       line-height: 1;
-      margin-bottom: 20px;
-      display: block;
-      position: relative;
-      z-index: 1;
+    }
+
+    .how-step-icon {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+    }
+
+    .how-step-icon svg {
+      width: 38px;
+      height: 38px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .how-step h3 {
       font-family: var(--font-display);
-      font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+      font-size: clamp(1.1rem, 1.6vw, 1.3rem);
       font-weight: 700;
       color: #fff;
-      margin-bottom: 14px;
+      margin: 0;
       line-height: 1.25;
     }
 
     .how-step p {
-      font-size: 0.925rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
-      line-height: 1.7;
-      max-width: 280px;
-      margin: 0 auto;
+      line-height: 1.65;
+      margin: 0;
     }
 
-    @media (max-width: 768px) {
+    /* Arrow connectors between steps -- horizontal on desktop, rotate to
+       point downward once the steps stack vertically on mobile. */
+    .how-step-arrow {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(201, 162, 39, 0.5);
+    }
+
+    .how-step-arrow svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    @media (max-width: 900px) {
       .how-steps {
-        grid-template-columns: 1fr;
-        gap: 40px;
+        flex-direction: column;
+        align-items: stretch;
       }
-      .how-steps::before {
-        display: none;
+      .how-step-arrow svg {
+        transform: rotate(90deg);
       }
     }
 
@@ -2530,9 +2576,6 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
       Enter Now
     </a>
-    <a href="#categories" class="btn-ghost">
-      Explore Categories
-    </a>
     <!-- Scroll hint -->
     <div class="hero-scroll-hint" aria-hidden="true">
       <div class="scroll-mouse">
@@ -2543,92 +2586,6 @@
   </div>
 
 
-</section>
-
-
-<!-- ============================================================
-     SECTION 2 — FEATURE BOXES
-============================================================ -->
-<section id="features" aria-labelledby="features-heading">
-  <div class="container section-pad">
-
-    <span id="features-heading" class="visually-hidden">Key Actions and Dates</span>
-
-    <div class="features-grid">
-
-      <!-- Box 1: Enter -->
-      <article class="feature-box reveal">
-        <div class="feature-header">
-          <div class="feature-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-          </div>
-          <h3>Enter</h3>
-        </div>
-        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;">Are you a leading trade professional or company in your area? British Trade Awards invites you to enter our 2026 programme. Entry is free and quick, taking under 3 mins.</p>
-        <a href="submit-entry.html" class="btn-gold" style="align-self: flex-start; margin-top: auto;">
-          Submit Your Entry
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-        </a>
-      </article>
-
-      <!-- Box 2: Key Dates -->
-      <article class="feature-box reveal reveal-delay-1">
-        <div class="feature-header">
-          <div class="feature-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-          </div>
-          <h3>Key Dates</h3>
-        </div>
-        <ul class="key-dates-list" role="list">
-          <li class="key-date-item">
-            <div class="key-date-dot" aria-hidden="true"></div>
-            <div>
-              <div class="key-date-label">1 Jul – 24 Jul 2026</div>
-              <div class="key-date-desc">Entries</div>
-            </div>
-          </li>
-          <li class="key-date-item">
-            <div class="key-date-dot" aria-hidden="true"></div>
-            <div>
-              <div class="key-date-label">29 Jul 2026</div>
-              <div class="key-date-desc">Nominees Announced</div>
-            </div>
-          </li>
-          <li class="key-date-item">
-            <div class="key-date-dot" aria-hidden="true"></div>
-            <div>
-              <div class="key-date-label">3 Aug – 1 Oct 2026</div>
-              <div class="key-date-desc">Voting</div>
-            </div>
-          </li>
-          <li class="key-date-item">
-            <div class="key-date-dot" aria-hidden="true"></div>
-            <div>
-              <div class="key-date-label">26 Nov 2026</div>
-              <div class="key-date-desc">Winners Announced</div>
-            </div>
-          </li>
-        </ul>
-      </article>
-
-      <!-- Box 3: Vote -->
-      <article class="feature-box reveal reveal-delay-2">
-        <div class="feature-header">
-          <div class="feature-icon" aria-hidden="true">
-            <!-- Checkbox tick icon -->
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"/><polyline points="9 12 11 14 15 10"/></svg>
-          </div>
-          <h3>Vote</h3>
-        </div>
-        <p>Great service deserves recognition. Vote for your favourite local trade professionals. Voting runs 3 Aug to 1 Oct 2026.</p>
-        <a href="public-voting.html" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">
-          Cast Your Vote
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-        </a>
-      </article>
-
-    </div>
-  </div>
 </section>
 
 
@@ -2659,33 +2616,67 @@
 
     <div class="section-intro">
       <h2 class="section-heading reveal" id="how-heading">
-        Get <span class="gold-underline">Involved</span>
+        Road to <span class="gold-underline">Recognition</span>
       </h2>
-      <p class="section-sub reveal reveal-delay-1">Three steps to recognition</p>
+      <p class="section-sub reveal reveal-delay-1">How it Works</p>
     </div>
 
     <div class="how-steps">
 
       <div class="how-step reveal">
-        <span class="how-step-number">01</span>
-        <h3>Enter</h3>
-        <p>Found a brilliant tradesperson or company? We'd love to hear from you! Or if you work in the trade and consider yourself among the best in your field, this is your opportunity to shine – nominate yourself! Entry is free and takes under 3 minutes.</p>
-        <a href="submit-entry.html" class="btn-gold" style="margin-top: 24px; display: inline-flex;">
-          Enter Now
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-        </a>
+        <div class="how-step-top">
+          <span class="how-step-number">1</span>
+          <div class="how-step-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
+          </div>
+        </div>
+        <h3>Submit entry</h3>
+        <p>Professionals can enter their business, or clients can nominate a local expert. Entry is free and takes 3 mins.</p>
+      </div>
+
+      <div class="how-step-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </div>
 
       <div class="how-step reveal reveal-delay-1">
-        <span class="how-step-number">02</span>
-        <h3>Vote</h3>
-        <p>Every entry is vetted, with the strongest progressing to the nomination stage. Voting then opens for 9 weeks, giving customers the chance to choose their favourite local trade professionals. The nominee with the most votes wins their category.</p>
+        <div class="how-step-top">
+          <span class="how-step-number">2</span>
+          <div class="how-step-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+        </div>
+        <h3>Vetting</h3>
+        <p>We vet every entry against strict category requirements, shortlisting only the highest-standard professionals for the public vote.</p>
+      </div>
+
+      <div class="how-step-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       </div>
 
       <div class="how-step reveal reveal-delay-2">
-        <span class="how-step-number">03</span>
-        <h3>Celebrate</h3>
-        <p>Winners are invited to attend one of our celebration receptions, taking place across England, Scotland and Wales at the end of the year – a well-deserved night to mark outstanding achievement with fellow trade professionals.</p>
+        <div class="how-step-top">
+          <span class="how-step-number">3</span>
+          <div class="how-step-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"/><polyline points="9 12 11 14 15 10"/></svg>
+          </div>
+        </div>
+        <h3>Public Voting</h3>
+        <p>The public votes for their local favourites. The nominee with the most votes wins their category via a first-past-the-post system.</p>
+      </div>
+
+      <div class="how-step-arrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </div>
+
+      <div class="how-step reveal reveal-delay-3">
+        <div class="how-step-top">
+          <span class="how-step-number">4</span>
+          <div class="how-step-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16 3 6l5.5 4L12 4l3.5 6L21 6l-2 10H5Z"/><path d="M5 16h14v3H5z"/></svg>
+          </div>
+        </div>
+        <h3>Crowning of Champions</h3>
+        <p>Winners are invited to our champions receptions, taking place across Britain – well-deserved celebrations to honour outstanding achievement.</p>
       </div>
 
     </div>
@@ -2957,6 +2948,114 @@
 
 
 <!-- ============================================================
+     KEY ACTIONS & DATES (moved below Find a Trade)
+============================================================ -->
+<section id="features" aria-labelledby="features-heading">
+  <div class="container section-pad">
+
+    <span id="features-heading" class="visually-hidden">Key Actions and Dates</span>
+
+    <div class="features-grid">
+
+      <!-- Box 1: Enter -->
+      <article class="feature-box reveal">
+        <div class="feature-header">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+          </div>
+          <h3>Enter</h3>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;">Are you a leading trade professional or business in your area? Enter British Trade Awards today. It's free and takes under 3 minutes.</p>
+        <a href="submit-entry.html" class="btn-gold" style="align-self: flex-start; margin-top: auto;">
+          Submit Your Entry
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </article>
+
+      <!-- Box 2: Key Dates -->
+      <article class="feature-box reveal reveal-delay-1">
+        <div class="feature-header">
+          <div class="feature-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          </div>
+          <h3>Key Dates</h3>
+        </div>
+        <ul class="key-dates-list" role="list">
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">1 Jul – 24 Jul 2026</div>
+              <div class="key-date-desc">Entries</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">29 Jul 2026</div>
+              <div class="key-date-desc">Nominees Announced</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">1 Mar – 1 Jun 2027</div>
+              <div class="key-date-desc">Voting</div>
+            </div>
+          </li>
+          <li class="key-date-item">
+            <div class="key-date-dot" aria-hidden="true"></div>
+            <div>
+              <div class="key-date-label">26 Nov 2026</div>
+              <div class="key-date-desc">Winners Announced</div>
+            </div>
+          </li>
+        </ul>
+        <p class="countdown-title">Voting Closes In</p>
+        <div class="countdown-block" id="countdown-block">
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-days">–</span>
+            <span class="countdown-label">Days</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-hours">–</span>
+            <span class="countdown-label">Hrs</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-mins">–</span>
+            <span class="countdown-label">Mins</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-secs">–</span>
+            <span class="countdown-label">Secs</span>
+          </div>
+        </div>
+        <p class="countdown-open-msg" id="countdown-open-msg">Voting has now closed.</p>
+      </article>
+
+      <!-- Box 3: Vote -->
+      <article class="feature-box reveal reveal-delay-2">
+        <div class="feature-header">
+          <div class="feature-icon" aria-hidden="true">
+            <!-- Checkbox tick icon -->
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"/><polyline points="9 12 11 14 15 10"/></svg>
+          </div>
+          <h3>Vote</h3>
+        </div>
+        <p>Outstanding service deserves recognition. Vote for your favourite local trade professionals. Voting runs 1 March to 1 June 2027.</p>
+        <a href="public-voting.html" class="btn-ghost" style="align-self: flex-start; margin-top: auto;">
+          Cast Your Vote
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+
+
+
+<!-- ============================================================
      SECTION — ABOUT (anchor target)
 ============================================================ -->
 <section id="about" aria-labelledby="about-heading" style="background: var(--bg-secondary); padding: var(--section-pad) 0;">
@@ -2965,12 +3064,9 @@
       <h2 class="section-heading reveal" id="about-heading">
         About <span class="gold-underline">British Trade Awards</span>
       </h2>
-      <p class="reveal reveal-delay-1" style="margin-top: 24px; color: rgba(255,255,255,0.75); font-size: 1.05rem; line-height: 1.8;">
-        A competition to find the champions of construction and building services across England, Scotland and Wales &mdash; voted by the public. Every trade. Every corner of Britain.
-      </p>
       <div class="reveal reveal-delay-2" style="margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-        <a href="submit-entry.html" class="btn-gold">Enter British Trade Awards</a>
         <a href="about.html" class="btn-ghost">Read Our Story</a>
+        <a href="faqs.html" class="btn-gold">FAQs</a>
       </div>
     </div>
   </div>
@@ -3143,6 +3239,8 @@
      so inline <script> blocks are silently blocked in real browsers. -->
 <script src="/home-inline.js"></script>
 
+
+<script src="/cookie-consent.js" defer></script>
 
 </body>
 </html>

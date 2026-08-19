@@ -185,7 +185,19 @@ async function checkExistingVote({ entry_id, voter_email }) {
 /**
  * submit_vote — insert a vote record after server-side rate-limit check
  */
-async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verification_token }) {
+async function submitVote({
+  entry_id,
+  voter_email,
+  voter_name,
+  voter_ip,
+  verification_token,
+  website,
+  marketing_opt_in,
+}) {
+  // Honeypot: bots fill the 'website' field; humans leave it blank
+  if (website) {
+    return { success: true };
+  }
   if (!isValidUUID(entry_id)) {
     return { error: 'Invalid entry_id', status: 400 };
   }
@@ -228,17 +240,42 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
     }
   }
 
-  // Check for duplicate vote
+  // Look up the category/award-cycle scope for this entry, so a voter can't
+  // work around the duplicate check by voting for a different nominee in the
+  // same category.
+  const { data: targetEntry, error: targetError } = await supabase
+    .from('entries')
+    .select('award_category, award_id')
+    .eq('id', entry_id)
+    .single();
+
+  if (targetError) {
+    if (targetError.code === 'PGRST116') {
+      return { error: 'Entry not found', status: 404 };
+    }
+    throw targetError;
+  }
+
+  const { data: categoryEntries, error: categoryError } = await supabase
+    .from('entries')
+    .select('id')
+    .eq('award_category', targetEntry.award_category)
+    .eq('award_id', targetEntry.award_id);
+
+  if (categoryError) throw categoryError;
+  const categoryEntryIds = (categoryEntries || []).map((e) => e.id);
+
+  // Check for a duplicate vote anywhere in the same category
   const { data: existing, error: dupError } = await supabase
     .from('public_votes')
     .select('id')
-    .eq('entry_id', entry_id)
+    .in('entry_id', categoryEntryIds)
     .eq('voter_email', voter_email)
-    .single();
+    .limit(1);
 
-  if (dupError && dupError.code !== 'PGRST116') throw dupError;
-  if (existing) {
-    return { error: 'You have already voted for this entry.', status: 409 };
+  if (dupError) throw dupError;
+  if (existing && existing.length > 0) {
+    return { error: 'You have already voted in this category.', status: 409 };
   }
 
   // Insert the vote
@@ -252,6 +289,8 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
       email_verified: false,
       verification_token,
       verification_sent_at: new Date().toISOString(),
+      marketing_opt_in: !!marketing_opt_in,
+      marketing_opt_in_timestamp: marketing_opt_in ? new Date().toISOString() : null,
     },
   ]);
 

@@ -117,6 +117,7 @@
     {
       "files": [
         "build.js",
+        "middleware.js",
         "check-schema.js",
         "diagnose.js",
         "bulk-csv-importer.js",

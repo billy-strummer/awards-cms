@@ -192,6 +192,8 @@ Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test sui
 
 | Variable | Service | Where to get it |
 |---|---|---|
+| `SITE_ACCESS_PASSWORD` | Pre-launch "Coming Soon" password gate (`middleware.js`) | Choose any password; set both this and `SITE_ACCESS_SECRET` together in Vercel to turn the gate on. Leave both unset to keep the public site open (fail-open). |
+| `SITE_ACCESS_SECRET` | Signs the site-access cookie so it can't be forged (`middleware.js`) | Any long random string, e.g. `openssl rand -hex 32` |
 | `ANTHROPIC_API_KEY` | AI vetting (Claude API) | console.anthropic.com → API Keys |
 | `TWITTER_API_KEY` | Twitter/X posting (OAuth 1.0a consumer key) | developer.x.com → Projects & Apps → Keys and Tokens → API Key |
 | `TWITTER_API_SECRET` | Twitter/X posting (OAuth 1.0a consumer secret) | developer.x.com → Projects & Apps → Keys and Tokens → API Key Secret |

@@ -474,7 +474,15 @@
           <input type="text" class="form-control" id="voterName" placeholder="John Doe">
         </div>
 
-        <p class="small text-muted text-center">By voting you agree to our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
+        <p class="small text-muted text-center">Your email is used only to verify your vote and enforce one vote per person. By voting you agree to our <a href="/privacy-policy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>
+
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="marketingOptIn">
+          <label class="form-check-label small" for="marketingOptIn">
+            Keep me updated about British Trade Awards news and future events (optional)
+          </label>
+        </div>
+
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary btn-lg" aria-busy="false">
             <i class="bi bi-envelope-check me-2"></i>Verify & Vote
@@ -553,5 +561,7 @@
   if(btn&&mob){btn.addEventListener('click',function(){var open=mob.classList.contains('open');mob.classList.toggle('open');mob.setAttribute('aria-hidden',open?'true':'false');btn.setAttribute('aria-expanded',open?'false':'true');});mob.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mob.classList.remove('open');mob.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');});});}
 })();
 </script>
+<script src="/cookie-consent.js" defer></script>
+
 </body>
 </html>

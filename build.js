@@ -314,6 +314,9 @@ async function build() {
     'cookie-policy.html',
     'faqs.html',
     'become-a-sponsor.html',
+    'cookie-consent.js',
+    'coming-soon.html',
+    'coming-soon.js',
   ];
 
   // Also copy shared assets needed by public pages

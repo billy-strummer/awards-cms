@@ -126,6 +126,7 @@
   function buildPayload() {
     return {
       action: 'submit_nomination',
+      website: (getEl('hp_website')?.value || '').trim(),
       nomineeName: (getEl('nomineeName')?.value || '').trim(),
       nomineeWebsite: (getEl('nomineeWebsite')?.value || '').trim(),
       nomineePhone: (getEl('nomineePhone')?.value || '').trim(),

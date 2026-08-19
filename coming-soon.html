@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coming Soon - British Trade Awards</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <meta name="robots" content="noindex, nofollow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --gold: #C9A227;
+      --gold-hover: #e0b93a;
+      --bg: #0a0a0a;
+      --card: #111111;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: #f2f2f2;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .cs-card {
+      max-width: 440px;
+      width: 100%;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,162,39,0.15);
+    }
+    .cs-logo {
+      max-width: 220px;
+      margin: 0 auto 28px;
+      display: block;
+    }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--gold);
+      margin: 0 0 12px;
+      letter-spacing: 0.5px;
+    }
+    .cs-sub {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0 0 28px;
+    }
+    .cs-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .cs-form input[type="password"] {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      color: #ffffff;
+      padding: 13px 16px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .cs-form input[type="password"]:focus {
+      outline: none;
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
+    }
+    .cs-form button {
+      background: linear-gradient(135deg, #a07d1a 0%, #C9A227 50%, #e8c84a 100%);
+      border: none;
+      color: #1a1100;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 13px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .cs-form button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(201,162,39,0.4);
+    }
+    .cs-error {
+      display: none;
+      background: rgba(220,53,69,0.12);
+      border: 1px solid rgba(220,53,69,0.35);
+      color: #ff8a94;
+      font-size: 0.85rem;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 0 0 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="cs-card">
+    <img class="cs-logo" src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards">
+    <h1>Coming Soon</h1>
+    <p class="cs-sub">British Trade Awards is putting the finishing touches on our site. If you have early access, enter the password below.</p>
+
+    <p class="cs-error" id="cs-error" role="alert">Incorrect password — please try again.</p>
+
+    <form class="cs-form" method="POST" action="/__enter-site">
+      <input type="password" name="password" placeholder="Password" required autofocus>
+      <button type="submit">Enter Site</button>
+    </form>
+  </div>
+
+  <script src="/coming-soon.js" defer></script>
+</body>
+</html>

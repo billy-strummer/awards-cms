@@ -380,6 +380,7 @@ const votingSystem = {
         voter_ip: 'unknown',
         verification_token: this.generateToken(),
         website: (document.getElementById('hp_vote')?.value || '').trim(),
+        marketing_opt_in: !!document.getElementById('marketingOptIn')?.checked,
       });
 
       // Close verification modal if open

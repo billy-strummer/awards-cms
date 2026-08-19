@@ -185,7 +185,15 @@ async function checkExistingVote({ entry_id, voter_email }) {
 /**
  * submit_vote — insert a vote record after server-side rate-limit check
  */
-async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verification_token, website }) {
+async function submitVote({
+  entry_id,
+  voter_email,
+  voter_name,
+  voter_ip,
+  verification_token,
+  website,
+  marketing_opt_in,
+}) {
   // Honeypot: bots fill the 'website' field; humans leave it blank
   if (website) {
     return { success: true };
@@ -281,6 +289,8 @@ async function submitVote({ entry_id, voter_email, voter_name, voter_ip, verific
       email_verified: false,
       verification_token,
       verification_sent_at: new Date().toISOString(),
+      marketing_opt_in: !!marketing_opt_in,
+      marketing_opt_in_timestamp: marketing_opt_in ? new Date().toISOString() : null,
     },
   ]);
 

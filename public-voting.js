@@ -379,6 +379,7 @@ const votingSystem = {
         voter_name: voterName,
         voter_ip: 'unknown',
         verification_token: this.generateToken(),
+        website: (document.getElementById('hp_vote')?.value || '').trim(),
       });
 
       // Close verification modal if open

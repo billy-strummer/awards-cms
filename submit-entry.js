@@ -1012,6 +1012,7 @@
         // Submit via server-side proxy (no direct DB access)
         const result = await entryApi({
           action: 'submit_entry',
+          website: (document.getElementById('hp_website')?.value || '').trim(),
           companyName: this.formData.companyName,
           selected_country: this.formData.selected_country,
           region_group: this.formData.region_group,

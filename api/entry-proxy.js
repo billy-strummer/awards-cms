@@ -807,6 +807,11 @@ async function handleSubmitEntry(req, res) {
 // ────────────────────────────────────────────
 
 async function handleSubmitNomination(req, res) {
+  // Honeypot: bots fill the 'website' field; humans leave it blank
+  if (req.body?.website) {
+    return res.status(200).json({ success: true, nomination: { entry_number: 'BOT-0000' } });
+  }
+
   const {
     awardCategory,
     county_city: nomCountyCity,

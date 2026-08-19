@@ -749,6 +749,7 @@
 
       const payload = {
         action: 'submit_nomination',
+        website: (document.getElementById('hp_website')?.value || '').trim(),
         awardCategory: d.awardCategory,
         county_city: d.county_city,
         london_borough: d.london_borough || '',

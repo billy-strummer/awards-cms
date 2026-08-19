@@ -312,8 +312,14 @@ describe('Voting Proxy API', () => {
   test('submit_vote succeeds with valid params', async () => {
     // Rate limit check
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
-    // Duplicate check (no existing vote)
-    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: 'PGRST116' } }));
+    // Target entry category/award lookup
+    mockFrom.mockReturnValueOnce(
+      chainable({ data: { award_category: 'Best Plumber', award_id: 'aw-1' }, error: null })
+    );
+    // Entries sharing the same category/award
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: VALID_UUID }], error: null }));
+    // Duplicate check (no existing vote in category)
+    mockFrom.mockReturnValueOnce(chainable({ data: [], error: null }));
     // Insert vote
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: null }));
 
@@ -413,8 +419,14 @@ describe('Voting Proxy API', () => {
   test('submit_vote returns 409 when duplicate vote exists', async () => {
     // Rate limit check OK
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
+    // Target entry category/award lookup
+    mockFrom.mockReturnValueOnce(
+      chainable({ data: { award_category: 'Best Plumber', award_id: 'aw-1' }, error: null })
+    );
+    // Entries sharing the same category/award
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: VALID_UUID }], error: null }));
     // Duplicate check returns existing vote
-    mockFrom.mockReturnValueOnce(chainable({ data: { id: 'existing-vote' }, error: null }));
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: 'existing-vote' }], error: null }));
 
     const req = createReq({
       body: {
@@ -433,8 +445,14 @@ describe('Voting Proxy API', () => {
   test('submit_vote handles unique constraint violation as 409', async () => {
     // Rate limit check OK
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
+    // Target entry category/award lookup
+    mockFrom.mockReturnValueOnce(
+      chainable({ data: { award_category: 'Best Plumber', award_id: 'aw-1' }, error: null })
+    );
+    // Entries sharing the same category/award
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: VALID_UUID }], error: null }));
     // Duplicate check returns no rows
-    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: 'PGRST116' } }));
+    mockFrom.mockReturnValueOnce(chainable({ data: [], error: null }));
     // Insert returns unique constraint error
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: '23505', message: 'unique violation' } }));
 
@@ -450,6 +468,53 @@ describe('Voting Proxy API', () => {
     await handler(req, res);
     expect(res.statusCode).toBe(409);
     expect(res.body.error).toContain('already voted');
+  });
+
+  test('submit_vote returns 409 when voter already voted for a different entry in the same category', async () => {
+    const otherEntryId = 'abcdef12-1234-1234-1234-123456789abc';
+    // Rate limit check OK
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
+    // Target entry category/award lookup
+    mockFrom.mockReturnValueOnce(
+      chainable({ data: { award_category: 'Best Plumber', award_id: 'aw-1' }, error: null })
+    );
+    // Entries sharing the same category/award — includes a sibling entry the voter already voted for
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: VALID_UUID }, { id: otherEntryId }], error: null }));
+    // Duplicate check finds a vote against the sibling entry, not this one
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: 'existing-vote' }], error: null }));
+
+    const req = createReq({
+      body: {
+        action: 'submit_vote',
+        entry_id: VALID_UUID,
+        voter_email: 'user@test.com',
+        verification_token: 'tok',
+      },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(409);
+    expect(res.body.error).toContain('already voted in this category');
+  });
+
+  test('submit_vote returns 404 when target entry is not found', async () => {
+    // Rate limit check OK
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
+    // Target entry lookup finds no rows
+    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: 'PGRST116' } }));
+
+    const req = createReq({
+      body: {
+        action: 'submit_vote',
+        entry_id: VALID_UUID,
+        voter_email: 'user@test.com',
+        verification_token: 'tok',
+      },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toContain('Entry not found');
   });
 
   // --- load_entry ---
@@ -525,8 +590,14 @@ describe('Voting Proxy API', () => {
   test('submit_vote returns 500 on non-duplicate insert error', async () => {
     // Rate limit check OK
     mockFrom.mockReturnValueOnce(chainable({ data: null, error: null, count: 0 }));
+    // Target entry category/award lookup
+    mockFrom.mockReturnValueOnce(
+      chainable({ data: { award_category: 'Best Plumber', award_id: 'aw-1' }, error: null })
+    );
+    // Entries sharing the same category/award
+    mockFrom.mockReturnValueOnce(chainable({ data: [{ id: VALID_UUID }], error: null }));
     // Duplicate check returns no rows
-    mockFrom.mockReturnValueOnce(chainable({ data: null, error: { code: 'PGRST116' } }));
+    mockFrom.mockReturnValueOnce(chainable({ data: [], error: null }));
     // Insert returns a non-unique constraint error
     mockFrom.mockReturnValueOnce(
       chainable({ data: null, error: { code: '42P01', message: 'relation does not exist' } })

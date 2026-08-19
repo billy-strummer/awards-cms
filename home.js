@@ -324,6 +324,23 @@
           .join('');
       }
 
+      // Flag <img> chips load asynchronously, growing the accordion's real
+      // content height after openAccordion() takes its one-off measurement.
+      // Without this, the last row(s) get clipped by the now-stale
+      // max-height. Keep it in sync for as long as the panel is open —
+      // this also covers window resizes changing how the chips wrap.
+      const accordionResizeObserver =
+        typeof ResizeObserver !== 'undefined'
+          ? new ResizeObserver(function (entries) {
+              entries.forEach(function (entry) {
+                const accordion = entry.target.closest('.regions-accordion');
+                if (accordion && accordion.classList.contains('open')) {
+                  accordion.style.maxHeight = accordion.scrollHeight + 'px';
+                }
+              });
+            })
+          : null;
+
       function openAccordion(country) {
         const accordion = document.getElementById('accordion-' + country);
         if (!accordion) return;
@@ -331,11 +348,19 @@
         accordion.classList.add('open');
         accordion.setAttribute('aria-hidden', 'false');
         accordion.style.maxHeight = accordion.scrollHeight + 'px';
+        if (accordionResizeObserver) {
+          const inner = accordion.querySelector('.regions-accordion-inner');
+          if (inner) accordionResizeObserver.observe(inner);
+        }
       }
 
       function closeAccordion(country) {
         const accordion = document.getElementById('accordion-' + country);
         if (!accordion) return;
+        if (accordionResizeObserver) {
+          const inner = accordion.querySelector('.regions-accordion-inner');
+          if (inner) accordionResizeObserver.unobserve(inner);
+        }
         accordion.style.maxHeight = '0';
         accordion.classList.remove('open');
         accordion.setAttribute('aria-hidden', 'true');

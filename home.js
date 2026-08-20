@@ -352,6 +352,18 @@
           const inner = accordion.querySelector('.regions-accordion-inner');
           if (inner) accordionResizeObserver.observe(inner);
         }
+        // Once the opening transition finishes, drop the max-height cap
+        // entirely so nothing -- a late-loading flag image, a web font
+        // swap reflowing the grid -- can clip the last row again. The
+        // ResizeObserver above only needs to guard the transition window
+        // itself; after that a fixed pixel cap is just a liability.
+        accordion.addEventListener('transitionend', function onOpenEnd(e) {
+          if (e.propertyName !== 'max-height') return;
+          accordion.removeEventListener('transitionend', onOpenEnd);
+          if (accordion.classList.contains('open')) {
+            accordion.style.maxHeight = 'none';
+          }
+        });
       }
 
       function closeAccordion(country) {
@@ -361,6 +373,12 @@
           const inner = accordion.querySelector('.regions-accordion-inner');
           if (inner) accordionResizeObserver.unobserve(inner);
         }
+        // max-height may currently be 'none' (set once the open transition
+        // finished) -- CSS can't transition away from 'none', so pin it
+        // back to a concrete pixel value and force a reflow before
+        // animating to 0.
+        accordion.style.maxHeight = accordion.scrollHeight + 'px';
+        void accordion.offsetHeight;
         accordion.style.maxHeight = '0';
         accordion.classList.remove('open');
         accordion.setAttribute('aria-hidden', 'true');

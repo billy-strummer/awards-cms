@@ -5,8 +5,9 @@
 // cookie settings modal. Categories match cookie-policy.html sections 3.1
 // (Strictly necessary) and 3.2 (Analytics and performance) — the only two
 // categories the policy documents, so no "Advertising" toggle is offered.
-// Collapses to a small persistent icon once a choice is made, so it can be
-// reopened to change the choice later.
+// The widget is removed entirely once a choice is made — per
+// cookie-policy.html, changing your mind means clearing your browser
+// cookies, which brings the banner back on the next visit.
 // External file because the site's CSP has no 'unsafe-inline' in script-src.
 (function () {
   const STORAGE_KEY = 'bta_cookie_consent';
@@ -36,14 +37,6 @@
     style.textContent =
       '#cc-widget{position:fixed;left:20px;bottom:20px;z-index:2000;' +
       "font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}" +
-      '#cc-reopen{width:48px;height:48px;border-radius:50%;background:#111111;' +
-      'border:1.5px solid #C9A227;color:#C9A227;cursor:pointer;display:none;' +
-      'align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.5);' +
-      'transition:transform .2s;padding:0;}' +
-      '#cc-reopen:hover{transform:scale(1.08);}' +
-      '#cc-reopen svg{width:24px;height:24px;}' +
-      '#cc-widget.cc-collapsed #cc-reopen{display:flex;}' +
-      '#cc-widget.cc-collapsed #cc-card{display:none;}' +
       '#cc-card{width:340px;max-width:calc(100vw - 40px);background:#111111;' +
       'border:1px solid #C9A227;border-radius:16px;padding:16px 18px;' +
       'box-shadow:0 12px 40px rgba(0,0,0,0.55);}' +
@@ -133,16 +126,15 @@
   }
 
   function init() {
+    // Already decided — nothing to show. Per cookie-policy.html, changing
+    // your mind means clearing your browser cookies, which brings the
+    // banner back on the next visit.
+    if (readChoice()) return;
+
     injectStyle();
 
     const widget = document.createElement('div');
     widget.id = 'cc-widget';
-
-    const reopen = document.createElement('button');
-    reopen.id = 'cc-reopen';
-    reopen.type = 'button';
-    reopen.setAttribute('aria-label', 'Cookie preferences');
-    reopen.innerHTML = cookieIconSvg();
 
     const card = document.createElement('div');
     card.id = 'cc-card';
@@ -153,8 +145,8 @@
       '<span class="cc-cookie">' +
       cookieIconSvg() +
       '</span>' +
-      '<button type="button" class="cc-btn cc-accept">Accept All</button>' +
-      '<button type="button" class="cc-btn cc-reject">Reject Optional</button>' +
+      '<button type="button" class="cc-btn cc-accept">Accept</button>' +
+      '<button type="button" class="cc-btn cc-reject">Reject</button>' +
       '<button type="button" class="cc-gear" aria-label="Cookie settings">' +
       gearIconSvg() +
       '</button>' +
@@ -162,7 +154,6 @@
       '<p>We use cookies to run this site and, with your consent, to understand how it is used. ' +
       'See our <a href="/cookie-policy.html">Cookie Policy</a> for details.</p>';
 
-    widget.appendChild(reopen);
     widget.appendChild(card);
     document.body.appendChild(widget);
 
@@ -198,7 +189,7 @@
       '<span class="cc-cookie">' +
       cookieIconSvg() +
       '</span>' +
-      '<button type="button" class="cc-btn cc-accept cc-modal-accept">Accept all</button>' +
+      '<button type="button" class="cc-btn cc-accept cc-modal-accept">Accept</button>' +
       '<button type="button" class="cc-btn cc-save cc-modal-save">Save</button>' +
       '</div>' +
       '</div>';
@@ -206,17 +197,12 @@
 
     const analyticsToggle = overlay.querySelector('.cc-toggle[data-category="analytics"]');
 
-    function collapse() {
-      widget.classList.add('cc-collapsed');
-    }
-
-    function expand() {
-      widget.classList.remove('cc-collapsed');
+    function dismiss() {
+      widget.remove();
+      overlay.remove();
     }
 
     function openModal() {
-      const existing = readChoice();
-      analyticsToggle.setAttribute('aria-checked', existing ? String(!!existing.analytics) : 'false');
       overlay.classList.add('cc-modal-open');
     }
 
@@ -226,16 +212,15 @@
 
     card.querySelector('.cc-accept').addEventListener('click', function () {
       writeChoice(true);
-      collapse();
+      dismiss();
     });
 
     card.querySelector('.cc-reject').addEventListener('click', function () {
       writeChoice(false);
-      collapse();
+      dismiss();
     });
 
     card.querySelector('.cc-gear').addEventListener('click', openModal);
-    reopen.addEventListener('click', expand);
 
     analyticsToggle.addEventListener('click', function () {
       const isChecked = analyticsToggle.getAttribute('aria-checked') === 'true';
@@ -249,19 +234,13 @@
 
     overlay.querySelector('.cc-modal-accept').addEventListener('click', function () {
       writeChoice(true);
-      closeModal();
-      collapse();
+      dismiss();
     });
 
     overlay.querySelector('.cc-modal-save').addEventListener('click', function () {
       writeChoice(analyticsToggle.getAttribute('aria-checked') === 'true');
-      closeModal();
-      collapse();
+      dismiss();
     });
-
-    if (readChoice()) {
-      collapse();
-    }
   }
 
   if (document.readyState === 'loading') {

@@ -795,6 +795,17 @@
       flex: 1;
     }
 
+    /* .countdown-title and .countdown-open-msg are also <p> elements, but
+       they're short labels, not the body copy that should absorb leftover
+       vertical space -- without this override the Vote box (which has no
+       button between its intro text and the clock) grows the title itself,
+       stranding "Opening In" far above its clock even though both clocks
+       end up bottom-aligned either way. */
+    .feature-box .countdown-title,
+    .feature-box .countdown-open-msg {
+      flex: 0 0 auto;
+    }
+
     /* Key Dates list */
     .key-dates-list {
       display: flex;
@@ -1004,8 +1015,8 @@
     .country-card {
       background: #161616;
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 40px 24px;
+      border-radius: 6px;
+      padding: 44px 24px;
       text-align: center;
       cursor: pointer;
       transition: border-color var(--transition-med), transform var(--transition-med), box-shadow var(--transition-med);
@@ -1038,8 +1049,8 @@
     }
 
     .country-flag {
-      width: 200px;
-      height: 120px;
+      width: 220px;
+      height: 132px;
       object-fit: cover;
       border-radius: 4px;
       margin: 0 auto 20px;
@@ -1057,7 +1068,7 @@
 
     .country-name {
       font-family: var(--font-display);
-      font-size: 1.75rem;
+      font-size: 2rem;
       font-weight: 700;
       color: #fff;
       margin-bottom: 12px;
@@ -1753,9 +1764,9 @@
         gap: 12px;
       }
 
-      .country-flag { width: 150px; height: 90px; }
-      .country-card { padding: 28px 16px; }
-      .country-name { font-size: 1.4rem; }
+      .country-flag { width: 165px; height: 99px; }
+      .country-card { padding: 30px 16px; border-radius: 6px; }
+      .country-name { font-size: 1.6rem; }
 
       .find-trade-row {
         flex-direction: column;
@@ -1836,8 +1847,8 @@
         padding: 14px 8px;
         text-align: center;
       }
-      .country-flag { width: 96px; height: 58px; margin: 0; border-radius: 3px; }
-      .country-name { font-size: 1.05rem; margin-bottom: 0; }
+      .country-flag { width: 104px; height: 62px; margin: 0; border-radius: 3px; }
+      .country-name { font-size: 1.15rem; margin-bottom: 0; }
       .country-explore { font-size: 0.75rem; margin-top: 0; }
 
       /* Find a trade */

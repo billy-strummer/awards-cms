@@ -77,6 +77,48 @@
     const timer = setInterval(tick, 1000);
   })();
 
+  // ── Voting-opens countdown (Vote box, Key Actions grid) ─────────────────
+  // Target: 1 March 2027 00:00:00 UTC -- matches the "Voting" start date
+  // shown in the Key Dates list.
+  (function () {
+    const target = Date.UTC(2027, 2, 1, 0, 0, 0); // month is 0-indexed: 2 = March
+    const block = document.getElementById('countdown-block-open');
+    const openMsg = document.getElementById('countdown-open-msg-open');
+    const elDays = document.getElementById('cdo-days');
+    const elHours = document.getElementById('cdo-hours');
+    const elMins = document.getElementById('cdo-mins');
+    const elSecs = document.getElementById('cdo-secs');
+
+    if (!block || !elDays) return;
+
+    function pad(n) {
+      return n < 10 ? '0' + n : String(n);
+    }
+
+    function tick() {
+      const now = Date.now();
+      const diff = target - now;
+      if (diff <= 0) {
+        block.style.display = 'none';
+        if (openMsg) openMsg.style.display = 'block';
+        clearInterval(timer);
+        return;
+      }
+      const totalSecs = Math.floor(diff / 1000);
+      const days = Math.floor(totalSecs / 86400);
+      const hours = Math.floor((totalSecs % 86400) / 3600);
+      const mins = Math.floor((totalSecs % 3600) / 60);
+      const secs = totalSecs % 60;
+      elDays.textContent = days;
+      elHours.textContent = pad(hours);
+      elMins.textContent = pad(mins);
+      elSecs.textContent = pad(secs);
+    }
+
+    tick();
+    const timer = setInterval(tick, 1000);
+  })();
+
   // ── Newsletter form ───────────────────────────────────────────────────────
   (function () {
     const form = document.getElementById('newsletter-form');

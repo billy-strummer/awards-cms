@@ -1334,7 +1334,7 @@
 
     .find-trade-card {
       max-width: 680px;
-      margin: clamp(40px, 6vw, 64px) auto 0;
+      margin: clamp(20px, 3vw, 28px) auto 0;
       background: #111;
       border: 1px solid var(--gold);
       border-radius: var(--radius-xl);
@@ -2058,7 +2058,7 @@
     .countdown-unit {
       flex: 1;
       background: #111;
-      border: 1px solid var(--border-subtle);
+      border: 1.5px solid var(--gold);
       border-radius: var(--radius-sm);
       padding: 10px 6px 8px;
       text-align: center;
@@ -2118,11 +2118,11 @@
     .how-step {
       flex: 1 1 0;
       min-width: 0;
-      min-height: 420px;
+      min-height: 300px;
       background: #1a1a1a;
       border: 2px solid var(--gold);
       border-radius: var(--radius-xl);
-      padding: clamp(28px, 3vw, 36px) clamp(20px, 2.5vw, 28px);
+      padding: clamp(22px, 2.4vw, 28px) clamp(20px, 2.5vw, 28px);
       display: flex;
       flex-direction: column;
       gap: 14px;
@@ -2143,9 +2143,9 @@
     }
 
     .how-step-number {
-      font-family: var(--font-display);
-      font-size: clamp(2.6rem, 3.6vw, 3.4rem);
-      font-weight: 900;
+      font-family: var(--font-body);
+      font-size: clamp(2.8rem, 3.8vw, 3.6rem);
+      font-weight: 700;
       color: var(--gold);
       line-height: 1;
     }
@@ -2177,20 +2177,6 @@
     .feature-icon svg[data-gold-stroke],
     .feature-icon svg [data-gold-stroke] {
       stroke: url(#road-icon-gold);
-    }
-
-    .how-step-icon .crown-icon-mask {
-      width: 88px;
-      height: 81px;
-      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
-      -webkit-mask-image: url('images/icons/crown-gold.png');
-      mask-image: url('images/icons/crown-gold.png');
-      -webkit-mask-size: contain;
-      mask-size: contain;
-      -webkit-mask-repeat: no-repeat;
-      mask-repeat: no-repeat;
-      -webkit-mask-position: center;
-      mask-position: center;
     }
 
     .how-step h3 {
@@ -2326,7 +2312,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 20px;
-      margin-top: clamp(40px, 6vw, 72px);
+      margin-top: clamp(20px, 3vw, 28px);
     }
 
     .testimonial-card {
@@ -2709,7 +2695,7 @@
           </div>
         </div>
         <h3>Vetting</h3>
-        <p>We vet every entry against strict category requirements, shortlisting only the highest-standard professionals for the public vote.</p>
+        <p>We vet every entry against strict category requirements, shortlisting only the strongest candidates for the public vote.</p>
       </div>
 
       <div class="how-step-arrow" aria-hidden="true">
@@ -2738,7 +2724,14 @@
         <div class="how-step-top">
           <span class="how-step-number">4</span>
           <div class="how-step-icon" aria-hidden="true">
-            <div class="crown-icon-mask"></div>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path data-gold-stroke d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+              <path data-gold-stroke d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+              <path stroke="#C9A227" d="M4 22h16"/>
+              <path data-gold-stroke d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+              <path data-gold-stroke d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+              <path data-gold-stroke d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
           </div>
         </div>
         <h3>Champions Crowned</h3>
@@ -2940,7 +2933,7 @@
       <article class="feature-box reveal reveal-delay-1">
         <div class="feature-header">
           <div class="feature-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true" data-gold-stroke stroke-width="1.9"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="1.9"><rect data-gold-stroke width="18" height="18" x="3" y="4" rx="2" ry="2"/><line stroke="#C9A227" x1="16" x2="16" y1="2" y2="6"/><line stroke="#C9A227" x1="8" x2="8" y1="2" y2="6"/><line stroke="#C9A227" x1="3" x2="21" y1="10" y2="10"/></svg>
           </div>
           <h3>Key Dates</h3>
         </div>
@@ -3096,7 +3089,7 @@
       </h2>
       <div class="reveal reveal-delay-2" style="margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
         <a href="about.html" class="btn-ghost">Read Our Story</a>
-        <a href="faqs.html" class="btn-gold">FAQs</a>
+        <a href="faqs.html" class="btn-ghost">FAQs</a>
       </div>
     </div>
   </div>

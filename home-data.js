@@ -402,7 +402,7 @@
     Gwynedd: 'Gwynedd.png',
     Pembrokeshire: 'Pembrokeshire.png',
     Powys: 'Powys.png',
-    'Conwy & Denbighshire': 'Conwy Wales.png',
+    'Conwy & Denbighshire': 'Conwy & Denbighshire.png',
     'Gwynedd & Anglesey': 'Gwynedd.png',
     Carmarthenshire: 'Carmarthenshire.png',
     // Scotland (Edinburgh & Glasgow have individual flags; all others use Scotland.png)

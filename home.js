@@ -671,6 +671,14 @@
       const detailName = document.getElementById('cat-detail-name');
       const detailDesc = document.getElementById('cat-detail-desc');
       const detailCta = document.getElementById('cat-detail-cta');
+      const detailExampleLink = document.getElementById('cat-detail-example-link');
+
+      // Categories with a live example nominees page, keyed by category name.
+      // Add an entry here whenever a new "<county>-<category>.html" example
+      // page is built, so its link surfaces in the category detail view.
+      const CATEGORY_EXAMPLE_PAGES = {
+        'Brickwork & Masonry Company': 'somerset-brickwork-masonry.html',
+      };
 
       if (!modal) return;
 
@@ -688,6 +696,15 @@
         if (detailDesc) detailDesc.textContent = desc;
         if (detailCta)
           detailCta.href = 'submit-entry.html?sector=' + sectorParam + '&category=' + encodeURIComponent(catName);
+        if (detailExampleLink) {
+          const examplePage = CATEGORY_EXAMPLE_PAGES[catName];
+          if (examplePage) {
+            detailExampleLink.href = examplePage;
+            detailExampleLink.style.display = 'block';
+          } else {
+            detailExampleLink.style.display = 'none';
+          }
+        }
         if (listView) listView.style.display = 'none';
         if (detailView) detailView.style.display = '';
       }

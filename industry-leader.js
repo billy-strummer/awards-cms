@@ -48,12 +48,12 @@
       icon: 'bi-people-fill',
     },
     {
-      name: 'Female Tradesperson of the Year',
+      name: 'Tradeswoman of the Year',
       description: 'Celebrating outstanding women in the trade industry',
       icon: 'bi-person-fill',
     },
     {
-      name: 'Male Tradesperson of the Year',
+      name: 'Tradesman of the Year',
       description: 'Celebrating outstanding men in the trade industry',
       icon: 'bi-person-fill',
     },

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Somerset nominees for the Brickwork & Masonry Company category at the British Trade Awards.">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Brickwork &amp; Masonry Company — Somerset Nominees | British Trade Awards</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #C9A227;
+      --gold-light: #e0b93a;
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-raised: #1a1a1a;
+      --text-primary: #ffffff;
+      --text-muted: #999999;
+      --border-subtle: #2a2a2a;
+      --font-display: 'Playfair Display', Georgia, serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --header-h: 90px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { color: var(--gold-light); }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 60px); }
+
+    /* ── Site Nav (shared with home.html) ─────────────────────────── */
+    #site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: var(--header-h); transition: background .3s, backdrop-filter .3s, transform .4s cubic-bezier(.25,.46,.45,.94); }
+    #site-header.at-top, #site-header.scrolled { background: rgba(10,10,10,0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    #site-header.scrolled { box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
+    #site-header.hidden { transform: translateY(-100%); }
+    .sh-inner { max-width: 1280px; margin: 0 auto; padding: 0 clamp(20px,5vw,60px); height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .sh-logo { flex-shrink: 0; height: 58px; display: flex; align-items: center; }
+    .sh-logo img { height: 58px; width: auto; }
+    .sh-nav { display: flex; align-items: center; gap: 8px; }
+    .sh-nav a { font-size: .9375rem; font-weight: 500; color: rgba(255,255,255,.85); padding: 8px 16px; border-radius: 100px; transition: color .15s, background .15s; }
+    .sh-nav a:hover { color: #fff; background: rgba(255,255,255,.08); }
+    .btn-gold-nav { display: inline-flex; align-items: center; background: var(--gold); color: #000; font-size: .9rem; font-weight: 700; padding: 12px 28px; border-radius: 100px; transition: background .2s, transform .1s; }
+    .btn-gold-nav:hover { background: var(--gold-light); color: #000; transform: translateY(-1px); }
+    .sh-hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; width: 40px; height: 40px; }
+    .sh-hbar { display: block; width: 22px; height: 2px; background: rgba(255,255,255,.85); border-radius: 2px; }
+    #sh-mobile-menu { display: none; position: fixed; top: var(--header-h); left: 0; right: 0; background: rgba(10,10,10,.96); backdrop-filter: blur(20px); z-index: 999; }
+    #sh-mobile-menu.open { display: block; }
+    .sh-mob-inner { display: flex; flex-direction: column; padding: 16px clamp(20px,5vw,60px) 24px; }
+    .sh-mob-inner a { font-size: 1rem; font-weight: 500; color: rgba(255,255,255,.85); padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .sh-mob-inner a:last-child { border-bottom: none; }
+    @media (max-width: 768px) {
+      .sh-nav, .sh-cta { display: none; }
+      .sh-hamburger { display: flex; }
+      :root { --header-h: 68px; }
+      .sh-logo, .sh-logo img { height: 38px; }
+    }
+
+    /* ── Page content ─────────────────────────────────────────────── */
+    main { padding: calc(var(--header-h) + 40px) 0 80px; }
+
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: 6px; font-size: .8125rem; color: var(--text-muted); margin-bottom: 32px; }
+    .breadcrumb a { color: var(--text-muted); }
+    .breadcrumb a:hover { color: var(--gold); }
+    .breadcrumb span[aria-hidden] { color: rgba(255,255,255,.25); }
+    .breadcrumb .current { color: rgba(255,255,255,.7); }
+
+    .cat-hero { display: flex; align-items: center; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+    .cat-icon-wrap { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .cat-icon-circle {
+      width: 84px; height: 84px; border-radius: 50%;
+      background: rgba(201,162,39,0.08); border: 1.5px solid rgba(201,162,39,0.3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .cat-icon {
+      width: 46px; height: 46px;
+      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
+      -webkit-mask-image: url('images/icons/categories/brickwork-and-masonry-company.svg');
+      mask-image: url('images/icons/categories/brickwork-and-masonry-company.svg');
+      -webkit-mask-size: contain; mask-size: contain;
+      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+      -webkit-mask-position: center; mask-position: center;
+    }
+
+    .cat-title-block h1 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.75rem); font-weight: 700; line-height: 1.15; }
+    .cat-sub { font-size: .95rem; color: var(--gold); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
+
+    .cat-desc { font-size: 1.05rem; line-height: 1.75; color: rgba(255,255,255,.8); max-width: 760px; margin: 28px 0 12px; }
+
+    .example-flag {
+      display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 40px;
+      font-size: .8rem; color: var(--text-muted); background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-subtle); border-radius: 100px; padding: 8px 16px;
+    }
+    .example-flag svg { width: 14px; height: 14px; flex-shrink: 0; stroke: var(--gold); fill: none; stroke-width: 2; }
+
+    .nominees-heading { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+    .nominees-sub { font-size: .9rem; color: var(--text-muted); margin-bottom: 28px; }
+
+    .nominees-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+    .nominee-card { background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 10px; transition: border-color .2s, transform .2s; }
+    .nominee-card:hover { border-color: rgba(201,162,39,0.4); transform: translateY(-3px); }
+    .nominee-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: #fff; }
+    .nominee-area { font-size: .8rem; color: var(--gold); font-weight: 600; }
+    .nominee-notes { font-size: .875rem; line-height: 1.55; color: rgba(255,255,255,.7); flex: 1; }
+    .nominee-link { font-size: .8125rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
+    .nominee-link svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+    .cta-block { margin-top: 56px; padding: 36px; background: linear-gradient(140deg, #1d1a10 0%, #1a1a1a 60%); border: 1px solid rgba(201,162,39,0.3); border-radius: 16px; text-align: center; }
+    .cta-block p { color: rgba(255,255,255,.75); margin-bottom: 20px; font-size: .95rem; }
+    .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #000; font-weight: 700; font-size: .9rem; padding: 14px 32px; border-radius: 100px; letter-spacing: .02em; }
+    .btn-gold:hover { background: var(--gold-light); color: #000; }
+
+    /* ── Footer ───────────────────────────────────────────────────── */
+    #sf { background: #050505; border-top: 1px solid rgba(201,162,39,0.15); padding: 56px 0 32px; }
+    .sf-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 32px; margin-bottom: 40px; }
+    .sf-logo img { height: 36px; width: auto; opacity: .9; }
+    .sf-nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    .sf-nav a { font-size: .8125rem; color: rgba(255,255,255,.45); padding: 6px 14px; border-radius: 100px; }
+    .sf-nav a:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .sf-nav a.sf-gold { color: var(--gold); }
+    .sf-links { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 24px; }
+    .sf-links a { font-size: .75rem; color: rgba(255,255,255,.28); padding: 4px 10px; border-radius: 100px; }
+    .sf-links a:hover { color: rgba(255,255,255,.6); }
+    .sf-bottom { border-top: 1px solid rgba(255,255,255,.06); padding-top: 24px; }
+    .sf-bottom p { font-size: .75rem; color: rgba(255,255,255,.2); }
+  </style>
+</head>
+<body>
+
+<header id="site-header" class="at-top" role="banner">
+  <div class="sh-inner">
+    <a href="home.html" class="sh-logo" aria-label="British Trade Awards — home">
+      <img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards">
+    </a>
+    <nav class="sh-nav" aria-label="Main navigation">
+      <a href="home.html#categories">Categories</a>
+      <a href="home.html#regions">Locations</a>
+      <a href="home.html#find-a-trade">Find a Trade</a>
+      <a href="home.html#about">About</a>
+    </nav>
+    <div class="sh-cta">
+      <a href="submit-entry.html" class="btn-gold-nav">Enter Now</a>
+    </div>
+    <button class="sh-hamburger" id="sh-hamburger-btn" aria-expanded="false" aria-controls="sh-mobile-menu">
+      <span class="sh-hbar"></span><span class="sh-hbar"></span><span class="sh-hbar"></span>
+    </button>
+  </div>
+</header>
+<nav id="sh-mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
+  <div class="sh-mob-inner">
+    <a href="home.html#categories">Categories</a>
+    <a href="home.html#regions">Locations</a>
+    <a href="home.html#find-a-trade">Find a Trade</a>
+    <a href="home.html#about">About</a>
+    <a href="submit-entry.html" class="btn-gold-nav" style="margin-top:16px;justify-content:center;">Enter Now</a>
+  </div>
+</nav>
+
+<main>
+  <div class="container">
+
+    <p class="breadcrumb">
+      <a href="home.html">Home</a>
+      <span aria-hidden="true">/</span>
+      <a href="home.html#categories">Categories</a>
+      <span aria-hidden="true">/</span>
+      <a href="home.html#categories">Building &amp; Construction</a>
+      <span aria-hidden="true">/</span>
+      <span class="current">Brickwork &amp; Masonry Company</span>
+    </p>
+
+    <div class="cat-hero">
+      <div class="cat-icon-wrap">
+        <div class="cat-icon-circle">
+          <div class="cat-icon" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="cat-title-block">
+        <h1>Brickwork &amp; Masonry Company</h1>
+        <p class="cat-sub">Somerset — 2026 Nominees</p>
+      </div>
+    </div>
+
+    <p class="cat-desc">This category recognises excellence in brick, block and stonework services, including new walls, extensions and new builds, repointing, chimney work, and heritage restoration.</p>
+
+    <p class="example-flag">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+      Example page — built from vetted nominee data to preview layout, icon placement and category linking.
+    </p>
+
+    <h2 class="nominees-heading">Nominees</h2>
+    <p class="nominees-sub">10 businesses put forward for Brickwork &amp; Masonry Company across Somerset.</p>
+
+    <div class="nominees-grid">
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">MP Masonry Contractors</h3>
+        <p class="nominee-area">Somerset and the South West</p>
+        <p class="nominee-notes">Over 15 years experience, strong reviews mentioned, expert in brick/block/stone.</p>
+        <a class="nominee-link" href="https://mpmasonrycontractors.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">Harvey Stone</h3>
+        <p class="nominee-area">Ham Hill, Yeovil, Somerset, and nationwide</p>
+        <p class="nominee-notes">Highly experienced stonemasons directly operating from Ham Hill quarry in Somerset.</p>
+        <a class="nominee-link" href="https://harveystone.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">P.J. Rowland Stonemasons</h3>
+        <p class="nominee-area">Bath, Somerset, and surrounding areas</p>
+        <p class="nominee-notes">Established specialist in stone repair and restoration, traditional buildings.</p>
+        <a class="nominee-link" href="https://pjrowlandstonemasons.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">Ryder Masonry</h3>
+        <p class="nominee-area">Bath and Somerset</p>
+        <p class="nominee-notes">Stone masonry experts.</p>
+        <a class="nominee-link" href="https://rydermasonry.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">Norton Masonry</h3>
+        <p class="nominee-area">Midsomer Norton, Bath, and North East Somerset</p>
+        <p class="nominee-notes">Over 30 years experience, Federation of Master Builders member.</p>
+        <a class="nominee-link" href="https://nortonmasonryltd.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">Medusa Stonemasonry</h3>
+        <p class="nominee-area">Somerset and nationwide</p>
+        <p class="nominee-notes">High-tech traditional stonemasonry, conservation, 5+ years experience.</p>
+        <a class="nominee-link" href="https://medusastonemasonry.com" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">Stonewalk Construction</h3>
+        <p class="nominee-area">Taunton, Yeovil, Somerset, and Devon</p>
+        <p class="nominee-notes">70 years combined experience, Federation of Master Builders certified.</p>
+        <a class="nominee-link" href="https://stonewalkconstructionltd.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">S. A. Webber</h3>
+        <p class="nominee-area">Bridgwater and South West</p>
+        <p class="nominee-notes">Established in 2007, SMAS registered, NVQ/CSCS bricklayers.</p>
+        <a class="nominee-link" href="https://sawebberltd.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">RM Stonework</h3>
+        <p class="nominee-area">Evercreech, Shepton Mallet, and within a 20-mile radius in Somerset</p>
+        <p class="nominee-notes">Excellent reviews (9.93/10 Checkatrade), specialist in stone walls, repointing, and lime mortar.</p>
+        <a class="nominee-link" href="https://rmstonework.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+      <article class="nominee-card">
+        <h3 class="nominee-name">Somerset Stonemasons</h3>
+        <p class="nominee-area">Somerset</p>
+        <p class="nominee-notes">Director Paul Roddan is a qualified historic building conservator and banker mason.</p>
+        <a class="nominee-link" href="https://somersetstonemasons.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+      </article>
+
+    </div>
+
+    <div class="cta-block">
+      <p>Know a trade professional who deserves recognition in Somerset? Entries and nominations are open now.</p>
+      <a href="submit-entry.html" class="btn-gold">Enter Now</a>
+    </div>
+
+  </div>
+</main>
+
+<footer id="sf" role="contentinfo">
+  <div class="container">
+    <div class="sf-top">
+      <a href="home.html" class="sf-logo"><img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards"></a>
+      <nav class="sf-nav" aria-label="Footer navigation">
+        <a href="home.html#categories">Categories</a>
+        <a href="home.html#regions">Locations</a>
+        <a href="home.html#find-a-trade">Find a Trade</a>
+        <a href="home.html#about">About</a>
+        <a href="submit-entry.html" class="sf-gold">Enter 2026</a>
+      </nav>
+    </div>
+    <div class="sf-links" role="list">
+      <a href="privacy-policy.html" role="listitem">Privacy Policy</a>
+      <a href="terms-and-conditions.html" role="listitem">Terms &amp; Conditions</a>
+      <a href="mailto:info@britishtradeawards.com" role="listitem">Contact Us</a>
+    </div>
+    <div class="sf-bottom">
+      <p>&copy; 2026 British Trade Awards &nbsp;|&nbsp; <strong>[Company Name Placeholder]</strong> &nbsp;|&nbsp; Registered in England &amp; Wales</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var h = document.getElementById('site-header');
+  var btn = document.getElementById('sh-hamburger-btn');
+  var mob = document.getElementById('sh-mobile-menu');
+  if (h) {
+    var lastY = 0, ticking = false;
+    window.addEventListener('scroll', function () {
+      if (!ticking) {
+        requestAnimationFrame(function () {
+          var y = window.scrollY;
+          if (y < 20) h.className = 'at-top';
+          else if (y < lastY) h.className = 'scrolled';
+          else h.className = 'scrolled hidden';
+          lastY = y;
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+  if (btn && mob) {
+    btn.addEventListener('click', function () {
+      var open = mob.classList.contains('open');
+      mob.classList.toggle('open');
+      mob.setAttribute('aria-hidden', open ? 'true' : 'false');
+      btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
+    mob.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        mob.classList.remove('open');
+        mob.setAttribute('aria-hidden', 'true');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+})();
+</script>
+<script src="/cookie-consent.js" defer></script>
+
+</body>
+</html>

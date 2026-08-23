@@ -1015,7 +1015,7 @@
     .country-card {
       background: #161616;
       border: 1px solid var(--border-subtle);
-      border-radius: 2px;
+      border-radius: 6px;
       padding: 46px 24px;
       text-align: center;
       cursor: pointer;
@@ -1052,7 +1052,7 @@
       width: 220px;
       height: 132px;
       object-fit: cover;
-      border-radius: 4px;
+      border-radius: 12px;
       margin: 0 auto 20px;
       display: block;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
@@ -1764,8 +1764,8 @@
         gap: 12px;
       }
 
-      .country-flag { width: 165px; height: 99px; border-radius: 4px; }
-      .country-card { padding: 32px 16px; border-radius: 2px; }
+      .country-flag { width: 165px; height: 99px; border-radius: 10px; }
+      .country-card { padding: 32px 16px; border-radius: 6px; }
       .country-name { font-size: 1.7rem; }
 
       .find-trade-row {
@@ -1847,7 +1847,7 @@
         padding: 14px 8px;
         text-align: center;
       }
-      .country-flag { width: 104px; height: 62px; margin: 0; border-radius: 3px; }
+      .country-flag { width: 104px; height: 62px; margin: 0; border-radius: 8px; }
       .country-name { font-size: 1.25rem; margin-bottom: 0; }
       .country-explore { font-size: 0.75rem; margin-top: 0; }
 
@@ -2040,6 +2040,10 @@
       font-size: 0.95rem; color: rgba(255,255,255,0.75); line-height: 1.75;
       margin: 0 0 32px;
     }
+    .cat-modal-example-link {
+      display: block; margin-top: 12px; font-size: 0.85rem; font-weight: 600; color: var(--gold);
+    }
+    .cat-modal-example-link:hover { color: var(--gold-light); }
     @media (max-width: 480px) {
       .cat-modal-list { grid-template-columns: 1fr; }
       .cat-modal-panel { padding: 40px 24px 32px; }
@@ -3318,6 +3322,7 @@
       <h3 class="cat-modal-title" id="cat-detail-name"></h3>
       <p class="cat-detail-desc" id="cat-detail-desc"></p>
       <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-detail-cta">Enter this Category →</a>
+      <a href="somerset-brickwork-masonry.html" class="cat-modal-example-link" id="cat-detail-example-link" style="display:none;">See example: Somerset nominees →</a>
     </div>
   </div>
 </div>

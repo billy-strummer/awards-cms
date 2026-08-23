@@ -730,7 +730,7 @@ describe('getCategoriesForRegion', () => {
 
   test('returns STANDARD_CATEGORIES for a city region', () => {
     const cats = entryFormApp.getCategoriesForRegion('Manchester');
-    expect(cats['BUILDING & CONSTRUCTION']).toContain('Structural Engineers');
+    expect(cats['BUILDING & CONSTRUCTION']).toContain('Structural Engineering Company');
   });
 });
 
@@ -979,7 +979,7 @@ describe('Dynamic category rendering per region', () => {
     expect(names).toContain('Carpentry Company');
     expect(names).toContain('Joinery Company');
     expect(names).toContain('Staircase Specialist');
-    expect(names).toContain('Timber Windows Installer');
+    expect(names).toContain('Timber Window Installer');
     expect(names.length).toBe(5);
   });
 

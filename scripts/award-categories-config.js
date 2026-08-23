@@ -25,8 +25,8 @@ const STANDARD_CATEGORIES = {
     'Maintenance Services',
     'New Build Company',
     'Roofing Company',
-    'Structural Engineers',
-    'Structural Steelworks',
+    'Structural Engineering Company',
+    'Structural Steelworks Company',
   ],
 
   'MECHANICAL, ELECTRICAL & PLUMBING': [
@@ -42,12 +42,12 @@ const STANDARD_CATEGORIES = {
     'Carpentry Company',
     'Joinery Company',
     'Staircase Specialist',
-    'Timber Windows Installer',
+    'Timber Window Installer',
   ],
 
   'FIT-OUT & FINISHES': [
     'Bathroom Installer',
-    'Carpet Fitters',
+    'Carpet Fitter',
     'Curtains & Blinds Installer',
     'Drylining Company',
     'Flooring Installer',
@@ -116,11 +116,11 @@ const SMALL_CATEGORIES = {
     'Plumbing & Heating Company',
   ],
 
-  'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Windows Installer'],
+  'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Window Installer'],
 
   'FIT-OUT & FINISHES': [
     'Bathroom Installer',
-    'Carpet Fitters',
+    'Carpet Fitter',
     'Flooring Installer',
     'Interior Refurbishment Company',
     'Kitchen Installer',

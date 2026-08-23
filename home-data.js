@@ -33,8 +33,8 @@
       'Maintenance Services',
       'New Build Company',
       'Roofing Company',
-      'Structural Engineers',
-      'Structural Steelworks',
+      'Structural Engineering Company',
+      'Structural Steelworks Company',
     ],
     'MECHANICAL, ELECTRICAL & PLUMBING': [
       'Air-Conditioning & Ventilation Company',
@@ -48,11 +48,11 @@
       'Carpentry Company',
       'Joinery Company',
       'Staircase Specialist',
-      'Timber Windows Installer',
+      'Timber Window Installer',
     ],
     'FIT-OUT & FINISHING': [
       'Bathroom Installer',
-      'Carpet Fitters',
+      'Carpet Fitter',
       'Curtains & Blinds Installer',
       'Drylining Company',
       'Flooring Installer',
@@ -96,8 +96,8 @@
       'Apprentice of the Year',
       'Lifetime Achievement Award',
       'Community Impact Award',
-      'Female Tradesperson of the Year',
-      'Male Tradesperson of the Year',
+      'Tradeswoman of the Year',
+      'Tradesman of the Year',
       'New Business of the Year',
     ],
   };
@@ -564,9 +564,9 @@
       'This category recognises excellence in the construction of new-build residential properties, including detached and semi-detached houses, bespoke homes and small housing developments. Coverage includes full project delivery from groundworks to completion, coordination of trades, programme management and building regulations compliance. Winners demonstrate exceptional technical expertise, high build quality, safe working practices, and excellent customer satisfaction.',
     'Roofing Company':
       'This category recognises excellence in roofing services, including pitched and flat roofing, slate and tile work, roof repairs, replacements and restorations, chimney repairs, leadwork and rooflight window installation. Winners demonstrate exceptional technical expertise, safe working practices, relevant building regulations compliance, and excellent customer satisfaction.',
-    'Structural Engineers':
+    'Structural Engineering Company':
       'This category recognises excellence in structural engineering services, including surveys, calculations and design, underpinning schemes, load-bearing alterations, subsidence assessment and reporting, and building control support. Winners demonstrate exceptional technical expertise, regulatory compliance and professional standards, and excellent customer satisfaction.',
-    'Structural Steelworks':
+    'Structural Steelworks Company':
       'This category recognises excellence in structural steel services, including design, fabrication and installation of steel beams, columns, lintels and frames for extensions, loft conversions, and load-bearing alterations, plus temporary works and lifting planning. Winners demonstrate exceptional technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
     // MECHANICAL, ELECTRICAL & PLUMBING
     'Air-Conditioning & Ventilation Company':
@@ -588,12 +588,12 @@
       'This category recognises excellence in joinery services, covering the design, workshop manufacture and installation of precision timber components, such as doorsets, windows, staircases, fitted furniture and architectural timber features. Winners demonstrate exceptional craftsmanship and technical expertise, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
     'Staircase Specialist':
       'This category recognises excellence in staircase surveying, design, manufacture and installation, including straight, turning and spiral staircases, bespoke balustrades and handrails, upgrades and refurbishments, and mixed-material systems. Winners demonstrate outstanding accuracy, finish and installation quality, safe working practices, relevant regulatory compliance, and excellent customer satisfaction.',
-    'Timber Windows Installer':
+    'Timber Window Installer':
       'This category recognises excellence in timber window installation and renewal, including casement, sash and flush systems, repairs, restoration, draught-proofing and sympathetic upgrades to period joinery. Winners demonstrate high standards of surveying, fitting, weather-tightness and finishing, relevant regulatory compliance, safe working practices, and excellent customer satisfaction.',
     // FIT-OUT & FINISHING
     'Bathroom Installer':
       'This category recognises excellence in bathroom installation, including design, supply and fitting of suites, sanitaryware, waterproofing, tiling, plumbing, electrics (via appropriately qualified trades) and ventilation, plus wet rooms, ensuites and accessible bathroom adaptions. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
-    'Carpet Fitters':
+    'Carpet Fitter':
       'This category recognises excellence in carpet fitting services, including measurement, supply and installation of carpets, underlay and gripper systems, stair runners, repairs and restretching. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
     'Curtains & Blinds Installer':
       'This category recognises excellence in window dressing services, including measurement, supply and installation of curtains, blinds, shutters and motorised systems, plus tracks, poles and bespoke soft furnishings. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, safe working practices, and excellent customer satisfaction.',
@@ -674,9 +674,9 @@
       'This category recognises exceptional career achievement and lasting contribution to the British construction and building services sector, including decades of mentorship of apprentices and young tradespeople, industry leadership, advancement of trade best practices, and unwavering commitment to raising quality standards across the sector. Winners demonstrate unparalleled technical expertise throughout their career, consistent adherence to regulatory standards, exemplary safe working practices, and exceptional customer satisfaction over a sustained period.',
     'Community Impact Award':
       'This category recognises a tradesperson or business making a meaningful difference in the local community. Attributes include support for local causes, charities and community initiatives; delivery of social value through employment, apprenticeships, mentoring or volunteering; contribution to community wellbeing; and a clear commitment to improving the lives of customers, neighbourhoods and the wider public. Winners demonstrate genuine community leadership, measurable positive outcomes, a strong local reputation, exemplary professional standards, and excellent customer satisfaction.',
-    'Female Tradesperson of the Year':
+    'Tradeswoman of the Year':
       'This category recognises outstanding achievement by a woman working in the British construction and building services sector. Attributes include exceptional technical skill and craftsmanship, professional attitude and work ethic, contribution to workplace projects, commitment to continuous professional development, and dedication to advancing female participation in the industry. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, exemplary safe working practices, strong industry presence, and excellent customer satisfaction.',
-    'Male Tradesperson of the Year':
+    'Tradesman of the Year':
       'This category recognises outstanding achievement by a man working in the British construction and building services sector. Attributes include exceptional technical skill and craftsmanship, professional attitude and work ethic, contribution to workplace projects, and commitment to continuous professional development. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, exemplary safe working practices, and excellent customer satisfaction.',
     'New Business of the Year':
       'This category recognises outstanding achievement by a newly established business (operating no more than 3 years) within the British construction and building services sector. Attributes include strong business growth and sustainability, innovative approach to service delivery, effective financial management and operational efficiency, and commitment to quality standards. Winners demonstrate exceptional technical expertise, appropriate regulatory compliance, exemplary safe working practices, and excellent customer satisfaction.',

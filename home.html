@@ -2011,11 +2011,12 @@
       color: #fff; margin: 0 0 24px;
     }
     .cat-detail-header {
-      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      margin-bottom: 24px;
     }
-    .cat-detail-header .cat-modal-title { margin-bottom: 24px; }
+    .cat-detail-header .cat-modal-title { margin: 0; }
     .cat-detail-icon {
-      width: 76px; height: 76px; flex-shrink: 0; margin-top: 2px;
+      width: 76px; height: 76px; flex-shrink: 0;
       background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
       -webkit-mask-size: contain; mask-size: contain;
       -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
@@ -3332,11 +3333,9 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 5-7 7 7 7"/></svg>
         Back to categories
       </button>
+      <p class="cat-modal-label">Category</p>
       <div class="cat-detail-header">
-        <div>
-          <p class="cat-modal-label">Category</p>
-          <h3 class="cat-modal-title" id="cat-detail-name"></h3>
-        </div>
+        <h3 class="cat-modal-title" id="cat-detail-name"></h3>
         <div class="cat-detail-icon" id="cat-detail-icon" aria-hidden="true"></div>
       </div>
       <p class="cat-detail-desc" id="cat-detail-desc"></p>

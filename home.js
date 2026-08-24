@@ -672,6 +672,15 @@
       const detailDesc = document.getElementById('cat-detail-desc');
       const detailCta = document.getElementById('cat-detail-cta');
       const detailExampleLink = document.getElementById('cat-detail-example-link');
+      const detailIcon = document.getElementById('cat-detail-icon');
+
+      function categoryIconSlug(catName) {
+        return catName
+          .toLowerCase()
+          .replace(/&/g, 'and')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
 
       // Categories with a live example nominees page, keyed by category name.
       // Add an entry here whenever a new "<county>-<category>.html" example
@@ -694,6 +703,11 @@
         if (!desc) return;
         if (detailName) detailName.textContent = catName;
         if (detailDesc) detailDesc.textContent = desc;
+        if (detailIcon) {
+          const iconUrl = 'images/icons/categories/' + categoryIconSlug(catName) + '.svg';
+          detailIcon.style.maskImage = 'url(' + iconUrl + ')';
+          detailIcon.style.webkitMaskImage = 'url(' + iconUrl + ')';
+        }
         if (detailCta)
           detailCta.href = 'submit-entry.html?sector=' + sectorParam + '&category=' + encodeURIComponent(catName);
         if (detailExampleLink) {

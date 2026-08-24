@@ -2010,6 +2010,21 @@
       font-size: 1.5rem; font-weight: 700;
       color: #fff; margin: 0 0 24px;
     }
+    .cat-detail-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      margin-bottom: 24px;
+    }
+    .cat-detail-header .cat-modal-title { margin: 0; }
+    .cat-detail-icon {
+      width: 76px; height: 76px; flex-shrink: 0;
+      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
+      -webkit-mask-size: contain; mask-size: contain;
+      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+      -webkit-mask-position: center; mask-position: center;
+    }
+    @media (max-width: 480px) {
+      .cat-detail-icon { width: 56px; height: 56px; }
+    }
     .cat-modal-list {
       list-style: none; padding: 0; margin: 0 0 32px;
       display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
@@ -3319,7 +3334,10 @@
         Back to categories
       </button>
       <p class="cat-modal-label">Category</p>
-      <h3 class="cat-modal-title" id="cat-detail-name"></h3>
+      <div class="cat-detail-header">
+        <h3 class="cat-modal-title" id="cat-detail-name"></h3>
+        <div class="cat-detail-icon" id="cat-detail-icon" aria-hidden="true"></div>
+      </div>
       <p class="cat-detail-desc" id="cat-detail-desc"></p>
       <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-detail-cta">Enter this Category →</a>
       <a href="somerset-brickwork-masonry.html" class="cat-modal-example-link" id="cat-detail-example-link" style="display:none;">See example: Somerset nominees →</a>

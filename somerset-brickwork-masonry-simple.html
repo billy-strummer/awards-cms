@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Somerset nominees for the Brickwork & Masonry Company category at the British Trade Awards.">
+  <meta name="description" content="Somerset nominees for the Brickwork & Masonry Company category at the British Trade Awards — stripped-back list view.">
   <meta name="theme-color" content="#0a0a0a">
-  <title>Brickwork &amp; Masonry Company — Somerset Nominees | British Trade Awards</title>
+  <title>Brickwork &amp; Masonry Company — Somerset Nominees (List) | British Trade Awards</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="icon" href="images/logos/non-stacked/BTA_Corporate_Horizontal-Texture.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +34,7 @@
     }
     a { color: var(--gold); text-decoration: none; }
     a:hover { color: var(--gold-light); }
-    .container { max-width: 1100px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 60px); }
+    .container { max-width: 760px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 60px); }
 
     /* ── Site Nav (shared with home.html) ─────────────────────────── */
     #site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: var(--header-h); transition: background .3s, backdrop-filter .3s, transform .4s cubic-bezier(.25,.46,.45,.94); }
@@ -72,22 +72,8 @@
     .breadcrumb span[aria-hidden] { color: rgba(255,255,255,.25); }
     .breadcrumb .current { color: rgba(255,255,255,.7); }
 
-    .cat-hero { display: flex; align-items: center; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
-    .cat-icon-wrap { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-    .cat-icon {
-      width: 96px; height: 96px;
-      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
-      -webkit-mask-image: url('images/icons/categories/brickwork-and-masonry-company.svg');
-      mask-image: url('images/icons/categories/brickwork-and-masonry-company.svg');
-      -webkit-mask-size: contain; mask-size: contain;
-      -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-      -webkit-mask-position: center; mask-position: center;
-    }
-
-    .cat-title-block h1 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.75rem); font-weight: 700; line-height: 1.15; }
-    .cat-sub { font-size: .95rem; color: var(--gold); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin-top: 6px; }
-
-    .cat-desc { font-size: 1.2rem; line-height: 1.8; color: rgba(255,255,255,.8); max-width: 920px; margin: 28px 0 12px; }
+    .simple-sub { font-size: .95rem; color: var(--gold); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+    h1 { font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700; line-height: 1.15; margin-bottom: 36px; }
 
     .example-flag {
       display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 40px;
@@ -96,22 +82,16 @@
     }
     .example-flag svg { width: 14px; height: 14px; flex-shrink: 0; stroke: var(--gold); fill: none; stroke-width: 2; }
 
-    .nominees-heading-row { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
-    .nominees-heading { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--gold); margin: 0; }
-    .nominees-flag { width: 44px; height: auto; border-radius: 4px; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
-
-    .nominees-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
-    .nominee-card { background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 10px; transition: border-color .2s, transform .2s; }
-    .nominee-card:hover { border-color: rgba(201,162,39,0.4); transform: translateY(-3px); }
-    .nominee-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--gold); }
-    .nominee-notes { font-size: .875rem; line-height: 1.55; color: rgba(255,255,255,.7); flex: 1; }
-    .nominee-link { font-size: .8125rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; }
-    .nominee-link svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
-
-    .cta-block { margin-top: 56px; padding: 36px; background: linear-gradient(140deg, #1d1a10 0%, #1a1a1a 60%); border: 1px solid rgba(201,162,39,0.3); border-radius: 16px; text-align: center; }
-    .cta-block p { color: rgba(255,255,255,.75); margin-bottom: 20px; font-size: .95rem; }
-    .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #000; font-weight: 700; font-size: .9rem; padding: 14px 32px; border-radius: 100px; letter-spacing: .02em; }
-    .btn-gold:hover { background: var(--gold-light); color: #000; }
+    .simple-list { list-style: none; }
+    .simple-list li { border-bottom: 1px solid var(--border-subtle); }
+    .simple-list li:first-child { border-top: 1px solid var(--border-subtle); }
+    .simple-list a {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 20px 4px; font-family: var(--font-display); font-size: 1.3rem; font-weight: 700;
+      color: var(--gold); transition: color .15s, padding-left .15s;
+    }
+    .simple-list a:hover { color: var(--gold-light); padding-left: 10px; }
+    .simple-list a svg { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2.5; opacity: .7; }
 
     /* ── Footer ───────────────────────────────────────────────────── */
     #sf { background: #050505; border-top: 1px solid rgba(201,162,39,0.15); padding: 56px 0 32px; }
@@ -172,103 +152,33 @@
       <span class="current">Brickwork &amp; Masonry Company</span>
     </p>
 
-    <div class="cat-hero">
-      <div class="cat-icon-wrap">
-        <div class="cat-icon" aria-hidden="true"></div>
-      </div>
-      <div class="cat-title-block">
-        <h1>Brickwork &amp; Masonry Company</h1>
-        <p class="cat-sub">Somerset 2026 Nominees</p>
-      </div>
-    </div>
-
-    <p class="cat-desc">This category recognises excellence in brick, block and stonework services, including new walls, extensions and new builds, repointing, chimney work, and heritage restoration.</p>
+    <p class="simple-sub">Somerset 2026 Nominees</p>
+    <h1>Brickwork &amp; Masonry Company</h1>
 
     <p class="example-flag">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-      Example page — built from vetted nominee data to preview layout, icon placement and category linking.
-      &nbsp;<a href="somerset-brickwork-masonry-simple.html">See stripped-back version →</a>
+      Stripped-back example — a minimal list view.
+      &nbsp;<a href="somerset-brickwork-masonry.html">See full version →</a>
     </p>
 
-    <div class="nominees-heading-row">
-      <h2 class="nominees-heading">Somerset Nominees 2026</h2>
-      <img class="nominees-flag" src="images/flags/Somerset.png" alt="Somerset flag">
-    </div>
-
-    <div class="nominees-grid">
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">MP Masonry Contractors</h3>
-        <p class="nominee-notes">With over 15 years in the trade, MP Masonry Contractors bring deep expertise across brick, block and stonework, backed by consistently strong customer reviews.</p>
-        <a class="nominee-link" href="https://mpmasonrycontractors.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">Harvey Stone</h3>
-        <p class="nominee-notes">Highly experienced stonemasons operating directly from the historic Ham Hill quarry, working close to the source of their stone.</p>
-        <a class="nominee-link" href="https://harveystone.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">P.J. Rowland Stonemasons</h3>
-        <p class="nominee-notes">An established specialist in stone repair and restoration, with particular expertise in traditional buildings.</p>
-        <a class="nominee-link" href="https://pjrowlandstonemasons.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">Ryder Masonry</h3>
-        <p class="nominee-notes">Focused stone masonry specialists serving Bath and the surrounding area.</p>
-        <a class="nominee-link" href="https://rydermasonry.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">Norton Masonry</h3>
-        <p class="nominee-notes">Over 30 years of experience and Federation of Master Builders membership stand behind every project.</p>
-        <a class="nominee-link" href="https://nortonmasonryltd.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">Medusa Stonemasonry</h3>
-        <p class="nominee-notes">Blends modern techniques with traditional stonemasonry and conservation skills, built on more than five years in the trade.</p>
-        <a class="nominee-link" href="https://medusastonemasonry.com" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">Stonewalk Construction</h3>
-        <p class="nominee-notes">Brings 70 years of combined team experience and Federation of Master Builders certification to every project.</p>
-        <a class="nominee-link" href="https://stonewalkconstructionltd.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">S. A. Webber</h3>
-        <p class="nominee-notes">Established in 2007 and SMAS registered, with an NVQ and CSCS qualified bricklaying team.</p>
-        <a class="nominee-link" href="https://sawebberltd.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">RM Stonework</h3>
-        <p class="nominee-notes">Specialists in stone walls, repointing and lime mortar, rated 9.93/10 on Checkatrade.</p>
-        <a class="nominee-link" href="https://rmstonework.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-      <article class="nominee-card">
-        <h3 class="nominee-name">Somerset Stonemasons</h3>
-        <p class="nominee-notes">Led by director Paul Roddan, a qualified historic building conservator and banker mason, bringing specialist heritage expertise to every project.</p>
-        <a class="nominee-link" href="https://somersetstonemasons.co.uk" target="_blank" rel="noopener noreferrer">Visit website <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
-      </article>
-
-    </div>
-
-    <div class="cta-block">
-      <p>Know a trade professional who deserves recognition in Somerset? Entries and nominations are open now.</p>
-      <a href="submit-entry.html" class="btn-gold">Enter Now</a>
-    </div>
+    <ul class="simple-list">
+      <li><a href="https://mpmasonrycontractors.co.uk" target="_blank" rel="noopener noreferrer">MP Masonry Contractors <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://harveystone.co.uk" target="_blank" rel="noopener noreferrer">Harvey Stone <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://pjrowlandstonemasons.co.uk" target="_blank" rel="noopener noreferrer">P.J. Rowland Stonemasons <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://rydermasonry.co.uk" target="_blank" rel="noopener noreferrer">Ryder Masonry <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://nortonmasonryltd.co.uk" target="_blank" rel="noopener noreferrer">Norton Masonry <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://medusastonemasonry.com" target="_blank" rel="noopener noreferrer">Medusa Stonemasonry <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://stonewalkconstructionltd.co.uk" target="_blank" rel="noopener noreferrer">Stonewalk Construction <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://sawebberltd.co.uk" target="_blank" rel="noopener noreferrer">S. A. Webber <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://rmstonework.co.uk" target="_blank" rel="noopener noreferrer">RM Stonework <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+      <li><a href="https://somersetstonemasons.co.uk" target="_blank" rel="noopener noreferrer">Somerset Stonemasons <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a></li>
+    </ul>
 
   </div>
 </main>
 
 <footer id="sf" role="contentinfo">
-  <div class="container">
+  <div class="container" style="max-width:1100px;">
     <div class="sf-top">
       <a href="home.html" class="sf-logo"><img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards"></a>
       <nav class="sf-nav" aria-label="Footer navigation">

@@ -315,6 +315,7 @@ async function build() {
     'faqs.html',
     'become-a-sponsor.html',
     'somerset-brickwork-masonry.html',
+    'somerset-brickwork-masonry-simple.html',
     'cookie-consent.js',
     'coming-soon.html',
     'coming-soon.js',

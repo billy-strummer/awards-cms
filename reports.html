@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Trade Awards — Planning Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --near-black: #0E0E10;
+    --paper: #F7F5F1;
+    --gold: #9C7A2E;
+    --gold-bright: #C9A227;
+    --ink: #1A1A1A;
+    --muted: #6B6B6B;
+    --rule: #E0DCD3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--near-black);
+    color: #EFEAE0;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+  .wrap { max-width: 720px; width: 100%; }
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-bright);
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.1;
+    margin: 0 0 14px;
+    color: #FBF9F5;
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: #C9C4B8;
+    max-width: 46ch;
+    margin: 0 0 48px;
+  }
+  .cards { display: flex; flex-direction: column; gap: 16px; }
+  a.card {
+    display: block;
+    text-decoration: none;
+    border: 1px solid rgba(156,122,46,0.35);
+    border-radius: 2px;
+    padding: 26px 28px;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    position: relative;
+  }
+  a.card:hover {
+    border-color: var(--gold-bright);
+    background: rgba(156,122,46,0.06);
+    transform: translateX(4px);
+  }
+  a.card:focus-visible {
+    outline: 2px solid var(--gold-bright);
+    outline-offset: 3px;
+  }
+  .card-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #FBF9F5;
+    margin: 6px 0 8px;
+  }
+  .card-desc {
+    font-size: 14.5px;
+    color: #A8A296;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .card-arrow {
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold);
+    font-size: 20px;
+    transition: transform 0.2s ease;
+  }
+  a.card:hover .card-arrow { transform: translateY(-50%) translateX(4px); }
+  footer {
+    margin-top: 48px;
+    font-size: 12.5px;
+    color: #6B6659;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  @media (max-width: 520px) {
+    a.card { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="eyebrow">Trade Awards Programme — Internal Planning</div>
+    <h1>Reports</h1>
+    <p class="lede">Two working documents supporting the Year 1 business case: the revenue model behind the launch, and where the format could expand from here.</p>
+
+    <div class="cards">
+      <a class="card" href="year1-revenue-projection.html">
+        <div class="card-num">01 — Financial</div>
+        <div class="card-title">Year 1 Revenue Projection</div>
+        <p class="card-desc">Full methodology behind the ballpark estimate — 110 locations, 62 categories, every assumption shown with its working.</p>
+        <span class="card-arrow">→</span>
+      </a>
+      <a class="card" href="cross-industry-opportunities.html">
+        <div class="card-num">02 — Strategy</div>
+        <div class="card-title">Cross-Industry Expansion Opportunities</div>
+        <p class="card-desc">From the obvious next steps out to genuinely lateral ideas — eight widening rings of opportunity beyond the core awards.</p>
+        <span class="card-arrow">→</span>
+      </a>
+    </div>
+
+    <footer>Last updated 2026</footer>
+  </div>
+</body>
+</html>

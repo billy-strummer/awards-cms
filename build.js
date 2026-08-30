@@ -317,7 +317,7 @@ async function build() {
     'somerset-brickwork-masonry.html',
     'somerset-brickwork-masonry-simple.html',
     'reports.html',
-    'year1-revenue-projection.html',
+    'year1-financial-plan.html',
     'cross-industry-opportunities.html',
     'cookie-consent.js',
     'coming-soon.html',

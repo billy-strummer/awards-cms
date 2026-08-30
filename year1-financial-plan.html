@@ -58,17 +58,33 @@
   .src-list li { font-size: 14px; margin-bottom: 6px; }
   .disclaimer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--paper-line); font-size: 12.5px; line-height: 1.6; color: var(--muted); font-style: italic; }
 
-  .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
-  .pkg-card { border: 1px solid var(--paper-line); border-radius: 4px; padding: 20px 18px; background: #FDFCF9; display: flex; flex-direction: column; }
-  .pkg-card.mid { border-color: var(--gold); }
-  .pkg-card.top { border-color: var(--gold-bright); background: #FBF8EE; }
+  .pkg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 26px 0 18px; align-items: start; }
+  .pkg-card { position: relative; border: 1px solid var(--paper-line); border-radius: 4px; padding: 20px 18px; background: #FDFCF9; display: flex; flex-direction: column; }
+  .pkg-card.top { border-color: var(--gold); }
+  .pkg-card.mid {
+    border: 2px solid var(--gold-bright);
+    background: #FBF8EE;
+    box-shadow: 0 10px 28px rgba(156,122,46,0.2);
+    transform: translateY(-8px);
+    padding-top: 24px;
+  }
+  .pkg-badge {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    background: var(--gold-bright); color: #1A1A1A;
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px;
+    border-radius: 100px; white-space: nowrap;
+  }
   .pkg-name { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
   .pkg-price { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 22px; color: var(--gold-bright); margin-bottom: 12px; }
   .pkg-includes { list-style: none; margin: 0 0 12px; padding: 0; flex: 1; }
   .pkg-includes li { font-size: 13.5px; color: #333; margin-bottom: 6px; padding-left: 16px; position: relative; }
   .pkg-includes li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
   .pkg-note { font-size: 12px; color: var(--muted); font-style: italic; }
-  @media (max-width: 640px) { .pkg-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) {
+    .pkg-grid { grid-template-columns: 1fr; }
+    .pkg-card.mid { transform: none; margin: 6px 0; }
+  }
 </style>
 </head>
 <body>
@@ -137,6 +153,7 @@
         <p class="pkg-note">Price: evidenced (Business Awards UK).</p>
       </div>
       <div class="pkg-card mid">
+        <span class="pkg-badge">Most Popular</span>
         <div class="pkg-name">Winner + Trophy</div>
         <div class="pkg-price">£275</div>
         <ul class="pkg-includes">

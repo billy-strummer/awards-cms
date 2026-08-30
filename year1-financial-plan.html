@@ -4,22 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Year 1 Financial Plan — Trade Awards Programme</title>
+<title>Year 1 Financial Plan — British Trade Awards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --near-black: #0E0E10; --paper: #F7F5F1; --paper-line: #E5E0D5;
-    --gold: #9C7A2E; --gold-bright: #C9A227; --ink: #1A1A1A; --muted: #6B6B6B;
-    --red: #8C2F1E; --green: #3D6B3D;
+    --gold: #9C7A2E; --gold-bright: #C9A227; --ink: #1A1A1A; --muted: #6B6B6B; --red: #8C2F1E;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; }
   a { color: var(--gold); }
-  .flag {
-    background: var(--green); color: #F0F5EC; text-align: center; font-family: 'IBM Plex Mono', monospace;
-    font-size: 12.5px; letter-spacing: 0.06em; padding: 9px; font-weight: 600;
-  }
+  .flag { background: var(--red); color: #FBF0EC; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.05em; padding: 9px; font-weight: 600; }
   .hero { background: var(--near-black); color: #EFEAE0; padding: 32px 32px 44px; }
   .hero-inner { max-width: 800px; margin: 0 auto; }
   .back-link { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #A8A296; text-decoration: none; display: inline-block; margin-bottom: 24px; }
@@ -31,12 +27,11 @@
   .headline-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8B8676; margin-bottom: 8px; }
   .headline-value { font-family: 'Playfair Display', serif; font-weight: 600; font-size: clamp(28px, 5vw, 40px); color: var(--gold-bright); margin-bottom: 6px; }
   .headline-meta { font-size: 13px; color: #A8A296; }
-
   main { max-width: 800px; margin: 0 auto; padding: 48px 32px 100px; }
   section { margin-bottom: 46px; }
   h2 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 22px; color: var(--ink); display: flex; align-items: baseline; gap: 12px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--paper-line); }
   h2 .num { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--gold); font-weight: 600; }
-  h3 { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 16px; margin: 24px 0 10px; color: var(--ink); }
+  h3 { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 15.5px; margin: 22px 0 8px; color: var(--ink); }
   p { font-size: 15px; line-height: 1.66; color: #333; margin: 0 0 15px; }
   strong { color: var(--ink); }
   .callout { background: #FDFCF9; border-left: 3px solid var(--gold); padding: 15px 18px; font-size: 14px; line-height: 1.58; color: #454037; margin: 18px 0; }
@@ -48,11 +43,11 @@
   tr.hi td { font-weight: 700; color: var(--ink); background: #F5F0E3; }
   td.num, th.num { font-family: 'IBM Plex Mono', monospace; }
   .table-scroll { overflow-x: auto; }
-  ol.marketing { margin: 0 0 15px; padding-left: 22px; }
-  ol.marketing li { font-size: 15px; line-height: 1.62; color: #333; margin-bottom: 14px; }
-  ol.marketing li strong { color: var(--ink); }
+  ol.priority { margin: 0 0 15px; padding-left: 22px; }
+  ol.priority li { font-size: 15px; line-height: 1.62; color: #333; margin-bottom: 14px; }
+  ol.priority li strong { color: var(--ink); }
   ul.plain { margin: 0 0 15px; padding-left: 20px; }
-  ul.plain li { font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 9px; }
+  ul.plain li { font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 10px; }
   ul.plain li strong { color: var(--ink); }
   .src-list { margin: 0; padding-left: 20px; }
   .src-list li { font-size: 14px; margin-bottom: 6px; }
@@ -79,7 +74,7 @@
   .pkg-price { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 22px; color: var(--gold-bright); margin-bottom: 12px; }
   .pkg-includes { list-style: none; margin: 0 0 12px; padding: 0; flex: 1; }
   .pkg-includes li { font-size: 13.5px; color: #333; margin-bottom: 6px; padding-left: 16px; position: relative; }
-  .pkg-includes li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  .pkg-includes li::before { content: '✓'; position: absolute; left: 0; color: var(--green, #3D6B3D); font-weight: 700; }
   .pkg-note { font-size: 12px; color: var(--muted); font-style: italic; }
   @media (max-width: 640px) {
     .pkg-grid { grid-template-columns: 1fr; }
@@ -88,17 +83,17 @@
 </style>
 </head>
 <body>
-<div class="flag">WORKING PLAN — v4, restructured around three sales packages for internal use</div>
+<div class="flag">WORKING PLAN — v5, updated with real site content and the brewery event idea</div>
 <div class="hero">
   <div class="hero-inner">
     <a class="back-link" href="/reports.html">← Reports</a>
     <div class="eyebrow">Financial Plan · For Our Own Planning</div>
     <h1>Year 1 Financial Plan</h1>
-    <p class="hero-sub">What this could realistically make in Year 1, going purely off nominee volume across all categories and locations — plus the three packages we'd actually sell to get there.</p>
+    <p class="hero-sub">British Trade Awards. What this could realistically make in Year 1, the three packages plus real tiered sponsorship, and where the brewery celebrations fit in.</p>
     <div class="headline-box">
-      <div class="headline-label">Recommended Year 1 planning range</div>
-      <div class="headline-value">£70,000 – £122,000</div>
-      <div class="headline-meta">Conservative-to-central engagement, no ceremony run · Full range across scenarios: £70K–£184K</div>
+      <div class="headline-label">Recommended Year 1 planning range (gross)</div>
+      <div class="headline-value">£51,000 – £103,000</div>
+      <div class="headline-meta">Conservative-to-central · Net of real running costs, central case is ~£47,600 each — see Section 9 for the £50K-each answer</div>
     </div>
   </div>
 </div>
@@ -106,41 +101,32 @@
 <main>
   <section>
     <h2><span class="num">01</span> The Short Answer</h2>
-    <p><strong>Realistically, somewhere between £70,000 and £122,000 in Year 1</strong>, built entirely bottom-up from how many businesses genuinely exist per category per location, and how many of them we could actually get to respond to a brand nobody's heard of yet. No ceremony, no events, no external costs assumed — just the two of us selling three straightforward packages plus a handful of smaller revenue lines.</p>
-    <p>This isn't an investor pitch number. It's the number we'd want to see before deciding how much time to put into this, so it's built to be defensible rather than impressive — every figure below is either a real price we found operating in the market today, or a clearly labelled judgment call we made ourselves.</p>
+    <div class="callout warn"><strong>Recommended Year 1 planning range: £51,000–£103,000.</strong> This updates the previous working plan with two real pieces of information from the live site — the actual Bronze/Gold/Platinum sponsorship structure (replacing a flat £5,000-per-sponsor guess with realistic tiered pricing), and the brewery-hosted winner celebrations, which resolve the "events cost too much" objection that previously kept events out of the plan entirely, since these cost nothing to run.</div>
+    <p>The full range across all three scenarios is £51,000–£172,000. This is slightly lower at the conservative end than the previous plan, and that's a genuine improvement in accuracy, not a mistake — a flat £5,000-per-sponsor assumption overstated what's realistic when most Year 1 sponsors will sensibly start at the cheaper Bronze tier, not jump straight to a Title Partnership with a brand-new, unproven programme.</p>
+    <div class="callout"><strong>On the £50,000-each target specifically:</strong> close, but not comfortably guaranteed in Year 1 — even the central scenario falls about £2,400 short each once real running costs (never subtracted before this version) are properly accounted for. Year 2 clears it comfortably, purely from renewals. Full working in Section 9.</div>
   </section>
 
   <section>
-    <h2><span class="num">02</span> How This Number Is Built</h2>
-    <p>Two separate questions, multiplied together, for every one of the 6,200 category-location combinations (100 locations × 62 categories):</p>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Question</th><th>Answer</th></tr>
-      <tr><td>Do enough real businesses in this trade exist in this location to fill the category at all?</td><td><strong>54.5% central</strong> — bottom-up, category-by-category (see Section 3).</td></tr>
-      <tr><td>Of those that exist, how many would actually respond to a brand-new scheme reaching out for the first time?</td><td><strong>10–20% central range</strong> — genuine judgment; no comparable programme was ever new in the way this launch will be.</td></tr>
-    </table>
-    </div>
-    <p>Multiplying the two gives an effective winner count of <strong>338 (conservative) / 507 (central) / 676 (upper)</strong> out of 6,200 possible slots. Everything downstream — package sales, finalist sales, sponsorship — scales off that winner count.</p>
+    <h2><span class="num">02</span> What's Changed From the Last Version</h2>
+    <p><strong>Real sponsorship tiers, not a flat guess.</strong> The site now has a proper Bronze/Gold/Platinum structure with real feature differentiation. Section 5 replaces the flat sponsorship line with pricing built from that actual structure.</p>
+    <p><strong>The brewery celebrations resolve the events question.</strong> The previous plan deliberately excluded any event, since running one "costs real money and organisational effort." A brewery hosting for free, in exchange for the drink sales, removes that objection — Section 6 covers this properly.</p>
+    <p><strong>The public vote mechanic doesn't change the underlying maths.</strong> The live site confirms entry is followed by vetting, then a public vote decides the winner. This is already consistent with how the model works — one winner per category, everyone else becomes a finalist — but it does mean genuine public engagement (not just getting businesses to enter) matters for a category to feel legitimate. Folded into the marketing thinking already in this plan.</p>
+    <p><strong>A word on "65+ counties" and "1,000+ winners" on the site.</strong> The homepage and sponsor page use rounder, more aspirational figures than the precise 100-location, 62-category model this plan is built on — normal for public-facing marketing copy, but worth knowing the two aren't meant to be read as the same number. This plan uses the precise figures throughout.</p>
   </section>
 
   <section>
-    <h2><span class="num">03</span> Category &amp; Location Reality Check</h2>
-    <p>Every one of the 62 categories was tiered by how common the trade genuinely is, then split by location density — a niche trade behaves very differently in a rural county versus a major city.</p>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Tier</th><th class="num">Cats</th><th class="num">County fill</th><th class="num">Urban fill</th><th>Example</th></tr>
-      <tr><td>High-fill</td><td class="num">22</td><td class="num">80%</td><td class="num">95%</td><td><em>Electrical, Plumbing</em></td></tr>
-      <tr><td>Medium-fill</td><td class="num">15</td><td class="num">40%</td><td class="num">80%</td><td><em>Drainage, Pest Control</em></td></tr>
-      <tr><td>Low-fill (niche)</td><td class="num">19</td><td class="num">15%</td><td class="num">50%</td><td><em>Structural Steelworks</em></td></tr>
-      <tr><td>Leadership</td><td class="num">6</td><td class="num">35%</td><td class="num">60%</td><td><em>Apprentice of the Year</em></td></tr>
-    </table>
-    </div>
-    <p>County-like locations (70 of 100) blend to ~46% market existence; dense urban locations (30 of 100) blend to ~74%. Weighted across the full mix: <strong>54.5%</strong>.</p>
+    <h2><span class="num">03</span> How the Winner Count Is Built (Unchanged)</h2>
+    <p>Two separate questions, multiplied together, across all 6,200 category-location combinations (100 locations × 62 categories):</p>
+    <ul class="plain">
+      <li><strong>Do enough real businesses in this trade exist in this location to fill the category at all?</strong> 54.5% central — bottom-up, category-by-category.</li>
+      <li><strong>Of those that exist, how many would actually respond to a brand-new scheme reaching out for the first time?</strong> 10–20% central range — genuine judgment.</li>
+    </ul>
+    <p>Multiplying the two gives <strong>338 (conservative) / 507 (central) / 676 (upper)</strong> winners out of 6,200 possible slots — unchanged from the previous plan, since neither of these two questions has new evidence to revise them.</p>
   </section>
 
   <section>
-    <h2><span class="num">04</span> The Three Packages We'd Actually Sell</h2>
-    <p>Every winner is offered one of three bundles, priced up from real anchors (Business Awards UK charges £199 for acceptance/logo licensing and £99 for a trophy today) rather than invented figures. Bundling the higher tiers at a small discount makes the upsell conversation simple — one decision, not a menu of add-ons.</p>
+    <h2><span class="num">04</span> The Three Packages (Unchanged — Still the Core Product)</h2>
+    <p>Bundled up from the real Business Awards UK pricing anchors. This remains the highest-confidence, highest-volume revenue line in the plan and hasn't changed.</p>
     <div class="pkg-grid">
       <div class="pkg-card">
         <div class="pkg-name">Winner Certification</div>
@@ -173,85 +159,132 @@
         <p class="pkg-note">£48 saving vs. buying separately (£523).</p>
       </div>
     </div>
-    <p>Assumed take-up: of all winners, <strong>45–62%</strong> buy any package at all (varies by scenario — a more engaged cohort is plausibly also a more willing-to-pay one). Of those who buy, we've judged the split as <strong>55% Essential / 35% Trophy / 10% PR</strong> — most people take the cheapest option, a meaningful minority upgrade, few take the top tier. No comparable publishes package-tier data, so this split is judgment, clearly flagged as the number most worth testing against real sales.</p>
   </section>
 
   <section>
-    <h2><span class="num">05</span> Other Revenue, Kept Separate From the Packages</h2>
-    <p>These are sold to a different buyer than the packages above (suppliers and retailers, not winners), or to a different population (non-winning finalists) — bundling them in would muddy both, so they're modelled as their own lines.</p>
+    <h2><span class="num">05</span> Sponsorship — Now Built From the Real Tiers</h2>
+    <p>The live site already has a proper three-tier structure with genuine feature differentiation. Pricing below is illustrative, built from how much value each tier genuinely offers a sponsor — not yet confirmed with a real customer, so treat every price here as a starting point for a conversation, not a fixed rate card.</p>
     <div class="table-scroll">
     <table>
-      <tr><th>Stream</th><th>What It Is</th><th>Who Pays</th><th>Basis</th></tr>
-      <tr><td>Finalist package</td><td>A lighter digital badge/certificate for shortlisted, non-winning businesses.</td><td>Finalists</td><td>£50 each, ~15% attach, ~2.5 finalists assumed per winner. Judgment.</td></tr>
-      <tr><td>National category sponsorship</td><td>A supplier sponsors one category across every location at once.</td><td>Suppliers</td><td>5–12 sponsors × £5,000. Judgment, part-evidenced (FMB confirms this sponsor type exists).</td></tr>
-      <tr><td>Starter loyalty/discount partners</td><td>A small number of retailer discount partnerships for anyone registered, not just winners.</td><td>Retail partners</td><td>Real precedent (FMB × TradePoint, 10% off), but only worth a retailer's spend once there's scale. Starts near £0, grows slowly.</td></tr>
+      <tr><th>Tier</th><th>What They Get (from the live site)</th><th>Illustrative Price*</th><th>Year 1 Count Assumed</th></tr>
+      <tr><td><strong>Bronze</strong><br>Associate Partner</td><td>Logo on sponsors page + programme, 2 tickets, 3 social mentions, logo in winner emails, media pack, certificate.</td><td>£800–£1,200</td><td>4–9</td></tr>
+      <tr><td><strong>Gold</strong><br>Category Partner — "Most Popular"</td><td>Everything Bronze has, plus: owns a category, "Presented by" branding, 4 tickets, 6 social mentions, engraved trophy, winner interview, VIP table, press release.</td><td>£2,500–£3,500</td><td>1–5</td></tr>
+      <tr><td><strong>Platinum</strong><br>Title Partner</td><td>Whole-programme co-presentation, logo on every page, 8 tickets + VIP table, 15+ mentions, dedicated press release, speaking slot at the ceremony.</td><td>£8,000–£10,000</td><td>0–2</td></tr>
     </table>
     </div>
-    <div class="callout"><strong>Deliberately excluded from the base case:</strong> ticketed events. Business Awards UK — the closest real comparable — runs no ceremony at all and says their own winners told them it wasn't worth the cost. Running one is a genuine option later (a single national final, matching FMB's structure, could add roughly £30–50K at these winner counts) but it costs real money and organisational effort to run, which cuts directly against keeping this lean. Not included in the recommended range below.</div>
+    <p style="font-size:13px; color:var(--muted); font-style:italic;">*Subject to confirmation — no comparable publishes tiered pricing for a programme at this stage, so these are reasoned estimates, not evidenced figures like the package prices in Section 4.</p>
+    <div class="callout"><strong>Why Platinum is assumed low in Year 1:</strong> a Title Partnership asks a sponsor to co-present an entire programme with a brand nobody has heard of yet — a much bigger ask than Bronze or Gold. Realistic to assume 0–2 in Year 1, growing once the programme has a track record.</div>
   </section>
 
   <section>
-    <h2><span class="num">06</span> Full Year 1 Projection</h2>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Line</th><th class="num">Conservative</th><th class="num">Central</th><th class="num">Upper</th></tr>
-      <tr><td>Winners</td><td class="num">338</td><td class="num">507</td><td class="num">676</td></tr>
-      <tr><td>Three packages (Sec. 4)</td><td class="num">£38,416</td><td class="num">£70,697</td><td class="num">£106,344</td></tr>
-      <tr><td>Finalist packages</td><td class="num">£6,350</td><td class="num">£9,500</td><td class="num">£12,700</td></tr>
-      <tr><td>Category sponsorship</td><td class="num">£25,000</td><td class="num">£40,000</td><td class="num">£60,000</td></tr>
-      <tr><td>Loyalty/discount partners</td><td class="num">£0</td><td class="num">£2,000</td><td class="num">£5,000</td></tr>
-      <tr class="hi"><td>Total</td><td class="num">£69,766</td><td class="num">£122,197</td><td class="num">£184,044</td></tr>
-    </table>
-    </div>
-    <p><strong>Recommended planning range: £70,000–£122,000</strong> (conservative-to-central) — central and upper both assume nothing beyond what two people can realistically sell and fulfil without hiring or running an event.</p>
+    <h2><span class="num">06</span> The Brewery Celebrations — Recommended As the Default</h2>
+    <p>Ten small, private, winner-only celebrations, one per region, hosted free by a local brewery in exchange for the drink sales on the night. This is worth adopting as the default Year 1 event structure, not an optional extra:</p>
+    <p><strong>Zero cost to run.</strong> No venue hire, and the brewery's own incentive (drink sales) means there's no reason to expect a hosting fee either. This is the one way to get a genuine in-person event without the cost objection that previously ruled events out entirely.</p>
+    <p><strong>A real reason to be in the room for the upsell conversation.</strong> The three packages (Section 4) are easier to sell face to face, in person, to someone who's just been celebrated, than by email. No specific uplift is assumed in the figures above, since there's no evidence to size it by — but it's a reasonable expectation worth testing.</p>
+    <p><strong>Ten separate local press opportunities, not one national one.</strong> A small regional celebration is a natural local-news story in a way a single national final isn't — potentially better organic PR reach than the more expensive single-final option considered previously, at zero cost instead of an estimated £30–50K.</p>
+    <p><strong>Worth formalising the brewery's own role.</strong> Rather than treating each brewery purely as a free venue, consider offering them Bronze-tier sponsor recognition (Section 5) in exchange for hosting — they're already getting exposure to a room of local business owners, so making the exchange explicit costs nothing extra and turns a favour into a proper partnership.</p>
   </section>
 
   <section>
-    <h2><span class="num">07</span> Evidence Base</h2>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Source</th><th>Finding</th><th>Used For</th></tr>
-      <tr><td><strong>Business Awards UK</strong></td><td>Free-to-enter, pay-only-if-you-win, 46 English counties, ~60 sectors. £199 (+VAT) acceptance fee, £99 (+VAT) optional trophy. Runs no ceremony.</td><td>Package pricing anchors. Evidence a ceremony isn't necessary.</td></tr>
-      <tr><td><strong>Federation of Master Builders</strong></td><td>UK's most established trade-specific awards body (founded 1941). Runs biennially, one national final. Real sponsors: TradePoint, Jewson, JCB, Bibby Financial Services. Longstanding TradePoint member discount (10% off).</td><td>Sponsorship and loyalty-partner precedent.</td></tr>
-      <tr><td><strong>North Notts Business Awards</strong></td><td>Real, current regional gala ticket price: £73 + £2 booking fee.</td><td>Reference only — not used, since events are excluded from the base case.</td></tr>
-      <tr><td><strong>ONS / DBT Business Population 2025</strong></td><td>Construction is the UK's largest SME sector (~885,000 businesses); density highly uneven regionally.</td><td>Supports the location-density split in Section 3.</td></tr>
-    </table>
-    </div>
-  </section>
-
-  <section>
-    <h2><span class="num">08</span> What This Doesn't Cover</h2>
-    <ul class="plain">
-      <li><strong>Our own time and any small running costs</strong> — this is a revenue figure only, not take-home profit. Worth keeping a simple running note of anything we actually spend as we go.</li>
-      <li><strong>Directory, membership, or pay-per-lead revenue</strong> — all of these need a credible pool of past winners and real search traffic first. Not a Year 1 or Year 2 line.</li>
-      <li><strong>Year 2 and beyond</strong> — this is scoped to Year 1 only. If the acceptance fee or logo licence renews annually, Year 2 compounds on top of new Year 1 winners rather than starting from zero, but that's not modelled here.</li>
-    </ul>
-  </section>
-
-  <section>
-    <h2><span class="num">09</span> How We'd Actually Hit This Number</h2>
-    <p>Since who responds, not how many categories exist, is what actually drives the number, the highest-leverage work is outreach, not more modelling. Six ways to do that without spending on ads:</p>
-    <ol class="marketing">
-      <li><strong>Consumer-driven nomination, not cold outreach to businesses.</strong> Ask homeowners to nominate their favourite builder rather than approaching tradespeople cold — a much warmer, positively-framed way in.</li>
-      <li><strong>Seed with a handful of respected local names first.</strong> A few well-regarded founding nominees per launch area lend credibility to everyone who follows.</li>
-      <li><strong>Distribute through partners who already have the audience.</strong> A builders' merchant or trade supplier sponsor already has a mailing list we don't — make early sponsorship partly about co-promotion, not just a logo fee.</li>
-      <li><strong>Local press, not paid advertising.</strong> Regional papers cover local business award stories as genuine local-interest content, at no media cost.</li>
-      <li><strong>Concentrate the launch instead of spreading thin.</strong> Fewer locations and the ~22 high-fill categories first builds real word-of-mouth, rather than diluting effort everywhere at once.</li>
-      <li><strong>Lead every message with "free to enter."</strong> The biggest blocker to engagement is "why would I bother" — make the zero-cost, zero-downside nature of entry the first thing anyone hears.</li>
+    <h2><span class="num">07</span> Best Products to Sell — In Priority Order</h2>
+    <p>Given everything above, here's where to actually spend selling effort, not just what's theoretically available:</p>
+    <ol class="priority">
+      <li><strong>The three winner packages — sell hard, sell first.</strong> Highest volume, most predictable, real evidenced pricing. Every winner is a live conversation waiting to happen the moment they're announced.</li>
+      <li><strong>Gold sponsorship — the sweet spot, not Platinum.</strong> The site itself markets Gold as "Most Popular" for good reason — real value (category ownership, trophy, press, interview) at a price a first-time sponsor can actually say yes to. Prioritise this over chasing a small number of hard-to-close Platinum deals in Year 1.</li>
+      <li><strong>Bronze sponsorship — volume and credibility.</strong> Low friction, low individual value, but each one adds a recognisable logo to the sponsors page — useful for making the programme look more established to the next sponsor conversation, not just for the revenue itself.</li>
+      <li><strong>Finalist packages — low effort, already-warm audience.</strong> These are people who've already engaged once; a cheap, simple upsell rather than a new sales conversation.</li>
+      <li><strong>Brewery/loyalty partnerships — start now, expect little revenue yet.</strong> Worth setting up in Year 1 for the relationship and the free events, but genuinely not worth counting on for meaningful revenue until the audience has scale.</li>
     </ol>
   </section>
 
   <section>
-    <h2><span class="num">10</span> Before Committing Fully</h2>
-    <p>The Year-1 engagement rate (Section 2) is the single biggest assumption in this whole plan, and it's the one no amount of desk research can resolve.</p>
+    <h2><span class="num">08</span> Full Year 1 Projection</h2>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Line</th><th class="num">Conservative</th><th class="num">Central</th><th class="num">Upper</th></tr>
+      <tr><td>Winners</td><td class="num">338</td><td class="num">507</td><td class="num">676</td></tr>
+      <tr><td>Three packages</td><td class="num">£38,512</td><td class="num">£68,679</td><td class="num">£106,121</td></tr>
+      <tr><td>Finalist packages</td><td class="num">£6,338</td><td class="num">£9,506</td><td class="num">£12,675</td></tr>
+      <tr><td>Sponsorship (tiered)</td><td class="num">£5,700</td><td class="num">£23,000</td><td class="num">£48,300</td></tr>
+      <tr><td>Loyalty/discount partners</td><td class="num">£0</td><td class="num">£2,000</td><td class="num">£5,000</td></tr>
+      <tr class="hi"><td>Total</td><td class="num"><strong>£50,549</strong></td><td class="num"><strong>£103,185</strong></td><td class="num">£172,096</td></tr>
+    </table>
+    </div>
+    <p>Recommended planning range: £51,000–£103,000 (conservative-to-central) — both assume nothing beyond what two people can realistically sell and fulfil, plus ten free brewery events.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">09</span> Running Costs, and Whether £50,000 Each Is Achievable</h2>
+    <p>Every figure so far in this report has been revenue, explicitly flagged as such — but nothing has ever actually subtracted what it costs to run this for real. That gap matters directly for a personal target like £50,000 each, so it's worth closing properly here.</p>
+    <h3>What actually comes off before it's take-home</h3>
+    <p>At the central scenario:</p>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Cost</th><th>Why</th><th class="num">Central Estimate</th></tr>
+      <tr><td>Trophy fulfilment</td><td>~122 physical trophies at the central case, wholesale engraved cost.</td><td class="num">£3,052</td></tr>
+      <tr><td>Payment processing</td><td>~2.5% on package and finalist transactions.</td><td class="num">£1,955</td></tr>
+      <tr><td>Hosting &amp; tools</td><td>Running the actual live site properly.</td><td class="num">£1,500</td></tr>
+      <tr><td>Insurance</td><td>Basic cover for a live, public-facing programme.</td><td class="num">£500</td></tr>
+      <tr><td>Accounting</td><td>Even lean bookkeeping for two people.</td><td class="num">£1,000</td></tr>
+      <tr class="hi"><td>Total</td><td></td><td class="num"><strong>£8,006</strong></td></tr>
+    </table>
+    </div>
+    <h3>The direct answer, all three scenarios</h3>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Scenario</th><th class="num">Gross</th><th class="num">Est. Costs</th><th class="num">Net</th><th class="num">Each</th></tr>
+      <tr><td>Conservative</td><td class="num">£50,549</td><td class="num">£5,832</td><td class="num">£44,717</td><td class="num">£22,358</td></tr>
+      <tr class="hi"><td>Central</td><td class="num"><strong>£103,185</strong></td><td class="num"><strong>£8,006</strong></td><td class="num"><strong>£95,179</strong></td><td class="num"><strong>£47,589</strong></td></tr>
+      <tr><td>Upper</td><td class="num">£172,096</td><td class="num">£10,685</td><td class="num">£161,411</td><td class="num">£80,706</td></tr>
+    </table>
+    </div>
+    <p><strong>Verdict:</strong> feasible, but not guaranteed in Year 1 alone. Even the central scenario falls about £2,400 short each once real costs are included — only the upper scenario clears £50,000 each comfortably within Year 1 itself. The conservative scenario isn't close (about £22,000 each).</p>
+    <h3>Why Year 2 changes this materially</h3>
+    <p>If the acceptance fee or brand licence renews annually — a reasonable assumption, not yet confirmed — Year 2 compounds on top of new winners rather than starting from zero. Renewing an existing relationship costs far less to service than winning a brand-new one, since there's no fresh trophy to fulfil and no new business to convince from a standing start:</p>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Line</th><th class="num">Amount</th></tr>
+      <tr><td>Renewal revenue (45% of 507 Year-1 winners × £199)</td><td class="num">£45,402</td></tr>
+      <tr><td>New Year 2 cohort (repeat of Year 1 central performance)</td><td class="num">£103,185</td></tr>
+      <tr><td><strong>Year 2 gross total</strong></td><td class="num"><strong>£148,587</strong></td></tr>
+      <tr><td>Estimated Year 2 running costs</td><td class="num">£9,141</td></tr>
+      <tr class="hi"><td><strong>Year 2 NET</strong></td><td class="num"><strong>£139,446</strong></td></tr>
+      <tr class="hi"><td><strong>Year 2 EACH</strong></td><td class="num"><strong>£69,723</strong></td></tr>
+    </table>
+    </div>
+    <p><strong>This is the real path beyond £50,000 each</strong>, and it doesn't require engagement rates or category fill to improve at all — purely from Year 1's own winners renewing on top of a repeat-performance new cohort. The renewal rate (45%) and price (£199) are judgment calls, like everything else flagged as such throughout this report, but they're the single biggest, lowest-effort lever available once Year 1 is running.</p>
+    <div class="callout"><strong>Practical next steps:</strong> build the renewal mechanic into the product from day one, even as a simple annual reminder email; get real trophy supplier quotes before Year 1 starts, since it's the one cost genuinely within control; and track real attach rates and engagement from the first cohort closely, since the gap to £50,000 each in Year 1 is small enough that real numbers could close it either way well before any change of strategy is needed.</div>
+  </section>
+
+  <section>
+    <h2><span class="num">10</span> Full Site Check — What Else Is There, and What It Changes</h2>
+    <p>Checked every page on the live site (FAQs, About, the entry form, and the voting flow), not just the ones this plan was originally built from. Four things worth knowing:</p>
+    <p><strong>Winners are selected two ways, not one.</strong> The FAQ confirms most categories are decided by public vote, but "winners in judged categories may be selected by an independent panel." Doesn't change the revenue model — one winner per active slot either way — but worth describing accurately rather than only mentioning the vote.</p>
+    <p><strong>There's a four-tier status ladder already live: Nominee, Finalist, Top 3, and Winner.</strong> Each can carry its own branded "shield" once a brand licence is issued. This plan currently only monetises two of the four tiers (Winner via the three packages, Finalist via the finalist package) — a Top 3 tier, priced between the two, is a genuine product opportunity worth considering once the core two are selling, not a Year 1 must-have.</p>
+    <p><strong>The FAQ doesn't yet disclose that the brand licence costs anything.</strong> It confirms winners "can promote their achievement... once British Trade Awards has issued you with an official brand licence," but nowhere states there's a fee attached — worth updating before real winners start asking, since right now a reasonable reader could assume it's free, given entry itself is repeatedly described as free.</p>
+    <p><strong>The real entry form supports keeping engagement estimates conservative, not the opposite.</strong> It's a genuine seven-step form — location, sector, category, company details, a written business description, trade body memberships, review — plus vetting evidence (insurance, ID, trading address, qualifications) if requested. This is real friction, not a one-click nomination, which is exactly why the 10–20% engagement range (Section 3) stays conservative rather than being revised upward.</p>
+    <p>One date correction for precision: the site's own Key Dates run entries Feb–Apr 2027 and winners announced Nov 2027, even though the programme is described as "launching in 2026." Worth using the real 2027 dates consistently, since "Year 1" here means this specific cycle, not calendar year 2026 itself.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">11</span> Getting the Engagement Rate Right — Still the Biggest Unknown</h2>
+    <p>Everything above still rests on the same two numbers flagged before: the 54.5% market-existence figure (reasonably solid) and the 10–20% engagement range (genuine judgment, not evidence). Nothing about the new sponsorship structure or the brewery events changes that — it remains the single biggest thing worth testing with real activity before relying on any of these figures for a bigger decision.</p>
     <ul class="plain">
-      <li><strong>Run a small real test</strong> — pick 2–3 categories in 2–3 locations, run the actual nomination process from Section 9, and see what response rate we really get.</li>
-      <li><strong>A real 20-business test beats more modelling</strong> — it replaces the single biggest guess in this report with an actual number.</li>
-      <li><strong>Then revisit the package split</strong> in Section 4 against real sales, since that's the second-biggest judgment call in the plan.</li>
+      <li><strong>Run a small real test</strong> — 2–3 categories in 2–3 locations, run the real nomination process, see what response rate actually comes back.</li>
+      <li><strong>Revisit the package split and sponsorship tiers</strong> against real sales once the first cohort of winners exists — both are judgment calls worth correcting with real data as soon as it's available.</li>
     </ul>
   </section>
 
-  <div class="disclaimer">Note: this is a planning estimate for our own use, not a forecast or guarantee. Section 2 (engagement rate) and Section 4 (package split) are the two numbers most worth validating against real activity before relying on this range for any bigger decision.</div>
+  <section>
+    <h2><span class="num">12</span> Sources</h2>
+    <ul class="src-list">
+      <li><a href="https://business-awards.uk/regional-business-awards/" target="_blank" rel="noopener">Business Awards UK — Regional Business Awards</a></li>
+      <li><a href="https://www.fmb.org.uk/about-us/what-we-do/master-builder-awards.html" target="_blank" rel="noopener">Federation of Master Builders — Master Builder Awards</a></li>
+      <li><a href="https://www.ons.gov.uk/businessindustryandtrade/business/activitysizeandlocation/bulletins/ukbusinessactivitysizeandlocation/2025" target="_blank" rel="noopener">ONS — UK Business; Activity, Size and Location 2025</a></li>
+    </ul>
+  </section>
+
+  <div class="disclaimer">Note: this is a planning estimate for internal use, not a forecast or guarantee. The engagement rate (Section 3) and the sponsorship/package split (Sections 4–5) are the numbers most worth validating against real activity before relying on this range for a bigger decision.</div>
 </main>
 </body>
 </html>

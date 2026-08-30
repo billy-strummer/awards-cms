@@ -4,293 +4,205 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Year 1 Revenue Projection — Trade Awards Programme</title>
+<title>Year 1 Revenue Projection (Revised) — Trade Awards Programme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --near-black: #0E0E10;
-    --paper: #F7F5F1;
-    --paper-line: #E5E0D5;
-    --gold: #9C7A2E;
-    --gold-bright: #C9A227;
-    --ink: #1A1A1A;
-    --muted: #6B6B6B;
+    --near-black: #0E0E10; --paper: #F7F5F1; --paper-line: #E5E0D5;
+    --gold: #9C7A2E; --gold-bright: #C9A227; --ink: #1A1A1A; --muted: #6B6B6B; --red: #8C2F1E;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; }
   a { color: var(--gold); }
-
-  .hero {
-    background: var(--near-black);
-    color: #EFEAE0;
-    padding: 44px 32px 56px;
+  .revised-flag {
+    background: var(--red); color: #FBF0EC; text-align: center; font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px; letter-spacing: 0.06em; padding: 9px; font-weight: 600;
   }
-  .hero-inner { max-width: 760px; margin: 0 auto; }
-  .back-link {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12.5px;
-    color: #A8A296;
-    text-decoration: none;
-    display: inline-block;
-    margin-bottom: 28px;
-    letter-spacing: 0.04em;
-  }
+  .hero { background: var(--near-black); color: #EFEAE0; padding: 32px 32px 48px; }
+  .hero-inner { max-width: 780px; margin: 0 auto; }
+  .back-link { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #A8A296; text-decoration: none; display: inline-block; margin-bottom: 24px; }
   .back-link:hover { color: var(--gold-bright); }
-  .eyebrow {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--gold-bright);
-    margin-bottom: 16px;
-  }
-  h1 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
-    font-size: clamp(28px, 4.4vw, 42px);
-    line-height: 1.12;
-    margin: 0 0 12px;
-    color: #FBF9F5;
-  }
-  .hero-sub { font-size: 16px; color: #C9C4B8; max-width: 56ch; line-height: 1.55; margin: 0 0 40px; }
-
-  .stat-row { display: flex; gap: 0; border-top: 1px solid rgba(156,122,46,0.35); }
-  .stat {
-    flex: 1;
-    padding: 22px 20px 4px 0;
-    border-right: 1px solid rgba(156,122,46,0.25);
-  }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-bright); margin-bottom: 16px; }
+  h1 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: clamp(26px, 4.2vw, 40px); line-height: 1.12; margin: 0 0 12px; color: #FBF9F5; }
+  .hero-sub { font-size: 15.5px; color: #C9C4B8; max-width: 60ch; line-height: 1.55; margin: 0 0 32px; }
+  .stat-row { display: flex; gap: 0; border-top: 1px solid rgba(156,122,46,0.35); flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 140px; padding: 20px 18px 4px 0; border-right: 1px solid rgba(156,122,46,0.25); }
   .stat:last-child { border-right: none; }
-  .stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8B8676; margin-bottom: 8px; }
-  .stat-value { font-family: 'Playfair Display', serif; font-weight: 600; font-size: clamp(22px, 3.2vw, 30px); color: var(--gold-bright); }
-  .stat-value.central { color: #FBF9F5; }
-  .stat-meta { font-size: 12.5px; color: #8B8676; margin-top: 4px; }
+  .stat-label { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #8B8676; margin-bottom: 6px; }
+  .stat-value { font-family: 'Playfair Display', serif; font-weight: 600; font-size: clamp(18px, 2.6vw, 24px); color: var(--gold-bright); }
+  .stat-value.hi { color: #FBF9F5; }
+  .stat-meta { font-size: 11.5px; color: #8B8676; margin-top: 4px; }
 
-  main { max-width: 760px; margin: 0 auto; padding: 56px 32px 100px; }
-  section { margin-bottom: 52px; }
-  h2 {
-    font-family: 'Playfair Display', serif;
-    font-weight: 600;
-    font-size: 24px;
-    color: var(--ink);
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin: 0 0 18px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--paper-line);
-  }
-  h2 .num { font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: var(--gold); font-weight: 600; }
-  p { font-size: 15.5px; line-height: 1.68; color: #333; margin: 0 0 16px; }
+  main { max-width: 780px; margin: 0 auto; padding: 48px 32px 100px; }
+  section { margin-bottom: 46px; }
+  h2 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 22px; color: var(--ink); display: flex; align-items: baseline; gap: 12px; margin: 0 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--paper-line); }
+  h2 .num { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--gold); font-weight: 600; }
+  h3 { font-family: 'Inter', sans-serif; font-weight: 700; font-style: italic; font-size: 16px; color: var(--gold); margin: 20px 0 8px; }
+  p { font-size: 15px; line-height: 1.66; color: #333; margin: 0 0 15px; }
   strong { color: var(--ink); }
-
-  .callout {
-    background: #FDFCF9;
-    border-left: 3px solid var(--gold);
-    padding: 16px 20px;
-    font-size: 14.5px;
-    line-height: 1.6;
-    color: #454037;
-    margin: 20px 0;
-  }
+  .callout { background: #FDFCF9; border-left: 3px solid var(--gold); padding: 15px 18px; font-size: 14px; line-height: 1.58; color: #454037; margin: 18px 0; }
+  .callout.warn { border-left-color: var(--red); }
   .callout strong { color: var(--ink); }
-
-  table { width: 100%; border-collapse: collapse; margin: 18px 0 8px; font-size: 14px; }
-  th {
-    text-align: left;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11.5px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--gold);
-    padding: 10px 14px;
-    border-bottom: 2px solid var(--gold);
-    background: #FBFAF6;
-  }
-  td {
-    padding: 11px 14px;
-    border-bottom: 1px solid var(--paper-line);
-    color: #333;
-    vertical-align: top;
-  }
-  tr.total td { font-weight: 700; color: var(--ink); border-top: 1px solid var(--ink); border-bottom: none; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 6px; font-size: 13px; }
+  th { text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.03em; text-transform: uppercase; color: var(--gold); padding: 9px 12px; border-bottom: 2px solid var(--gold); background: #FBFAF6; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--paper-line); color: #333; vertical-align: top; }
+  tr.hi td { font-weight: 700; color: var(--ink); }
   td.num, th.num { font-family: 'IBM Plex Mono', monospace; }
-  .calc { font-style: italic; color: var(--muted); font-size: 13px; }
   .table-scroll { overflow-x: auto; }
-
-  ul.plain { margin: 0 0 16px; padding-left: 22px; }
-  ul.plain li { font-size: 15.5px; line-height: 1.6; color: #333; margin-bottom: 10px; }
+  ul.plain { margin: 0 0 15px; padding-left: 20px; }
+  ul.plain li { font-size: 15px; line-height: 1.6; color: #333; margin-bottom: 9px; }
   ul.plain li strong { color: var(--ink); }
-
-  .disclaimer {
-    margin-top: 60px;
-    padding-top: 24px;
-    border-top: 1px solid var(--paper-line);
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--muted);
-    font-style: italic;
-  }
-
-  @media (max-width: 640px) {
-    .stat-row { flex-direction: column; }
-    .stat { border-right: none; border-bottom: 1px solid rgba(156,122,46,0.25); padding-bottom: 16px; }
-    .stat:last-child { border-bottom: none; }
-  }
+  .src-list { margin: 0; padding-left: 20px; }
+  .src-list li { font-size: 14px; margin-bottom: 6px; }
+  .disclaimer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--paper-line); font-size: 12.5px; line-height: 1.6; color: var(--muted); font-style: italic; }
 </style>
 </head>
 <body>
-
+<div class="revised-flag">REVISED — v2, following an evidence-based audit</div>
 <div class="hero">
   <div class="hero-inner">
     <a class="back-link" href="/reports.html">← Reports</a>
-    <div class="eyebrow">Financial Model · Year 1</div>
+    <div class="eyebrow">Financial Model · Evidence-Audited</div>
     <h1>Year 1 Revenue Projection</h1>
-    <p class="hero-sub">National Trade Awards Programme — 110 locations, 62 categories. Full methodology and working behind the ballpark estimate.</p>
+    <p class="hero-sub">National Trade Awards Programme. Prepared for investor review — every figure sourced or explicitly flagged as judgment.</p>
 
     <div class="stat-row">
-      <div class="stat">
-        <div class="stat-label">Low</div>
-        <div class="stat-value">£432,700</div>
-        <div class="stat-meta">45% fill rate · ~3,069 winners</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Central</div>
-        <div class="stat-value central">£1,337,142</div>
-        <div class="stat-meta">65% fill rate · ~4,433 winners</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">High</div>
-        <div class="stat-value">£3,271,400</div>
-        <div class="stat-meta">80% fill rate · ~5,456 winners</div>
-      </div>
+      <div class="stat"><div class="stat-label">B · No ceremony</div><div class="stat-value">£712,759</div><div class="stat-meta">Evidence-proven structure</div></div>
+      <div class="stat"><div class="stat-label">C · Single final</div><div class="stat-value hi">£834,060</div><div class="stat-meta">FMB-aligned structure</div></div>
+      <div class="stat"><div class="stat-label">A · Regional galas</div><div class="stat-value">£923,156</div><div class="stat-meta">As originally scoped</div></div>
     </div>
   </div>
 </div>
 
 <main>
-
   <section>
     <h2><span class="num">01</span> Executive Summary</h2>
-    <p><strong>Central Year 1 estimate: approximately £1.34 million</strong>, within a genuine range of roughly £430,000 (low) to £3.27 million (high).</p>
-    <p>This is a wide range on purpose. The figure is driven almost entirely by three assumptions this report cannot calculate for you — how many of the 62 categories genuinely have credible local nominees in every location in year one, how quickly a brand-new (unproven) awards programme achieves purchase uptake on winner-stage products, and how many regional ceremonies the business can realistically run in its first year. Every number below is shown with its underlying calculation, so the model can be adjusted as real assumptions become clearer.</p>
-    <p>No revenue is included from entry fees (confirmed free-to-enter), or from directory, membership, or pay-per-lead streams — these depend on the programme already having a track record, which by definition it won't have in Year 1.</p>
+    <div class="callout warn"><strong>This report supersedes the earlier v1 estimate (£1.34M central).</strong> That figure used an unvalidated 65% category fill rate and pricing assumptions with no supporting evidence. Following a full audit — including research into real, currently-operating UK comparables — the fill rate, pricing, and event structure have all been rebuilt from evidence where evidence exists, and clearly flagged as judgment where it doesn't.</div>
+    <p><strong>Revised central Year 1 estimate: approximately £713,000 to £923,000</strong>, depending on one major strategic decision this report identifies but does not make for you: whether to run ticketed regional ceremonies at all. The full range across all fill-rate and structural scenarios modelled is £461,000 (low) to £1,107,000 (high).</p>
+    <p>This is materially lower than the earlier estimate, for defensible reasons detailed throughout — primarily a more conservative, evidence-based category fill rate, and the discovery that the closest real comparable in the market does not run award ceremonies at all.</p>
   </section>
 
   <section>
-    <h2><span class="num">02</span> The Scale of the Programme</h2>
-    <p>Two inputs set the ceiling on everything else in this model: how many categories run per location, and how many locations are covered.</p>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Category Group</th><th class="num">Categories</th></tr>
-      <tr><td>Building &amp; Construction</td><td class="num">12</td></tr>
-      <tr><td>Fit-Out &amp; Finishing</td><td class="num">12</td></tr>
-      <tr><td>Outdoor &amp; Landscaping</td><td class="num">8</td></tr>
-      <tr><td>Specialist Trades</td><td class="num">8</td></tr>
-      <tr><td>Tech &amp; Green Energy</td><td class="num">6</td></tr>
-      <tr><td>Industry Leadership</td><td class="num">6</td></tr>
-      <tr><td>Mechanical, Electrical &amp; Plumbing</td><td class="num">5</td></tr>
-      <tr><td>Carpentry &amp; Joinery</td><td class="num">5</td></tr>
-      <tr class="total"><td>Total</td><td class="num">62</td></tr>
-    </table>
-    </div>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Region</th><th class="num">Locations</th></tr>
-      <tr><td>England — counties</td><td class="num">42</td></tr>
-      <tr><td>England — large cities</td><td class="num">15</td></tr>
-      <tr><td>England — London boroughs</td><td class="num">15</td></tr>
-      <tr><td>Scotland</td><td class="num">16</td></tr>
-      <tr><td>Wales</td><td class="num">12</td></tr>
-      <tr class="total"><td>Stated total used in this model</td><td class="num">110</td></tr>
-    </table>
-    </div>
-    <div class="callout"><strong>Note:</strong> the individual figures supplied (42 + 15 + 15 = 72 in England, + 16 in Scotland + 12 in Wales) sum to 100, not the stated total of 110. This report uses the stated total of 110 throughout, since that was given as the final figure — worth double-checking the underlying location list for the missing 10.</div>
-    <p>110 locations × 62 categories = <strong>6,820 location-category slots</strong> — the absolute ceiling on how many individual award outcomes could exist in Year 1, before any realism adjustment is applied.</p>
+    <h2><span class="num">02</span> What Changed, and Why</h2>
+    <p>The previous version used a category fill rate of 65% with no stated justification beyond "a reasonable central estimate." When challenged, that figure did not hold up. This version replaces it with a bottom-up, category-by-category analysis, and researches real, currently-operating UK businesses running comparable programmes — using their actual published pricing and structural choices as evidence wherever they exist, rather than continuing to guess.</p>
   </section>
 
   <section>
-    <h2><span class="num">03</span> Methodology — The Funnel</h2>
-    <p>Revenue is built up through a funnel, not applied as a flat rate to the ceiling above:</p>
+    <h2><span class="num">03</span> Evidence Base</h2>
+    <p>Four real, current sources inform this revision:</p>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Source</th><th>Finding</th><th>Used For</th></tr>
+      <tr><td><strong>Business Awards UK</strong></td><td>Direct comparable: free-to-enter, pay-only-if-you-win, 46 English counties, ~60 sectors. Current pricing: £199 (+VAT) Award Acceptance Fee, £99 (+VAT) optional trophy. Runs <strong>no</strong> award ceremony — winners told them it wasn't worth the cost.</td><td>Pricing anchors. Direct evidence against assuming a ceremony is necessary.</td></tr>
+      <tr><td><strong>Federation of Master Builders</strong></td><td>UK's most established trade-specific awards body (founded 1941). Runs <strong>biennially</strong>, not annually. One national final, not many regional galas. Broader, project-based categories. Real sponsors: TradePoint, Jewson, JCB, Bibby Financial Services.</td><td>Cadence risk. Event structure precedent. Category granularity risk. Real sponsor-type evidence.</td></tr>
+      <tr><td><strong>North Notts Business Awards</strong></td><td>Real, current regional gala ticket price: £73 + £2 booking fee, tables of 8.</td><td>Ticket price anchor for the regional-gala scenario.</td></tr>
+      <tr><td><strong>ONS / DBT Business Population 2025</strong></td><td>Construction is the UK's largest SME sector (~885,000 businesses). Business density highly uneven — over a third of UK businesses are in London and the South East.</td><td>Supports the location-density split used in the fill-rate calculation.</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span> Category Fill Rate — Bottom-Up Methodology</h2>
+    <p>Every one of the 62 categories was classified by how common the trade genuinely is, then split by location density — a niche trade behaves very differently in a rural county versus a major city.</p>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Tier</th><th class="num">Cats</th><th class="num">County fill</th><th class="num">Urban fill</th><th>Example</th></tr>
+      <tr><td>High-fill</td><td class="num">22</td><td class="num">80%</td><td class="num">95%</td><td><em>Electrical, Plumbing</em></td></tr>
+      <tr><td>Medium-fill</td><td class="num">15</td><td class="num">40%</td><td class="num">80%</td><td><em>Drainage, Pest Control</em></td></tr>
+      <tr><td>Low-fill (niche)</td><td class="num">19</td><td class="num">15%</td><td class="num">50%</td><td><em>Structural Steelworks</em></td></tr>
+      <tr><td>Leadership</td><td class="num">6</td><td class="num">35%</td><td class="num">60%</td><td><em>Apprentice of the Year</em></td></tr>
+    </table>
+    </div>
+    <p><strong>Blended result:</strong> county-like locations (70 of 100) blend to ~46% fill; dense urban locations (30 of 100) blend to ~74%. Weighted across the full mix: <strong>central estimate 54.5%</strong>, working range 35–65%.</p>
+    <div class="callout"><strong>Location count note:</strong> the supplied figures (42+15+15+16+12) sum to 100, not the previously stated 110. This report uses 100 throughout.</div>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span> The Structural Decision This Report Cannot Make For You</h2>
+    <p>The single most important finding in this audit. The original model assumed 11 independent ticketed regional galas, generating roughly a third of total projected revenue — a structure with no support from either real comparable found:</p>
     <ul class="plain">
-      <li><strong>Step 1 — Active slots:</strong> 6,820 theoretical slots × a category fill rate (45–80%, see assumptions below) = the number of category-location combinations that genuinely run with real nominees in Year 1.</li>
-      <li><strong>Step 2 — Winners:</strong> exactly one winner per active slot, by definition.</li>
-      <li><strong>Step 3 — Total nominees:</strong> active slots × an average nominee count per slot (4–8, not always the full 10 in a new programme) = total nominees; winners subtracted from this gives non-winning finalists.</li>
-      <li><strong>Step 4 — Revenue:</strong> each revenue stream is applied to whichever population actually buys it (winners for logo licensing/trophies/photography/PR, the larger finalist pool for finalist packages, winners plus guests for gala tickets), each at its own attach rate and price.</li>
+      <li>Business Awards UK runs no ceremony at all, and says explicitly their own winners told them it wasn't worth it.</li>
+      <li>FMB — the most established trade-specific body — runs one national final, not many regional galas, and only every two years.</li>
+    </ul>
+    <p>Three structures are modelled below at all three fill-rate scenarios. This report deliberately does not recommend one over the others — that's a brand and risk-appetite decision, not a modelling question.</p>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Structure</th><th>Description</th><th class="num">Low</th><th class="num">Central</th><th class="num">High</th></tr>
+      <tr><td>A — Regional galas</td><td><em>As originally scoped. Not validated by either comparable.</em></td><td class="num">£608,122</td><td class="num">£923,156</td><td class="num">£1,107,098</td></tr>
+      <tr class="hi"><td>B — No ceremony</td><td><em>Matches Business Awards UK's proven model exactly.</em></td><td class="num">£461,197</td><td class="num">£712,759</td><td class="num">£862,523</td></tr>
+      <tr><td>C — Single national final</td><td><em>Matches FMB's structure.</em></td><td class="num">£548,042</td><td class="num">£834,060</td><td class="num">£1,002,378</td></tr>
+    </table>
+    </div>
+    <div class="callout warn"><strong>Why this matters for an investor conversation:</strong> presenting only the highest-revenue structure (A) without disclosing it's the least evidence-supported of the three would be a material omission. Structure B is the only one directly proven to work at comparable scale by a real, currently-operating business.</div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span> Two Further Risks Investors Will Likely Raise</h2>
+    <h3>Category granularity versus market precedent</h3>
+    <p>62 categories per location is considerably more granular than either comparable found. Business Awards UK runs ~4–8 categories per sector; FMB uses broader project-based categories rather than narrow trade splits. This granularity may be a genuine differentiator — but it's untested at this depth, and worth having a direct answer ready for.</p>
+    <h3>Annual cadence versus market precedent</h3>
+    <p>FMB's flagship awards run every two years, not annually. Even an 80+ year old, well-resourced trade body doesn't attempt full national coverage every single year. That doesn't make an annual cadence wrong — but it's a comparator worth anticipating.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span> Revised Assumptions — Evidence vs Judgment</h2>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Assumption</th><th>Basis</th><th>Value / Source</th></tr>
+      <tr><td>Acceptance/logo fee</td><td><strong>EVIDENCE</strong></td><td>£199 — Business Awards UK's real price.</td></tr>
+      <tr><td>Trophy price</td><td><strong>EVIDENCE</strong></td><td>£99 — Business Awards UK's real price.</td></tr>
+      <tr><td>Regional gala ticket</td><td><strong>EVIDENCE</strong></td><td>£75 — North Notts Business Awards' real price.</td></tr>
+      <tr><td>Category fill rate</td><td><strong>EVIDENCE-INFORMED</strong></td><td>35–65%, bottom-up tier analysis, cross-checked against ONS data.</td></tr>
+      <tr><td>Acceptance fee attach</td><td><strong>JUDGMENT</strong></td><td>55% central — no comparable publishes conversion data.</td></tr>
+      <tr><td>Trophy attach</td><td><strong>JUDGMENT</strong></td><td>35% central — no comparable data available.</td></tr>
+      <tr><td>Photography/PR/finalist</td><td><strong>JUDGMENT</strong></td><td>No comparable found for these specific products — least-certain lines.</td></tr>
+      <tr><td>National sponsor count/fee</td><td><strong>JUDGMENT, part-evidenced</strong></td><td>8 × £5,000 — FMB confirms sponsor types exist, count/fee are estimated.</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span> Full Sensitivity — All Scenarios</h2>
+    <div class="table-scroll">
+    <table>
+      <tr><th>Structure</th><th class="num">Low (35%)</th><th class="num">Central (54.5%)</th><th class="num">High (65%)</th></tr>
+      <tr><td>A — Regional galas</td><td class="num">£608,122</td><td class="num">£923,156</td><td class="num">£1,107,098</td></tr>
+      <tr><td>B — No ceremony</td><td class="num">£461,197</td><td class="num">£712,759</td><td class="num">£862,523</td></tr>
+      <tr><td>C — Single national final</td><td class="num">£548,042</td><td class="num">£834,060</td><td class="num">£1,002,378</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">09</span> What This Still Excludes</h2>
+    <ul class="plain">
+      <li><strong>Entry fees</strong> — £0, confirmed free-to-enter model.</li>
+      <li><strong>Directory, membership, pay-per-lead revenue</strong> — excluded; depends on a track record Year 1 won't have.</li>
+      <li><strong>All operating costs</strong> — judging, events, sponsor sales all carry real costs not modelled here. This is a revenue projection, not a P&amp;L.</li>
     </ul>
   </section>
 
   <section>
-    <h2><span class="num">04</span> Assumptions Used</h2>
-    <p>Every assumption below is shown across low/central/high, with the reasoning behind it — this is the section worth challenging or adjusting first, since it drives the entire model.</p>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Assumption</th><th class="num">Low</th><th class="num">Central</th><th class="num">High</th><th>Why</th></tr>
-      <tr><td>Category fill rate</td><td class="num">45%</td><td class="num">65%</td><td class="num">80%</td><td class="calc">% of the 6,820 slots with genuine local nominees in Year 1 — niche categories won't fill in every small county.</td></tr>
-      <tr><td>Avg. nominees / active slot</td><td class="num">4</td><td class="num">6</td><td class="num">8</td><td class="calc">A new, unproven programme won't always attract the full 10 nominees in its first year.</td></tr>
-      <tr><td>Logo licensing attach / price</td><td class="num">30% / £75</td><td class="num">45% / £100</td><td class="num">60% / £150</td><td class="calc">Recurring annual fee for the winner badge — uptake and price scale with how established the brand feels.</td></tr>
-      <tr><td>Trophy/plaque attach / price</td><td class="num">45% / £60</td><td class="num">60% / £75</td><td class="num">75% / £100</td><td class="calc">Closest thing to an expected purchase — uptake starts higher than other add-ons.</td></tr>
-      <tr><td>Photography/video attach / price</td><td class="num">8% / £175</td><td class="num">15% / £225</td><td class="num">25% / £300</td><td class="calc">A premium add-on, not a default purchase.</td></tr>
-      <tr><td>PR service attach / price</td><td class="num">8% / £200</td><td class="num">15% / £275</td><td class="num">25% / £350</td><td class="calc">Same logic as photography — genuinely useful, not universally bought.</td></tr>
-      <tr><td>Finalist package attach / price</td><td class="num">5% / £50</td><td class="num">10% / £65</td><td class="num">18% / £85</td><td class="calc">Larger non-winning pool, lower price point and uptake than winner products.</td></tr>
-      <tr><td>Gala attendance rate</td><td class="num">30%</td><td class="num">45%</td><td class="num">55%</td><td class="calc">% of winners attending a regional ceremony, each bringing one guest.</td></tr>
-      <tr><td>Average ticket price</td><td class="num">£65</td><td class="num">£85</td><td class="num">£110</td><td class="calc">Regional ceremony pricing, not a single flagship national gala.</td></tr>
-      <tr><td>National category sponsors</td><td class="num">6</td><td class="num">12</td><td class="num">18</td><td class="calc">Sponsors covering one category across all 110 locations at once.</td></tr>
-    </table>
-    </div>
-  </section>
-
-  <section>
-    <h2><span class="num">05</span> Central Scenario — Full Breakdown</h2>
-    <p>Using the central-column assumptions above: 65% category fill rate produces 4,433 active slots, 4,433 winners, and 22,165 non-winning finalists.</p>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Revenue Source</th><th>Calculation</th><th class="num">Central Estimate</th></tr>
-      <tr><td>Logo licensing</td><td class="calc">4,433 winners × 45% × £100</td><td class="num">£199,485</td></tr>
-      <tr><td>Trophies/plaques</td><td class="calc">4,433 winners × 60% × £75</td><td class="num">£199,485</td></tr>
-      <tr><td>Photography/video</td><td class="calc">4,433 winners × 15% × £225</td><td class="num">£149,614</td></tr>
-      <tr><td>PR service</td><td class="calc">4,433 winners × 15% × £275</td><td class="num">£182,861</td></tr>
-      <tr><td>Finalist packages</td><td class="calc">22,165 finalists × 10% × £65</td><td class="num">£144,072</td></tr>
-      <tr><td>Gala ticket sales</td><td class="calc">3,990 attendees × £85</td><td class="num">£339,124</td></tr>
-      <tr><td>Regional event sponsorship</td><td class="calc">11 events × £3,500</td><td class="num">£38,500</td></tr>
-      <tr><td>National category sponsorship</td><td class="calc">12 sponsors × £7,000</td><td class="num">£84,000</td></tr>
-      <tr class="total"><td>Total (central)</td><td></td><td class="num">£1,337,142</td></tr>
-    </table>
-    </div>
-  </section>
-
-  <section>
-    <h2><span class="num">06</span> Three Scenarios Compared</h2>
-    <p>The same calculation run at the low and high ends of every assumption simultaneously, not just one variable at a time:</p>
-    <div class="table-scroll">
-    <table>
-      <tr><th>Scenario</th><th class="num">Fill Rate</th><th class="num">Winners</th><th class="num">Total Year 1 Revenue</th></tr>
-      <tr><td>Low</td><td class="num">45%</td><td class="num">~3,069</td><td class="num"><strong>£432,700</strong></td></tr>
-      <tr><td>Central</td><td class="num">65%</td><td class="num">~4,433</td><td class="num"><strong>£1,337,100</strong></td></tr>
-      <tr><td>High</td><td class="num">80%</td><td class="num">~5,456</td><td class="num"><strong>£3,271,400</strong></td></tr>
-    </table>
-    </div>
-  </section>
-
-  <section>
-    <h2><span class="num">07</span> What This Deliberately Excludes</h2>
+    <h2><span class="num">10</span> Recommendations Before an Investor Meeting</h2>
     <ul class="plain">
-      <li><strong>Entry fees</strong> — £0 throughout, per the confirmed free-to-enter model.</li>
-      <li><strong>Directory listings, membership club, pay-per-lead marketplace</strong> — excluded entirely. These depend on the programme already having a credible pool of past winners and real public search traffic — neither exists in Year 1 by definition.</li>
-      <li><strong>Costs of any kind</strong> — this is a revenue model only. Running 11 regional ceremonies, judging 6,820 potential slots, and building national sponsor relationships all carry substantial real costs not reflected here.</li>
+      <li><strong>Decide the event structure question explicitly</strong> rather than defaulting to Structure A — be ready to explain why, given the evidence.</li>
+      <li><strong>Consider a reduced-scope pilot</strong> in fewer locations and the 22 high-fill categories first, to replace tier assumptions with real data before scaling to all 100 locations.</li>
+      <li><strong>Have a direct answer ready</strong> on category-granularity and annual-cadence — investors who look at this market briefly will find the same comparables this audit found.</li>
     </ul>
   </section>
 
   <section>
-    <h2><span class="num">08</span> Sensitivity — What Moves This Most</h2>
-    <p>Category fill rate is the single largest lever in the entire model: moving it from 45% to 80% roughly trebles total revenue, because it directly sets the winner count, and the winner count feeds almost every other revenue line downstream. A useful next step is a category-by-category realism check — which of the 62 categories genuinely have 5+ credible local businesses in a mid-sized county — since that answer will do more to sharpen this estimate than debating any of the pricing assumptions.</p>
+    <h2><span class="num">11</span> Sources</h2>
+    <ul class="src-list">
+      <li><a href="https://business-awards.uk/regional-business-awards/" target="_blank" rel="noopener">Business Awards UK — Regional Business Awards</a></li>
+      <li><a href="https://www.fmb.org.uk/about-us/what-we-do/master-builder-awards.html" target="_blank" rel="noopener">Federation of Master Builders — Master Builder Awards</a></li>
+      <li><a href="https://www.tickettailor.com/events/northnottsbusinessconnections/2140015" target="_blank" rel="noopener">North Notts Business Awards — ticket pricing</a></li>
+      <li><a href="https://www.ons.gov.uk/businessindustryandtrade/business/activitysizeandlocation/bulletins/ukbusinessactivitysizeandlocation/2025" target="_blank" rel="noopener">ONS — UK Business; Activity, Size and Location 2025</a></li>
+    </ul>
   </section>
 
-  <div class="disclaimer">
-    Note: this is a planning estimate built from stated assumptions, not a forecast or guarantee. It should be revisited once real data exists — actual category fill rates from the first judging round, actual attach rates from the first cohort of winners — since those figures will always be more reliable than any assumption in this report.
-  </div>
-
+  <div class="disclaimer">Note: this remains a planning estimate, not a forecast or guarantee. Evidence-anchored figures are considerably more reliable than judgment-call figures — Section 7 identifies exactly which is which. This should be revisited with real operating data as soon as it exists.</div>
 </main>
 </body>
 </html>

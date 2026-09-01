@@ -1058,7 +1058,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .chip-flag {
-      width: 34px;
+      width: 46px;
       align-self: stretch;
       margin: -6px 0 -6px -8px;
       object-fit: cover;
@@ -1199,10 +1199,12 @@
       text-decoration: none;
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 12px;
       width: 100%;
       box-sizing: border-box;
       overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
       transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
     }
 

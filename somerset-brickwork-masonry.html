@@ -72,16 +72,15 @@
     .breadcrumb span[aria-hidden] { color: rgba(255,255,255,.25); }
     .breadcrumb .current { color: rgba(255,255,255,.7); }
 
-    .cat-hero { margin-bottom: 20px; }
-    .cat-title-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .cat-hero { display: flex; align-items: stretch; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
     .cat-flag {
-      width: 84px; height: 84px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
+      width: 72px; height: 72px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
     }
-    .cat-title-row h1 { flex: 1; min-width: 200px; }
-    .cat-icon-wrap { flex-shrink: 0; width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; }
+    .cat-title-stack { flex: 1; min-width: 200px; display: flex; flex-direction: column; justify-content: center; }
+    .cat-icon-wrap { flex-shrink: 0; width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; }
     .cat-icon {
-      width: 84px; height: 84px;
+      width: 100%; height: 100%;
       background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
       -webkit-mask-image: url('images/icons/categories/brickwork-and-masonry-company.svg');
       mask-image: url('images/icons/categories/brickwork-and-masonry-company.svg');
@@ -90,8 +89,8 @@
       -webkit-mask-position: center; mask-position: center;
     }
 
-    .cat-title-row h1 { font-family: var(--font-display); font-size: clamp(1.5rem, 3.2vw, 2.2rem); font-weight: 700; line-height: 1.15; }
-    .cat-sub { font-size: 1.2rem; color: var(--gold); font-weight: 700; letter-spacing: .03em; text-transform: uppercase; margin-top: 12px; }
+    .cat-title-stack h1 { font-family: var(--font-display); font-size: clamp(1.5rem, 3.2vw, 2.2rem); font-weight: 700; line-height: 1.15; margin: 0; }
+    .cat-sub { font-size: 1.4rem; color: var(--gold); font-weight: 700; letter-spacing: .03em; text-transform: uppercase; margin: 2px 0 0; }
 
     .cat-desc { font-size: 1.2rem; line-height: 1.8; color: rgba(255,255,255,.8); max-width: 920px; margin: 28px 0 32px; }
 
@@ -107,14 +106,13 @@
     .nominee-link svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
 
     .cta-block { margin-top: 56px; padding: 36px; background: linear-gradient(140deg, #1d1a10 0%, #1a1a1a 60%); border: 1px solid rgba(201,162,39,0.3); border-radius: 16px; text-align: center; }
-    .cta-block p { color: rgba(255,255,255,.75); margin-bottom: 20px; font-size: .95rem; }
-    .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #000; font-weight: 700; font-size: .9rem; padding: 14px 32px; border-radius: 100px; letter-spacing: .02em; }
+    .cta-block p { font-family: var(--font-display); font-weight: 700; color: #fff; margin: 0 0 26px; font-size: clamp(1.3rem, 2.6vw, 1.7rem); line-height: 1.3; max-width: 34ch; margin-left: auto; margin-right: auto; text-wrap: balance; }
+    .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #000; font-weight: 700; font-size: 1.05rem; padding: 18px 44px; border-radius: 100px; letter-spacing: .02em; }
     .btn-gold:hover { background: var(--gold-light); color: #000; }
 
     /* ── Footer ───────────────────────────────────────────────────── */
     #sf { background: #050505; border-top: 1px solid rgba(201,162,39,0.15); padding: 56px 0 32px; }
-    .sf-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 32px; margin-bottom: 40px; }
-    .sf-logo img { height: 36px; width: auto; opacity: .9; }
+    .sf-top { display: flex; align-items: flex-start; justify-content: flex-end; flex-wrap: wrap; gap: 32px; margin-bottom: 40px; }
     .sf-nav { display: flex; flex-wrap: wrap; gap: 4px; }
     .sf-nav a { font-size: .8125rem; color: rgba(255,255,255,.45); padding: 6px 14px; border-radius: 100px; }
     .sf-nav a:hover { color: #fff; background: rgba(255,255,255,.06); }
@@ -171,14 +169,14 @@
     </p>
 
     <div class="cat-hero">
-      <div class="cat-title-row">
-        <img class="cat-flag" src="images/flags/Somerset.png" alt="Somerset flag">
+      <img class="cat-flag" src="images/flags/Somerset.png" alt="Somerset flag">
+      <div class="cat-title-stack">
         <h1>Brickwork &amp; Masonry Company</h1>
-        <div class="cat-icon-wrap" aria-hidden="true">
-          <div class="cat-icon"></div>
-        </div>
+        <p class="cat-sub">Somerset 2026 Nominees</p>
       </div>
-      <p class="cat-sub">Somerset 2026 Nominees</p>
+      <div class="cat-icon-wrap" aria-hidden="true">
+        <div class="cat-icon"></div>
+      </div>
     </div>
 
     <p class="cat-desc">This category recognises excellence in brick, block and stonework services, including new walls, extensions and new builds, repointing, chimney work, and heritage restoration.</p>
@@ -258,7 +256,6 @@
 <footer id="sf" role="contentinfo">
   <div class="container">
     <div class="sf-top">
-      <a href="home.html" class="sf-logo"><img src="images/logos/non-stacked/BTA_Corporate_Horizontal-gold-white.png" alt="British Trade Awards"></a>
       <nav class="sf-nav" aria-label="Footer navigation">
         <a href="home.html#categories">Categories</a>
         <a href="home.html#regions">Locations</a>
@@ -279,6 +276,31 @@
 </footer>
 
 <script>
+(function () {
+  var stack = document.querySelector('.cat-title-stack');
+  var flag = document.querySelector('.cat-flag');
+  var iconWrap = document.querySelector('.cat-icon-wrap');
+  if (stack && flag && iconWrap) {
+    var matchHeight = function () {
+      var h = stack.getBoundingClientRect().height;
+      if (h > 0) {
+        flag.style.height = h + 'px';
+        flag.style.width = h + 'px';
+        iconWrap.style.height = h + 'px';
+        iconWrap.style.width = h + 'px';
+      }
+    };
+    matchHeight();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(matchHeight);
+    }
+    var resizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(matchHeight, 100);
+    });
+  }
+})();
 (function () {
   var h = document.getElementById('site-header');
   var btn = document.getElementById('sh-hamburger-btn');

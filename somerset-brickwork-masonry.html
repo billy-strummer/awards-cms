@@ -78,7 +78,10 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
     }
     .cat-title-stack { flex: 0 1 auto; min-width: 200px; display: flex; flex-direction: column; justify-content: center; }
-    .cat-icon-wrap { flex-shrink: 0; width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; margin-left: 4px; }
+    .cat-icon-wrap {
+      flex-shrink: 0; width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; margin-left: 4px;
+      transform: translateY(-4px); /* the icon artwork itself has slack above the trowel that the flag crop doesn't, so nudge up to read level with the flag's top edge */
+    }
     .cat-icon {
       width: 100%; height: 100%;
       background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
@@ -106,8 +109,8 @@
     .nominee-link svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.5; }
 
     .cta-block { margin-top: 56px; padding: 36px; background: linear-gradient(140deg, #1d1a10 0%, #1a1a1a 60%); border: 1px solid rgba(201,162,39,0.3); border-radius: 16px; text-align: center; }
-    .cta-block p { font-family: var(--font-body); font-weight: 600; color: rgba(255,255,255,.9); margin: 0 0 26px; font-size: clamp(1.15rem, 2vw, 1.35rem); line-height: 1.5; max-width: 40ch; margin-left: auto; margin-right: auto; text-wrap: balance; }
-    .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #000; font-weight: 700; font-size: 1.05rem; padding: 18px 44px; border-radius: 100px; letter-spacing: .02em; }
+    .cta-block p { font-family: var(--font-body); font-weight: 500; color: rgba(255,255,255,.85); margin: 0 0 26px; font-size: clamp(1.15rem, 2vw, 1.35rem); line-height: 1.5; }
+    .btn-gold { display: inline-flex; align-items: center; gap: 8px; background: var(--gold); color: #000; font-weight: 800; font-size: 1.1rem; padding: 19px 46px; border-radius: 100px; letter-spacing: .02em; box-shadow: 0 4px 18px rgba(201,162,39,0.35); }
     .btn-gold:hover { background: var(--gold-light); color: #000; }
 
     /* ── Footer (matches home.html's #site-footer link/copyright pattern,
@@ -253,7 +256,7 @@
     </div>
 
     <div class="cta-block">
-      <p>Who is Somerset's Best Brickwork &amp; Masonry Company? Cast your vote to decide.</p>
+      <p>Who is Somerset's Best Brickwork &amp; Masonry Company?<br>Cast your vote to decide.</p>
       <a href="public-voting.html" class="btn-gold">Vote Now</a>
     </div>
 

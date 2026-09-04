@@ -709,7 +709,7 @@
           detailIcon.style.webkitMaskImage = 'url(' + iconUrl + ')';
         }
         if (detailCta)
-          detailCta.href = 'submit-entry.html?sector=' + sectorParam + '&category=' + encodeURIComponent(catName);
+          detailCta.href = 'public-voting.html?sector=' + sectorParam + '&category=' + encodeURIComponent(catName);
         if (detailExampleLink) {
           const examplePage = CATEGORY_EXAMPLE_PAGES[catName];
           if (examplePage) {
@@ -750,7 +750,7 @@
           .join('');
 
         const listCtaEl = document.getElementById('cat-modal-list-cta');
-        if (listCtaEl) listCtaEl.href = 'submit-entry.html?sector=' + currentSectorParam;
+        if (listCtaEl) listCtaEl.href = 'public-voting.html?sector=' + currentSectorParam;
 
         showListView();
         modal.classList.add('open');

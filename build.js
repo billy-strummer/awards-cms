@@ -288,6 +288,7 @@ async function build() {
     'home-blue2.html',
     'home-blue3.html',
     'home2.html',
+    'home-stage2.html',
     'submit-entry.html',
     'submit-entry.js',
     'vote.html',
@@ -373,9 +374,11 @@ async function build() {
     'global-actions.js',
     'home.js',
     'home2.js',
+    'home-stage2.js',
     'home-data.js',
     'hero-video-init.js',
     'home-inline.js',
+    'home-stage2-inline.js',
   ];
 
   publicJsFiles.forEach((file) => {

@@ -842,6 +842,44 @@
       color: var(--text-muted);
     }
 
+    /* UK Tour cities — two vertical stacks (column-major order) so the
+       10 confirmed cities read top-to-bottom then left-to-right, saving
+       vertical space vs. one long list. */
+    .tour-cities-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(5, auto);
+      grid-auto-flow: column;
+      gap: 8px 20px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .tour-cities-list li {
+      position: relative;
+      padding-left: 16px;
+      font-size: 0.9rem;
+      color: #fff;
+    }
+
+    .tour-cities-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      border-radius: 50%;
+    }
+
+    .tour-dates-note {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
     /* ============================================================
        SECTION 3 — CATEGORY GALLERY
     ============================================================ */
@@ -1822,6 +1860,7 @@
       .feature-box h3 { font-size: 1.1rem; }
       .key-dates-list { gap: 8px; }
       .key-date-item { gap: 10px; }
+      .tour-cities-list { gap: 6px 14px; }
 
       /* Category gallery — single column */
       .categories-grid {
@@ -2998,18 +3037,22 @@
           <div class="feature-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" data-gold-stroke stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
           </div>
-          <h3>UK Tour Dates</h3>
+          <h3>British Tour 2027</h3>
         </div>
-        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;">Ten regional celebrations across England, Scotland and Wales, honouring winners in person, close to home.</p>
-        <ul class="key-dates-list" role="list">
-          <li class="key-date-item">
-            <div class="key-date-dot" aria-hidden="true"></div>
-            <div>
-              <div class="key-date-label">Dates to be confirmed</div>
-              <div class="key-date-desc">Tour schedule launching soon</div>
-            </div>
-          </li>
+        <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;">Crowning of champions: join fellow winners for a well-deserved celebration near you.</p>
+        <ul class="tour-cities-list" role="list">
+          <li>Edinburgh</li>
+          <li>Manchester</li>
+          <li>Leeds</li>
+          <li>Nottingham</li>
+          <li>Birmingham</li>
+          <li>Cambridge</li>
+          <li>London</li>
+          <li>Brighton</li>
+          <li>Bristol</li>
+          <li>Cardiff</li>
         </ul>
+        <p class="tour-dates-note">Dates to be announced</p>
       </article>
 
     </div>

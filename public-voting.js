@@ -93,6 +93,14 @@ const votingSystem = {
     await this.loadAwards();
     await this.loadEntries();
     this.setupEventListeners();
+
+    // Re-match the flag height across the mobile breakpoint (a resize, or
+    // a device rotation, can cross it either way).
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => this.matchFlagHeight(), 100);
+    });
   },
 
   /**
@@ -162,16 +170,32 @@ const votingSystem = {
     }
 
     // Category icon -- always shown for visual balance: the specific
-    // category icon when filtered, otherwise a default trophy icon (reusing
-    // the "Champions Crowned" icon already used on home.html) so the hero
-    // never reads as an empty, lopsided card.
+    // category icon when filtered, otherwise the official silver Nominee
+    // Shield Mark (a trophy implies a category has already been won,
+    // which isn't true while voting is still open) so the hero never
+    // reads as an empty, lopsided card.
+    //
+    // Category icons are flat single-colour silhouettes, tinted gold via
+    // mask-image + a gradient background. The Nominee Shield is a
+    // finished silver badge with its own texture and detail -- it needs
+    // to show its own artwork, not get recoloured, so it's drawn as a
+    // plain background-image instead with the mask/gradient cleared.
     const iconEl = document.getElementById('votingHeroIcon');
     if (iconEl) {
-      const iconUrl = f.category
-        ? 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg'
-        : 'images/icons/categories/4 Champions Crowned.svg';
-      iconEl.style.maskImage = 'url(' + encodeURI(iconUrl) + ')';
-      iconEl.style.webkitMaskImage = 'url(' + encodeURI(iconUrl) + ')';
+      if (f.category) {
+        const iconUrl = 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg';
+        iconEl.style.background = 'linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%)';
+        iconEl.style.maskImage = 'url(' + encodeURI(iconUrl) + ')';
+        iconEl.style.webkitMaskImage = 'url(' + encodeURI(iconUrl) + ')';
+      } else {
+        iconEl.style.background = 'none';
+        iconEl.style.maskImage = 'none';
+        iconEl.style.webkitMaskImage = 'none';
+        iconEl.style.backgroundImage = 'url(images/icons/nominee-shield-silver.png)';
+        iconEl.style.backgroundSize = 'contain';
+        iconEl.style.backgroundRepeat = 'no-repeat';
+        iconEl.style.backgroundPosition = 'center';
+      }
     }
 
     // Title / gold subheading / description
@@ -201,6 +225,36 @@ const votingSystem = {
     titleEl.textContent = title;
     if (subEl) subEl.textContent = sub;
     if (descEl) descEl.textContent = desc;
+
+    this.matchFlagHeight();
+  },
+
+  /**
+   * Size the flag to match the title stack's own rendered height (mirrors
+   * the nominee page's cat-hero), so it doesn't stop short of the bottom
+   * of the title/subheading text. Only above the mobile breakpoint --
+   * below it the flag already has its own small fixed size (see the
+   * media query), which a long title's larger wrapped height would
+   * otherwise blow up.
+   */
+  matchFlagHeight() {
+    const flagEl = document.getElementById('votingHeroFlag');
+    const stackEl = document.querySelector('.voting-hero-title-stack');
+    if (!flagEl || !stackEl || flagEl.hidden) return;
+
+    const mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 600px)') : null;
+    if (mobileQuery && mobileQuery.matches) {
+      flagEl.style.height = '';
+      flagEl.style.width = '';
+      return;
+    }
+
+    const FLAG_RATIO = 1.6; // landscape, close to the real flag artwork's ~5:3 shape
+    const h = stackEl.getBoundingClientRect().height;
+    if (h > 0) {
+      flagEl.style.height = h + 'px';
+      flagEl.style.width = Math.round(h * FLAG_RATIO) + 'px';
+    }
   },
 
   /**

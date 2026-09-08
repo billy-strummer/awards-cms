@@ -134,10 +134,15 @@
       pointer-events: none;
     }
 
+    /* align-items: center (not stretch) -- the flag and icon both have
+       (or, for the flag, get given by JS) their own fixed height, so
+       stretch has no effect on either of them and they fall back to
+       top-aligning within the row instead of lining up with the title
+       text, which is centred within a stretched title-stack. */
     .voting-hero-inner {
       position: relative;
       display: flex;
-      align-items: stretch;
+      align-items: center;
       gap: 20px;
       flex-wrap: wrap;
     }

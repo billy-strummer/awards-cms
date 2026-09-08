@@ -170,17 +170,32 @@ const votingSystem = {
     }
 
     // Category icon -- always shown for visual balance: the specific
-    // category icon when filtered, otherwise a default nominee-shield icon
-    // (a trophy implies a category has already been won, which isn't true
-    // while voting is still open) so the hero never reads as an empty,
-    // lopsided card.
+    // category icon when filtered, otherwise the official silver Nominee
+    // Shield Mark (a trophy implies a category has already been won,
+    // which isn't true while voting is still open) so the hero never
+    // reads as an empty, lopsided card.
+    //
+    // Category icons are flat single-colour silhouettes, tinted gold via
+    // mask-image + a gradient background. The Nominee Shield is a
+    // finished silver badge with its own texture and detail -- it needs
+    // to show its own artwork, not get recoloured, so it's drawn as a
+    // plain background-image instead with the mask/gradient cleared.
     const iconEl = document.getElementById('votingHeroIcon');
     if (iconEl) {
-      const iconUrl = f.category
-        ? 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg'
-        : 'images/icons/nominee-shield.svg';
-      iconEl.style.maskImage = 'url(' + encodeURI(iconUrl) + ')';
-      iconEl.style.webkitMaskImage = 'url(' + encodeURI(iconUrl) + ')';
+      if (f.category) {
+        const iconUrl = 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg';
+        iconEl.style.background = 'linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%)';
+        iconEl.style.maskImage = 'url(' + encodeURI(iconUrl) + ')';
+        iconEl.style.webkitMaskImage = 'url(' + encodeURI(iconUrl) + ')';
+      } else {
+        iconEl.style.background = 'none';
+        iconEl.style.maskImage = 'none';
+        iconEl.style.webkitMaskImage = 'none';
+        iconEl.style.backgroundImage = 'url(images/icons/nominee-shield-silver.png)';
+        iconEl.style.backgroundSize = 'contain';
+        iconEl.style.backgroundRepeat = 'no-repeat';
+        iconEl.style.backgroundPosition = 'center';
+      }
     }
 
     // Title / gold subheading / description

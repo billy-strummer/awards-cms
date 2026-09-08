@@ -103,6 +103,22 @@
 
     .cat-desc { font-size: 1.2rem; line-height: 1.8; color: rgba(255,255,255,.8); max-width: 920px; margin: 28px 0 32px; }
 
+    @media (max-width: 600px) {
+      /* Below this width the flag/icon switch from JS-matched-to-title-
+         height (see matchHeight() at the bottom of the page, which skips
+         itself at this breakpoint) to a small fixed size, and the title
+         stack becomes its own full-width row underneath rather than a
+         third item squeezed into the same row. A long category name
+         doesn't fit next to a flag+icon at any reasonable size on a phone
+         screen -- letting the title take the full width to wrap keeps its
+         height (and therefore, on desktop, the flag/icon size) sane
+         instead of everything fighting for the same cramped row. */
+      .cat-hero { gap: 12px; }
+      .cat-flag { width: 70px; height: 44px; order: 1; }
+      .cat-icon-wrap { width: 56px; height: 56px; order: 2; }
+      .cat-title-stack { order: 3; flex-basis: 100%; min-width: 0; }
+    }
+
     .nominees-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
     .nominee-card { background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; transition: border-color .2s, transform .2s; }
     .nominee-card:hover { border-color: rgba(201,162,39,0.4); transform: translateY(-3px); }
@@ -296,7 +312,20 @@
   var iconWrap = document.querySelector('.cat-icon-wrap');
   if (stack && flag && iconWrap) {
     var FLAG_RATIO = 1.6; /* landscape, close to the real flag artwork's ~5:3 shape */
+    var mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 600px)') : null;
     var matchHeight = function () {
+      // Below 600px the flag/icon use small fixed CSS sizes instead (see
+      // the media query) -- the title wraps onto several lines at that
+      // width, and matching the flag/icon to that full height would blow
+      // both up far larger than the mobile layout has room for. Clear any
+      // inline size from a wider viewport so the CSS value applies.
+      if (mobileQuery && mobileQuery.matches) {
+        flag.style.height = '';
+        flag.style.width = '';
+        iconWrap.style.height = '';
+        iconWrap.style.width = '';
+        return;
+      }
       var h = stack.getBoundingClientRect().height;
       if (h > 0) {
         flag.style.height = h + 'px';

@@ -72,7 +72,14 @@
     .breadcrumb span[aria-hidden] { color: rgba(255,255,255,.25); }
     .breadcrumb .current { color: rgba(255,255,255,.7); }
 
-    .cat-hero { display: flex; align-items: stretch; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+    /* align-items: center (not stretch) -- the flag (72px) and icon (96px)
+       both have a fixed, different height, so stretch has no effect on
+       either of them and they fall back to top-aligning within the row;
+       with the icon taller than the flag that left the flag's visual
+       center sitting well above the icon's and the title text's. Centering
+       the row keeps each element at its own natural size while lining up
+       all three on the same vertical center. */
+    .cat-hero { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
     .cat-flag {
       width: 115px; height: 72px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
@@ -80,7 +87,6 @@
     .cat-title-stack { flex: 0 1 auto; min-width: 200px; display: flex; flex-direction: column; justify-content: center; }
     .cat-icon-wrap {
       flex-shrink: 0; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center;
-      transform: translateY(-4px); /* the icon artwork itself has slack above the trowel that the flag crop doesn't, so nudge up to read level with the flag's top edge */
     }
     .cat-icon {
       width: 100%; height: 100%;

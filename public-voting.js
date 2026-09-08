@@ -34,6 +34,18 @@ function esc(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Derives the category icon filename from a category name -- matches the
+// convention used by home.js/home-stage2.js's category modal, so a
+// category icon uploaded once (images/icons/categories/<slug>.svg) works
+// everywhere without any per-page lookup table.
+function categoryIconSlug(catName) {
+  return String(catName)
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 /**
  * Call the voting proxy API.
  * All database access is routed through /api/voting-proxy instead of
@@ -76,10 +88,120 @@ const votingSystem = {
       country: urlParams.get('country') || null,
     };
 
+    this.updateHero();
     this.updateFilterBanner();
     await this.loadAwards();
     await this.loadEntries();
     this.setupEventListeners();
+  },
+
+  /**
+   * Populate the breadcrumb + hero card (flag, category icon, title,
+   * subheading, description) from the active URL filters. Mirrors the
+   * .cat-hero pattern used on the per-category nominee pages so a filtered
+   * link (?city=...&category=...) reads as a proper landing page.
+   */
+  updateHero() {
+    const titleEl = document.getElementById('votingHeroTitle');
+    if (!titleEl) return; // hero markup not present on this page/test DOM
+
+    const f = this.activeFilters;
+    const data = window.BTA_HOME_DATA || {};
+    const flagMap = data.flagMap || {};
+    const sectorMeta = data.sectorMeta || {};
+    const categoryDescriptions = data.categoryDescriptions || {};
+    const londonBoroughs = window.LONDON_BOROUGHS || [];
+
+    const countryDisplay = f.country ? f.country.charAt(0).toUpperCase() + f.country.slice(1) : null;
+    const sectorDisplay = f.sector && sectorMeta[f.sector] ? sectorMeta[f.sector].displayName : f.sector;
+
+    // Breadcrumb (priority: category > city > sector > country > none)
+    const crumbs = [{ label: 'Home', href: 'home.html' }];
+    if (f.category) {
+      crumbs.push({ label: 'Categories', href: 'home.html#categories' });
+      if (sectorDisplay) crumbs.push({ label: sectorDisplay });
+      crumbs.push({ label: f.category, current: true });
+    } else if (f.city) {
+      crumbs.push({ label: 'Locations', href: 'home.html#regions' });
+      if (countryDisplay) crumbs.push({ label: countryDisplay });
+      crumbs.push({ label: f.city, current: true });
+    } else if (f.sector) {
+      crumbs.push({ label: 'Categories', href: 'home.html#categories' });
+      crumbs.push({ label: sectorDisplay, current: true });
+    } else if (f.country) {
+      crumbs.push({ label: 'Locations', href: 'home.html#regions' });
+      crumbs.push({ label: countryDisplay, current: true });
+    } else {
+      crumbs.push({ label: 'Vote Now', current: true });
+    }
+    const breadcrumbEl = document.getElementById('votingBreadcrumb');
+    if (breadcrumbEl) {
+      breadcrumbEl.innerHTML = crumbs
+        .map(function (c, i) {
+          const sep = i > 0 ? '<span aria-hidden="true">/</span> ' : '';
+          const inner = c.href
+            ? '<a href="' + c.href + '">' + esc(c.label) + '</a>'
+            : '<span class="' + (c.current ? 'current' : '') + '">' + esc(c.label) + '</span>';
+          return sep + inner;
+        })
+        .join('');
+    }
+
+    // Flag (only when the city has a known flag image)
+    const flagEl = document.getElementById('votingHeroFlag');
+    const flagFile = f.city ? flagMap[f.city] : null;
+    if (flagEl) {
+      if (flagFile) {
+        flagEl.src = 'images/flags/' + encodeURIComponent(flagFile);
+        flagEl.alt = f.city + ' flag';
+        flagEl.hidden = false;
+        flagEl.classList.toggle('voting-hero-flag-square', londonBoroughs.indexOf(f.city) !== -1);
+      } else {
+        flagEl.hidden = true;
+      }
+    }
+
+    // Category icon
+    const iconWrapEl = document.getElementById('votingHeroIconWrap');
+    const iconEl = document.getElementById('votingHeroIcon');
+    if (iconWrapEl && iconEl) {
+      if (f.category) {
+        const iconUrl = 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg';
+        iconEl.style.maskImage = 'url(' + iconUrl + ')';
+        iconEl.style.webkitMaskImage = 'url(' + iconUrl + ')';
+        iconWrapEl.hidden = false;
+      } else {
+        iconWrapEl.hidden = true;
+      }
+    }
+
+    // Title / gold subheading / description
+    let title = 'Vote Now';
+    let sub = 'British Trade Awards';
+    let desc = 'Cast your vote for your favourite nominees across every category and location.';
+
+    if (f.category) {
+      title = f.category;
+      sub = (f.city ? f.city + ' — ' : '') + 'Vote Now';
+      desc = categoryDescriptions[f.category] || desc;
+    } else if (f.city) {
+      title = f.city + ' Nominees';
+      sub = 'Vote Now';
+      desc = 'Cast your vote for ' + f.city + "'s trade award nominees.";
+    } else if (f.sector) {
+      title = sectorDisplay;
+      sub = 'Vote Now';
+      desc = (sectorMeta[f.sector] && sectorMeta[f.sector].description) || desc;
+    } else if (f.country) {
+      title = countryDisplay + ' Nominees';
+      sub = 'Vote Now';
+    }
+
+    const subEl = document.getElementById('votingHeroSub');
+    const descEl = document.getElementById('votingHeroDesc');
+    titleEl.textContent = title;
+    if (subEl) subEl.textContent = sub;
+    if (descEl) descEl.textContent = desc;
   },
 
   /**
@@ -202,47 +324,43 @@ const votingSystem = {
       .map(
         (entry) => `
       <div class="entry-card ${entry.hasVoted ? 'voted' : ''}">
-        <div class="row align-items-center">
-          <div class="col-md-2 text-center">
+        ${
+          entry.organisations?.logo_url
+            ? `<img src="${esc(entry.organisations.logo_url)}" alt="${esc(entry.organisations.company_name)}" class="company-logo">`
+            : `<div class="company-logo bg-light d-flex align-items-center justify-content-center">
+                 <i class="bi bi-building fs-1 text-muted"></i>
+               </div>`
+        }
+        <div class="entry-card-body">
+          <h3 class="entry-card-name">${esc(entry.organisations?.company_name || 'Unknown Company')}</h3>
+          <p class="entry-card-award">
+            <i class="bi bi-award me-2"></i>${esc(entry.awards?.award_name || 'Unknown Award')}
+          </p>
+          <h4 class="entry-card-title">${esc(entry.entry_title)}</h4>
+          <p class="entry-card-desc">${entry.entry_description ? esc(entry.entry_description.substring(0, 150)) + '...' : ''}</p>
+          ${
+            entry.organisations?.website
+              ? `<a href="${esc(entry.organisations.website)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-link-45deg me-1"></i>Visit Website
+            </a>`
+              : ''
+          }
+        </div>
+        <div class="entry-card-action">
+          <div class="vote-count">
+            <i class="bi bi-hand-thumbs-up me-2"></i>
+            ${parseInt(entry.public_votes) || 0} votes
+          </div>
+          <button class="vote-button ${entry.hasVoted ? 'btn btn-success' : ''}"
+                  data-action="votingSystem.vote" data-id="${esc(entry.id)}"
+                  aria-pressed="${entry.hasVoted ? 'true' : 'false'}"
+                  ${entry.hasVoted ? 'disabled' : ''}>
             ${
-              entry.organisations?.logo_url
-                ? `<img src="${esc(entry.organisations.logo_url)}" alt="${esc(entry.organisations.company_name)}" class="company-logo">`
-                : `<div class="company-logo bg-light d-flex align-items-center justify-content-center">
-                   <i class="bi bi-building fs-1 text-muted"></i>
-                 </div>`
+              entry.hasVoted
+                ? '<i class="bi bi-check-circle me-2"></i>Voted'
+                : '<i class="bi bi-hand-thumbs-up me-2"></i>Vote Now'
             }
-          </div>
-          <div class="col-md-7">
-            <h4 class="mb-2">${esc(entry.organisations?.company_name || 'Unknown Company')}</h4>
-            <p class="text-muted mb-2">
-              <i class="bi bi-award me-2"></i>${esc(entry.awards?.award_name || 'Unknown Award')}
-            </p>
-            <h6>${esc(entry.entry_title)}</h6>
-            <p class="text-muted small">${entry.entry_description ? esc(entry.entry_description.substring(0, 150)) + '...' : ''}</p>
-            ${
-              entry.organisations?.website
-                ? `<a href="${esc(entry.organisations.website)}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-link-45deg me-1"></i>Visit Website
-              </a>`
-                : ''
-            }
-          </div>
-          <div class="col-md-3 text-center">
-            <div class="vote-count mb-3">
-              <i class="bi bi-hand-thumbs-up me-2"></i>
-              ${parseInt(entry.public_votes) || 0} votes
-            </div>
-            <button class="vote-button ${entry.hasVoted ? 'btn btn-success' : ''}"
-                    data-action="votingSystem.vote" data-id="${esc(entry.id)}"
-                    aria-pressed="${entry.hasVoted ? 'true' : 'false'}"
-                    ${entry.hasVoted ? 'disabled' : ''}>
-              ${
-                entry.hasVoted
-                  ? '<i class="bi bi-check-circle me-2"></i>Voted'
-                  : '<i class="bi bi-hand-thumbs-up me-2"></i>Vote Now'
-              }
-            </button>
-          </div>
+          </button>
         </div>
       </div>
     `

@@ -122,9 +122,20 @@
       padding: clamp(24px, 4vw, 40px);
       margin-bottom: 20px;
       box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(201,162,39,0.18);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .voting-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(201,162,39,0.1), transparent 60%);
+      pointer-events: none;
     }
 
     .voting-hero-inner {
+      position: relative;
       display: flex;
       align-items: stretch;
       gap: 20px;
@@ -180,14 +191,6 @@
       justify-content: center;
     }
 
-    /* [hidden] and .voting-hero-icon-wrap{display:flex} have equal
-       specificity, so without this the flex rule wins the cascade and the
-       icon box stays visible (as an empty gold square) even when hidden
-       is set from JS for filter combinations with no category. */
-    .voting-hero-icon-wrap[hidden] {
-      display: none;
-    }
-
     .voting-hero-icon {
       width: 100%;
       height: 100%;
@@ -209,10 +212,17 @@
     }
 
     @media (max-width: 576px) {
-      .voting-hero-inner { gap: 14px; }
-      .voting-hero-flag { width: 92px; height: 58px; }
-      .voting-hero-flag-square { width: 58px; }
-      .voting-hero-icon-wrap { width: 68px; height: 68px; }
+      /* flex-wrap's line-fitting test uses the title stack's unshrunk
+         (max-content) width, which is always too wide at this size -- it
+         would wrap the icon onto an orphaned line of its own even with a
+         small min-width set. nowrap forces the browser to shrink the
+         title stack instead (wrapping its own text internally), keeping
+         flag + title + icon on one row. */
+      .voting-hero-inner { flex-wrap: nowrap; gap: 10px; }
+      .voting-hero-flag { width: 80px; height: 52px; }
+      .voting-hero-flag-square { width: 52px; }
+      .voting-hero-icon-wrap { width: 44px; height: 44px; }
+      .voting-hero-title-stack { min-width: 0; }
     }
 
     .entry-card {
@@ -589,7 +599,7 @@
           <h1 id="votingHeroTitle">Vote Now</h1>
           <p class="voting-hero-sub" id="votingHeroSub">British Trade Awards</p>
         </div>
-        <div class="voting-hero-icon-wrap" id="votingHeroIconWrap" aria-hidden="true" hidden>
+        <div class="voting-hero-icon-wrap" id="votingHeroIconWrap" aria-hidden="true">
           <div class="voting-hero-icon" id="votingHeroIcon"></div>
         </div>
       </div>

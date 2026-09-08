@@ -84,50 +84,161 @@
       padding: 0 20px;
     }
 
-    .voting-header {
+    /* Breadcrumb + hero -- mirrors the .cat-hero pattern established on the
+       per-category nominee pages (e.g. somerset-brickwork-masonry.html), so
+       a filtered voting link (?city=...&category=...) reads as a proper
+       landing page rather than a generic filter tool. Populated dynamically
+       by votingSystem.updateHero() since this one page serves every
+       city/category/sector combination. */
+    .voting-breadcrumb {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: .8125rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 20px;
+    }
+
+    .voting-breadcrumb a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none;
+    }
+
+    .voting-breadcrumb a:hover {
+      color: var(--gold);
+    }
+
+    .voting-breadcrumb span[aria-hidden] {
+      color: rgba(255,255,255,0.25);
+    }
+
+    .voting-breadcrumb .current {
+      color: rgba(255,255,255,0.75);
+    }
+
+    .voting-hero {
       background: #1a1a1a;
       border-radius: 16px;
-      padding: 40px;
-      margin-bottom: 30px;
+      padding: clamp(24px, 4vw, 40px);
+      margin-bottom: 20px;
       box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(201,162,39,0.18);
-      text-align: center;
     }
 
-    .voting-header h1 {
-      font-size: 2.6rem;
-      font-weight: 700;
-      margin-bottom: 10px;
+    .voting-hero-inner {
+      display: flex;
+      align-items: stretch;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .voting-hero-flag {
+      width: 115px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    .voting-hero-flag-square {
+      width: 72px;
+    }
+
+    .voting-hero-title-stack {
+      flex: 1 1 auto;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .voting-hero-title-stack h1 {
       font-family: 'Playfair Display', serif;
+      font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin: 0;
+      color: #fff;
+      letter-spacing: 0.3px;
+    }
+
+    .voting-hero-sub {
+      font-size: 1.05rem;
       color: var(--gold);
-      letter-spacing: 1px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin: 4px 0 0;
     }
 
-    .voting-header .lead {
-      color: rgba(255,255,255,0.85);
+    .voting-hero-icon-wrap {
+      flex-shrink: 0;
+      width: 96px;
+      height: 96px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .voting-header .text-muted {
-      color: rgba(255,255,255,0.5) !important;
+    /* [hidden] and .voting-hero-icon-wrap{display:flex} have equal
+       specificity, so without this the flex rule wins the cascade and the
+       icon box stays visible (as an empty gold square) even when hidden
+       is set from JS for filter combinations with no category. */
+    .voting-hero-icon-wrap[hidden] {
+      display: none;
+    }
+
+    .voting-hero-icon {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #a8871f 0%, #C9A227 35%, #e0b93a 65%, #ebd27f 100%);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+    }
+
+    .voting-hero-desc {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.75);
+      max-width: 760px;
+      margin: 20px 0 0;
+    }
+
+    @media (max-width: 576px) {
+      .voting-hero-inner { gap: 14px; }
+      .voting-hero-flag { width: 92px; height: 58px; }
+      .voting-hero-flag-square { width: 58px; }
+      .voting-hero-icon-wrap { width: 68px; height: 68px; }
     }
 
     .entry-card {
       background: #1a1a1a;
+      border: 1px solid rgba(255,255,255,0.08);
       border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 1px rgba(201,162,39,0.12);
-      transition: transform 0.2s, box-shadow 0.2s;
+      padding: 26px 30px;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
       color: rgba(255,255,255,0.85);
     }
 
     .entry-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 30px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,162,39,0.25);
+      border-color: rgba(201,162,39,0.4);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.4);
     }
 
     .entry-card.voted {
-      border: 2px solid #28a745;
-      background: rgba(40, 167, 69, 0.08);
+      border-color: rgba(40, 167, 69, 0.5);
+      background: rgba(40, 167, 69, 0.06);
     }
 
     .company-logo {
@@ -135,6 +246,58 @@
       height: 80px;
       object-fit: contain;
       border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .entry-card-body {
+      flex: 1 1 320px;
+      min-width: 0;
+    }
+
+    .entry-card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 4px;
+    }
+
+    .entry-card-award {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 0 0 10px;
+    }
+
+    .entry-card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      margin: 0 0 6px;
+    }
+
+    .entry-card-desc {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.6);
+      margin: 0 0 10px;
+    }
+
+    .entry-card-action {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+
+    @media (max-width: 576px) {
+      .entry-card { padding: 22px; gap: 18px; }
+      .entry-card-action { margin-left: 0; width: 100%; }
+      .entry-card-action .vote-button { width: 100%; justify-content: center; }
     }
 
     .vote-button {
@@ -413,11 +576,24 @@
 
   <div class="voting-container" style="padding-top:var(--header-h);">
 
-    <!-- Header -->
-    <div class="voting-header">
-      <h1>Vote Now</h1>
-      <p class="lead mb-0">British Trade Awards <span id="footerYear"></span></p>
-      <p class="text-muted">Cast your vote for your favourite nominees</p>
+    <!-- Breadcrumb + hero (populated by votingSystem.updateHero() from the
+         active city/category/sector URL filters) -->
+    <p class="voting-breadcrumb" id="votingBreadcrumb">
+      <a href="home.html">Home</a> <span aria-hidden="true">/</span> <span class="current">Vote Now</span>
+    </p>
+
+    <div class="voting-hero">
+      <div class="voting-hero-inner">
+        <img class="voting-hero-flag" id="votingHeroFlag" src="" alt="" aria-hidden="true" hidden>
+        <div class="voting-hero-title-stack">
+          <h1 id="votingHeroTitle">Vote Now</h1>
+          <p class="voting-hero-sub" id="votingHeroSub">British Trade Awards</p>
+        </div>
+        <div class="voting-hero-icon-wrap" id="votingHeroIconWrap" aria-hidden="true" hidden>
+          <div class="voting-hero-icon" id="votingHeroIcon"></div>
+        </div>
+      </div>
+      <p class="voting-hero-desc" id="votingHeroDesc">Cast your vote for your favourite nominees across every category and location.</p>
     </div>
 
     <!-- Active filter banner (populated by JS when URL params present) -->
@@ -547,10 +723,12 @@
   <!-- Shared Config -->
   <script type="module" src="config.js"></script>
 
+  <!-- Region/flag/category data (single source of truth, shared with home.html,
+       submit-entry.html and nominate.html) -- powers the hero flag/icon/breadcrumb -->
+  <script src="home-data.js"></script>
+
   <!-- Voting System Logic -->
   <script src="public-voting.js"></script>
-
-  <script src="footer-year.js"></script>
 
 <script>
 (function(){

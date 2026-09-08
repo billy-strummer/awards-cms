@@ -161,18 +161,17 @@ const votingSystem = {
       }
     }
 
-    // Category icon
-    const iconWrapEl = document.getElementById('votingHeroIconWrap');
+    // Category icon -- always shown for visual balance: the specific
+    // category icon when filtered, otherwise a default trophy icon (reusing
+    // the "Champions Crowned" icon already used on home.html) so the hero
+    // never reads as an empty, lopsided card.
     const iconEl = document.getElementById('votingHeroIcon');
-    if (iconWrapEl && iconEl) {
-      if (f.category) {
-        const iconUrl = 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg';
-        iconEl.style.maskImage = 'url(' + iconUrl + ')';
-        iconEl.style.webkitMaskImage = 'url(' + iconUrl + ')';
-        iconWrapEl.hidden = false;
-      } else {
-        iconWrapEl.hidden = true;
-      }
+    if (iconEl) {
+      const iconUrl = f.category
+        ? 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg'
+        : 'images/icons/categories/4 Champions Crowned.svg';
+      iconEl.style.maskImage = 'url(' + encodeURI(iconUrl) + ')';
+      iconEl.style.webkitMaskImage = 'url(' + encodeURI(iconUrl) + ')';
     }
 
     // Title / gold subheading / description

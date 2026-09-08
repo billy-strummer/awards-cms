@@ -512,12 +512,16 @@
       box-shadow: 0 0 48px rgba(201,162,39,0.14);
     }
 
-    /* Mute/unmute toggle — bottom-right corner of the video */
+    /* Mute/unmute toggle — bottom-right corner of the video. z-index must
+       stay above #video-end-screen (z-index: 5) -- otherwise once the video
+       ends and that full-bleed CTA overlay becomes clickable, it sits on
+       top of this button and swallows clicks meant for it, sending the
+       visitor to the CTA instead of toggling mute. */
     #video-sound-toggle {
       position: absolute;
       right: 16px;
       bottom: 16px;
-      z-index: 4;
+      z-index: 6;
       width: 40px;
       height: 40px;
       border-radius: 50%;
@@ -1058,9 +1062,11 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
     .chip-flag {
-      width: 46px;
-      align-self: stretch;
-      margin: -6px 0 -6px -8px;
+      width: 48px;
+      aspect-ratio: 16 / 9;
+      height: auto;
+      align-self: center;
+      margin: 0 0 0 -8px;
       object-fit: cover;
       border-radius: 0;
       flex-shrink: 0;
@@ -1191,7 +1197,7 @@
     .sub-region-chip {
       background: #1e1e1e;
       border: 1px solid #2e2e2e;
-      border-radius: 0 100px 100px 0;
+      border-radius: 0 6px 6px 0;
       padding: 7px 14px 7px 8px;
       font-size: 0.9rem;
       color: rgba(255, 255, 255, 0.65);
@@ -1843,7 +1849,7 @@
       /* Regional accordion — max-height set by JS */
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 5px 11px 5px 6px; font-size: 0.82rem; }
-      .chip-flag { margin: -4px 0 -4px -10px; }
+      .chip-flag { margin: 0 0 0 -10px; }
 
       /* Country cards — 3 columns on small screens */
       .country-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -2019,7 +2025,7 @@
       color: #fff; margin: 0 0 24px;
     }
     .cat-detail-header {
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      display: flex; align-items: center; justify-content: flex-start; gap: 16px;
       margin-bottom: 24px;
     }
     .cat-detail-header .cat-modal-title { margin: 0; }
@@ -2715,7 +2721,7 @@
           </div>
         </div>
         <h3>Entry</h3>
-        <p>Professionals can enter their business, or clients can nominate a local expert. Entry is free and takes 3 mins.</p>
+        <p>Trade professionals can enter their business, or clients can nominate a local expert. Entry is free and takes 3 mins.</p>
       </div>
 
       <div class="how-step-arrow" aria-hidden="true">
@@ -2964,7 +2970,7 @@
             <span class="countdown-label">Secs</span>
           </div>
         </div>
-        <p class="countdown-open-msg" id="countdown-open-msg">Voting has now closed.</p>
+        <p class="countdown-open-msg" id="countdown-open-msg">Entries have now closed.</p>
       </article>
 
       <!-- Box 2: Key Dates -->
@@ -2979,28 +2985,28 @@
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">1 Feb – 30 Apr 2027</div>
+              <div class="key-date-label">1 Dec 2026 – 1 Feb 2027</div>
               <div class="key-date-desc">Entries</div>
             </div>
           </li>
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">14 May 2027</div>
+              <div class="key-date-label">12 Feb 2027</div>
               <div class="key-date-desc">Nominees Announced</div>
             </div>
           </li>
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">20 May – 20 Sept 2027</div>
+              <div class="key-date-label">15 Feb – 15 April 2027</div>
               <div class="key-date-desc">Voting</div>
             </div>
           </li>
           <li class="key-date-item">
             <div class="key-date-dot" aria-hidden="true"></div>
             <div>
-              <div class="key-date-label">Nov 2027</div>
+              <div class="key-date-label">May 2027</div>
               <div class="key-date-desc">Winners Announced</div>
             </div>
           </li>
@@ -3016,7 +3022,7 @@
           </div>
           <h3>Vote</h3>
         </div>
-        <p>Outstanding service deserves recognition. Vote for your favourite local trade professionals. Voting runs 20 May to 20 September 2027.</p>
+        <p>Outstanding service deserves recognition. Vote for your favourite local trade professionals. Voting runs 15 February to 15 April 2027.</p>
         <p class="countdown-title">Opening In</p>
         <div class="countdown-block" id="countdown-block-open">
           <div class="countdown-unit">
@@ -3158,7 +3164,7 @@
 
     <div class="section-intro">
       <h2 class="section-heading reveal" id="testimonials-heading">
-        Voices from <span class="gold-underline">the Trade</span>
+        Word on <span class="gold-underline">the Ground</span>
       </h2>
     </div>
 
@@ -3333,7 +3339,7 @@
       <p class="cat-modal-label" id="cat-modal-label"></p>
       <h3 class="cat-modal-title" id="cat-modal-title"></h3>
       <ul class="cat-modal-list" id="cat-modal-list"></ul>
-      <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-modal-list-cta">Enter the Awards →</a>
+      <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-modal-list-cta">Enter Now →</a>
     </div>
     <!-- Detail view: individual category description -->
     <div id="cat-modal-detail-view" style="display:none;">
@@ -3344,8 +3350,8 @@
       </button>
       <p class="cat-modal-label">Category</p>
       <div class="cat-detail-header">
-        <h3 class="cat-modal-title" id="cat-detail-name"></h3>
         <div class="cat-detail-icon" id="cat-detail-icon" aria-hidden="true"></div>
+        <h3 class="cat-modal-title" id="cat-detail-name"></h3>
       </div>
       <p class="cat-detail-desc" id="cat-detail-desc"></p>
       <a href="submit-entry.html" class="btn-gold cat-modal-cta" id="cat-detail-cta">Enter this Category →</a>

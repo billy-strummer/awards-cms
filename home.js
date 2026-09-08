@@ -288,7 +288,12 @@
             encodeURIComponent(FLAG_MAP[loc]) +
             '" alt="" aria-hidden="true">'
           : '';
-        const href = 'public-voting.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(country);
+        // Stage 1 (Entry): nominees aren't published yet, so county/city
+        // selections link to the entry form rather than the nominee/voting
+        // pages. The public-voting.html?city=...&country=... URL structure
+        // is retained in home-stage2.js for Stage 2 (Voting), when each
+        // selection should link to its relevant nominees page instead.
+        const href = 'submit-entry.html?city=' + encodeURIComponent(loc) + '&country=' + encodeURIComponent(country);
         return '<a href="' + href + '" class="sub-region-chip">' + flag + escapeHtml(loc) + '</a>';
       }
 

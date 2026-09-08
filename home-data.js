@@ -470,7 +470,7 @@
     Bradford: 'BTA_Corporate_Horizontal-gold-white.png',
     York: 'BTA_Corporate_Horizontal-gold-white.png',
     Hull: 'BTA_Corporate_Horizontal-gold-white.png',
-    Reading: 'England.png',
+    Reading: 'Berkshire.png',
     // Welsh towns/cities without individual flags → Wales.png placeholder
     Bangor: 'BTA_Corporate_Horizontal-gold-white.png',
     Llandudno: 'BTA_Corporate_Horizontal-gold-white.png',

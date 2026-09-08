@@ -34,11 +34,11 @@
   })();
 
   // ── Countdown timer ──────────────────────────────────────────────────────
-  // Target: 20 September 2027 00:00:00 UTC -- matches the "Voting" end date
+  // Target: 15 April 2027 00:00:00 UTC -- matches the "Voting" end date
   // shown in the Key Dates list. Update alongside the Key Dates list if the
   // voting window changes.
   (function () {
-    const target = Date.UTC(2027, 8, 20, 0, 0, 0); // month is 0-indexed: 8 = September
+    const target = Date.UTC(2027, 3, 15, 0, 0, 0); // month is 0-indexed: 3 = April
     const block = document.getElementById('countdown-block');
     const openMsg = document.getElementById('countdown-open-msg');
     const elDays = document.getElementById('cd-days');

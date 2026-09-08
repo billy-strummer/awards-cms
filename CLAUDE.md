@@ -57,6 +57,10 @@ These pages intentionally use a plain/light design to ensure readability and leg
 
 > **CLAUDE: An email templates audit was run on 2026-05-30. Findings are tracked at `EMAIL-AUDIT-TODO.md` with 1 Critical, 2 High, 2 Medium, and 2 Low items. Most urgent: EA-C1 — database-template substitution path does NOT escape user data before injecting into email HTML (XSS risk). Work through EA-C1 → EA-H1 → … → EA-L1.**
 
+## ACTIVE WORK: SEO Audit
+
+> **CLAUDE: An SEO audit (reviewing a third-party developer's recommendations against the actual codebase) was run on 2026-09-08. Findings are tracked at `SEO-AUDIT-TODO.md` with 1 Critical, 3 High, 2 Medium, 1 Low, and 1 Unverified item. Most urgent: SEO-C1 — the 6 canonical tags that already exist all hardcode the Vercel staging domain instead of the real one; fix this and set up build-time templating from `APP_URL` *before* rolling out canonicals more broadly (SEO-H1). Also live right now: SEO-H2 — `robots.txt` references a `sitemap.xml` that doesn't exist. Work through SEO-C1 → SEO-H2 → SEO-H1 → … → SEO-L1; SEO-U1 needs a URL/screenshot from the developer before it can be actioned.**
+
 ## Project Overview
 
 British Trade Awards CMS - a web-based admin system for managing awards ceremonies, organisations, entries, judging, events, payments, email marketing, and CRM.

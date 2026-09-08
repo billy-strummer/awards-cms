@@ -282,9 +282,15 @@
 
       const cards = document.querySelectorAll('.country-card');
 
-      function chipHtml(loc, country) {
+      function chipHtml(loc, country, groupName) {
+        // London Borough crests are portrait/near-square, not landscape
+        // like the county/city flags, so they get a square crop instead
+        // of the standard wide rectangle -- see .chip-flag-square.
+        const flagClass = groupName === 'London Boroughs' ? 'chip-flag chip-flag-square' : 'chip-flag';
         const flag = FLAG_MAP[loc]
-          ? '<img class="chip-flag" src="images/flags/' +
+          ? '<img class="' +
+            flagClass +
+            '" src="images/flags/' +
             encodeURIComponent(FLAG_MAP[loc]) +
             '" alt="" aria-hidden="true">'
           : '';
@@ -312,7 +318,7 @@
             const locations = entry[1];
             const chipsHtml = locations
               .map(function (loc) {
-                return chipHtml(loc, country);
+                return chipHtml(loc, country, groupName);
               })
               .join('');
             return (

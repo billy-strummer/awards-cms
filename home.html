@@ -1061,15 +1061,28 @@
       display: block;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
+    /* Fixed pixel widths rather than aspect-ratio: an aspect-ratio + auto
+       width + stretched height on a flag <img> lets the browser fall back
+       to the image's own (much larger) intrinsic width as an effective
+       minimum, blowing the box up to the source image's real size. Fixed
+       widths sidestep that entirely while still reading as ~16:9 / ~1:1
+       at the chip's actual (content-driven) height. */
     .chip-flag {
-      width: 48px;
-      aspect-ratio: 16 / 9;
+      width: 56px;
+      align-self: stretch;
       height: auto;
-      align-self: center;
       margin: 0 0 0 -8px;
       object-fit: cover;
       border-radius: 0;
       flex-shrink: 0;
+    }
+    /* London Borough crests are portrait/near-square (e.g. Islington is
+       1920x2560), not landscape like the county/city flags -- force a
+       square crop instead of the standard wide rectangle, and drop the
+       flush-left bleed so the narrower square doesn't look off-centre. */
+    .chip-flag-square {
+      width: 34px;
+      margin-left: 0;
     }
 
     .country-name {
@@ -1849,7 +1862,8 @@
       /* Regional accordion — max-height set by JS */
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 5px 11px 5px 6px; font-size: 0.82rem; }
-      .chip-flag { margin: 0 0 0 -10px; }
+      .chip-flag { margin: 0 0 0 -10px; width: 46px; }
+      .chip-flag-square { width: 25px; margin-left: 0; }
 
       /* Country cards — 3 columns on small screens */
       .country-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }

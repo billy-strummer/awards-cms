@@ -72,7 +72,14 @@
     .breadcrumb span[aria-hidden] { color: rgba(255,255,255,.25); }
     .breadcrumb .current { color: rgba(255,255,255,.7); }
 
-    .cat-hero { display: flex; align-items: stretch; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+    /* align-items: center (not stretch) -- the flag (72px) and icon (96px)
+       both have a fixed, different height, so stretch has no effect on
+       either of them and they fall back to top-aligning within the row;
+       with the icon taller than the flag that left the flag's visual
+       center sitting well above the icon's and the title text's. Centering
+       the row keeps each element at its own natural size while lining up
+       all three on the same vertical center. */
+    .cat-hero { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
     .cat-flag {
       width: 115px; height: 72px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
@@ -80,7 +87,6 @@
     .cat-title-stack { flex: 0 1 auto; min-width: 200px; display: flex; flex-direction: column; justify-content: center; }
     .cat-icon-wrap {
       flex-shrink: 0; width: 96px; height: 96px; display: flex; align-items: center; justify-content: center;
-      transform: translateY(-4px); /* the icon artwork itself has slack above the trowel that the flag crop doesn't, so nudge up to read level with the flag's top edge */
     }
     .cat-icon {
       width: 100%; height: 100%;
@@ -96,6 +102,22 @@
     .cat-sub { font-size: 1.4rem; color: var(--gold); font-weight: 700; letter-spacing: .03em; text-transform: uppercase; margin: 2px 0 0; }
 
     .cat-desc { font-size: 1.2rem; line-height: 1.8; color: rgba(255,255,255,.8); max-width: 920px; margin: 28px 0 32px; }
+
+    @media (max-width: 600px) {
+      /* Below this width the flag/icon switch from JS-matched-to-title-
+         height (see matchHeight() at the bottom of the page, which skips
+         itself at this breakpoint) to a small fixed size, and the title
+         stack becomes its own full-width row underneath rather than a
+         third item squeezed into the same row. A long category name
+         doesn't fit next to a flag+icon at any reasonable size on a phone
+         screen -- letting the title take the full width to wrap keeps its
+         height (and therefore, on desktop, the flag/icon size) sane
+         instead of everything fighting for the same cramped row. */
+      .cat-hero { gap: 12px; }
+      .cat-flag { width: 70px; height: 44px; order: 1; }
+      .cat-icon-wrap { width: 56px; height: 56px; order: 2; }
+      .cat-title-stack { order: 3; flex-basis: 100%; min-width: 0; }
+    }
 
     .nominees-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
     .nominee-card { background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; transition: border-color .2s, transform .2s; }
@@ -290,7 +312,20 @@
   var iconWrap = document.querySelector('.cat-icon-wrap');
   if (stack && flag && iconWrap) {
     var FLAG_RATIO = 1.6; /* landscape, close to the real flag artwork's ~5:3 shape */
+    var mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 600px)') : null;
     var matchHeight = function () {
+      // Below 600px the flag/icon use small fixed CSS sizes instead (see
+      // the media query) -- the title wraps onto several lines at that
+      // width, and matching the flag/icon to that full height would blow
+      // both up far larger than the mobile layout has room for. Clear any
+      // inline size from a wider viewport so the CSS value applies.
+      if (mobileQuery && mobileQuery.matches) {
+        flag.style.height = '';
+        flag.style.width = '';
+        iconWrap.style.height = '';
+        iconWrap.style.width = '';
+        return;
+      }
       var h = stack.getBoundingClientRect().height;
       if (h > 0) {
         flag.style.height = h + 'px';

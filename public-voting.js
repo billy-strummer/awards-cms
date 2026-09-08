@@ -93,6 +93,14 @@ const votingSystem = {
     await this.loadAwards();
     await this.loadEntries();
     this.setupEventListeners();
+
+    // Re-match the flag height across the mobile breakpoint (a resize, or
+    // a device rotation, can cross it either way).
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => this.matchFlagHeight(), 100);
+    });
   },
 
   /**
@@ -162,14 +170,15 @@ const votingSystem = {
     }
 
     // Category icon -- always shown for visual balance: the specific
-    // category icon when filtered, otherwise a default trophy icon (reusing
-    // the "Champions Crowned" icon already used on home.html) so the hero
-    // never reads as an empty, lopsided card.
+    // category icon when filtered, otherwise a default nominee-shield icon
+    // (a trophy implies a category has already been won, which isn't true
+    // while voting is still open) so the hero never reads as an empty,
+    // lopsided card.
     const iconEl = document.getElementById('votingHeroIcon');
     if (iconEl) {
       const iconUrl = f.category
         ? 'images/icons/categories/' + categoryIconSlug(f.category) + '.svg'
-        : 'images/icons/categories/4 Champions Crowned.svg';
+        : 'images/icons/nominee-shield.svg';
       iconEl.style.maskImage = 'url(' + encodeURI(iconUrl) + ')';
       iconEl.style.webkitMaskImage = 'url(' + encodeURI(iconUrl) + ')';
     }
@@ -201,6 +210,36 @@ const votingSystem = {
     titleEl.textContent = title;
     if (subEl) subEl.textContent = sub;
     if (descEl) descEl.textContent = desc;
+
+    this.matchFlagHeight();
+  },
+
+  /**
+   * Size the flag to match the title stack's own rendered height (mirrors
+   * the nominee page's cat-hero), so it doesn't stop short of the bottom
+   * of the title/subheading text. Only above the mobile breakpoint --
+   * below it the flag already has its own small fixed size (see the
+   * media query), which a long title's larger wrapped height would
+   * otherwise blow up.
+   */
+  matchFlagHeight() {
+    const flagEl = document.getElementById('votingHeroFlag');
+    const stackEl = document.querySelector('.voting-hero-title-stack');
+    if (!flagEl || !stackEl || flagEl.hidden) return;
+
+    const mobileQuery = window.matchMedia ? window.matchMedia('(max-width: 600px)') : null;
+    if (mobileQuery && mobileQuery.matches) {
+      flagEl.style.height = '';
+      flagEl.style.width = '';
+      return;
+    }
+
+    const FLAG_RATIO = 1.6; // landscape, close to the real flag artwork's ~5:3 shape
+    const h = stackEl.getBoundingClientRect().height;
+    if (h > 0) {
+      flagEl.style.height = h + 'px';
+      flagEl.style.width = Math.round(h * FLAG_RATIO) + 'px';
+    }
   },
 
   /**

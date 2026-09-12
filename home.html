@@ -1061,26 +1061,34 @@
       display: block;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
-    /* Fixed pixel widths rather than aspect-ratio: an aspect-ratio + auto
-       width + stretched height on a flag <img> lets the browser fall back
-       to the image's own (much larger) intrinsic width as an effective
-       minimum, blowing the box up to the source image's real size. Fixed
-       widths sidestep that entirely while still reading as ~16:9 / ~1:1
-       at the chip's actual (content-driven) height. */
-    .chip-flag {
+    /* .chip-flag-wrap is a plain <span> with no intrinsic aspect ratio of
+       its own, so align-self: stretch resolves unambiguously to the flex
+       row's actual height -- unlike stretching the <img> directly, whose
+       "auto" cross-size is a replaced element's own intrinsic-ratio
+       height, which can end up smaller than the row and leave a gap top
+       and bottom. The image inside just fills the wrapper 100% with
+       object-fit: cover, so it reaches the chip's top and bottom edges
+       exactly, whatever height the row settles at. */
+    .chip-flag-wrap {
+      display: block;
       width: 56px;
       align-self: stretch;
-      height: auto;
       margin: 0 0 0 -8px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .chip-flag {
+      display: block;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
       border-radius: 0;
-      flex-shrink: 0;
     }
     /* London Borough crests are portrait/near-square (e.g. Islington is
        1920x2560), not landscape like the county/city flags -- force a
        square crop instead of the standard wide rectangle, and drop the
        flush-left bleed so the narrower square doesn't look off-centre. */
-    .chip-flag-square {
+    .chip-flag-wrap.square {
       width: 34px;
       margin-left: 0;
     }
@@ -1862,8 +1870,8 @@
       /* Regional accordion — max-height set by JS */
       .regions-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
       .sub-region-chip { padding: 5px 11px 5px 6px; font-size: 0.82rem; }
-      .chip-flag { margin: 0 0 0 -10px; width: 46px; }
-      .chip-flag-square { width: 25px; margin-left: 0; }
+      .chip-flag-wrap { margin: 0 0 0 -10px; width: 46px; }
+      .chip-flag-wrap.square { width: 25px; margin-left: 0; }
 
       /* Country cards — 3 columns on small screens */
       .country-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; }

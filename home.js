@@ -285,14 +285,24 @@
       function chipHtml(loc, country, groupName) {
         // London Borough crests are portrait/near-square, not landscape
         // like the county/city flags, so they get a square crop instead
-        // of the standard wide rectangle -- see .chip-flag-square.
-        const flagClass = groupName === 'London Boroughs' ? 'chip-flag chip-flag-square' : 'chip-flag';
+        // of the standard wide rectangle -- see .chip-flag-wrap.square.
+        //
+        // The <img> itself has no intrinsic size in CSS (width/height:
+        // 100%) -- an <img> with a fixed width and an auto/stretched
+        // height is a "replaced element" whose auto cross-size resolves
+        // from its own intrinsic aspect ratio, which can end up smaller
+        // than the row and leave a gap top/bottom despite align-self:
+        // stretch. Wrapping it in a plain <span> (no intrinsic ratio of
+        // its own) and stretching *that* instead sidesteps the ambiguity
+        // entirely -- the wrapper's height comes purely from the flex
+        // row, and the image just fills it 100% with object-fit: cover.
+        const wrapClass = groupName === 'London Boroughs' ? 'chip-flag-wrap square' : 'chip-flag-wrap';
         const flag = FLAG_MAP[loc]
-          ? '<img class="' +
-            flagClass +
-            '" src="images/flags/' +
+          ? '<span class="' +
+            wrapClass +
+            '"><img class="chip-flag" src="images/flags/' +
             encodeURIComponent(FLAG_MAP[loc]) +
-            '" alt="" aria-hidden="true">'
+            '" alt="" aria-hidden="true"></span>'
           : '';
         // Stage 1 (Entry): nominees aren't published yet, so county/city
         // selections link to the entry form rather than the nominee/voting

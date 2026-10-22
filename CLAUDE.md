@@ -2,6 +2,23 @@
 
 **Read this file first.** It provides the project context, current state, and step-by-step implementation plan. If a session gets cut off, the next Claude session should read this file and the `IMPLEMENTATION-PLAN.md` to pick up where things left off.
 
+## MANDATORY: Project Continuity Protocol
+
+> **CLAUDE: This project has previously lost work and task history between sessions/recreated environments.** `BTA-CMS-PROJECT-TASKS.md` is the authoritative project handover record for the BTA workstream (task IDs, decisions, outstanding questions, git/recovery history). Before doing anything else in this project:
+>
+> 1. Read this file (`CLAUDE.md`) and `BTA-CMS-PROJECT-TASKS.md` before acting.
+> 2. Verify the actual current repository and Git state yourself (branch, HEAD, `git status`, remote tips) — do not trust a prior session's report as still current.
+> 3. Identify the recorded current task, its scope, dependencies and next intended action from the task sheet.
+> 4. Work on one approved task at a time; do not expand scope mid-task.
+> 5. Prefer read-only, evidence-first investigation before any implementation.
+> 6. Update `BTA-CMS-PROJECT-TASKS.md` with evidence and the next action before ending a task.
+> 7. Report discrepancies between the task sheet and actual repository state instead of silently resolving them.
+> 8. Stop and report if the task sheet is missing, materially contradictory, or inconsistent with repository evidence — do not silently proceed as if project history is known from memory.
+> 9. Never claim a task is complete without supporting evidence (exact test output, exact files changed).
+> 10. Never claim a file is "safe" merely because it exists in the current working tree — distinguish working-tree-only, committed-locally, and pushed-to-remote (see `BTA-CMS-PROJECT-TASKS.md` Section H for what each level actually guarantees).
+> 11. At the end of every task, explicitly report whether the work is untracked, committed locally, or pushed remotely.
+> 12. Preserve the existing substantive CMS roadmap (the BTA-00x task sequence and related work) when starting a new session — continuity administration must never silently replace or reorder the underlying project work.
+
 ## Design System Rules
 
 > **CLAUDE: Read these rules before touching any HTML page.**

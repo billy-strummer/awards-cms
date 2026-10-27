@@ -27,6 +27,7 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     select: mockSelect.mockReturnThis(),
     insert: mockInsert.mockReturnThis(),
     update: mockUpdate.mockReturnThis(),
+    upsert: jest.fn(() => obj),
     delete: mockDelete.mockReturnThis(),
     eq: mockEq.mockReturnThis(),
     neq: mockNeq.mockReturnThis(),
@@ -633,6 +634,264 @@ describe('Data Proxy API', () => {
       } finally {
         mockFrom.mockImplementation(originalMockFromImpl);
       }
+    });
+  });
+
+  // --- test_data_fixture operation: BTA-027 ---
+  // Dedicated, super_admin-only, environment-guarded operation that
+  // replaces test-data-manager.js's former direct browser-side writes to
+  // email_lists/email_list_subscribers. Every table name, row ID, and
+  // filter the real implementation uses is a fixed server-side constant —
+  // the client supplies only `action`. These tests assert exact call
+  // arguments (table + .in()/.delete()/.upsert()/.insert() args), not
+  // merely that a mock was called.
+  describe('test_data_fixture operation', () => {
+    const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+    const ORIGINAL_SUPABASE_URL = process.env.SUPABASE_URL;
+    const TEST_PROJECT_URL = 'https://htcsewpztvxafksdzuhp.supabase.co';
+    const FIXTURE_LIST_IDS = [
+      'B1000000-0000-0000-0000-000000000001',
+      'B1000000-0000-0000-0000-000000000002',
+      'B1000000-0000-0000-0000-000000000003',
+    ];
+
+    function fixtureReq(overrides = {}) {
+      return createReq({
+        body: { operation: 'test_data_fixture', action: 'generate_email_fixtures', ...overrides },
+      });
+    }
+
+    function mockRole(role) {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role }, error: null, count: 1 });
+        return chainable();
+      });
+    }
+
+    beforeEach(() => {
+      process.env.NODE_ENV = 'test';
+      process.env.SUPABASE_URL = TEST_PROJECT_URL;
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+      process.env.SUPABASE_URL = ORIGINAL_SUPABASE_URL;
+    });
+
+    // --- Authentication ---
+    test('missing token -> 401', async () => {
+      const req = createReq({
+        body: { operation: 'test_data_fixture', action: 'generate_email_fixtures' },
+        headers: { authorization: '' },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(401);
+    });
+
+    test('invalid/expired token -> 401', async () => {
+      mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: new Error('bad token') });
+      const req = fixtureReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(401);
+    });
+
+    // --- Role enforcement ---
+    test.each(['viewer', 'judge', 'editor', 'marketing', 'admin'])(
+      'role "%s" -> 403 (requires super_admin)',
+      async (role) => {
+        mockRole(role);
+        const req = fixtureReq();
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(403);
+        expect(res.body.message).toMatch(/super_admin/);
+      }
+    );
+
+    test('role lookup failure defaults to viewer -> 403', async () => {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') throw new Error('db down');
+        return chainable();
+      });
+      const req = fixtureReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    // --- Environment guard ---
+    test('NODE_ENV=production -> 403 regardless of role, including super_admin', async () => {
+      mockRole('super_admin');
+      process.env.NODE_ENV = 'production';
+      const req = fixtureReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+      expect(res.body.message).toMatch(/environment/i);
+    });
+
+    test('non-production + verified test SUPABASE_URL + super_admin -> operation proceeds (200)', async () => {
+      mockRole('super_admin');
+      const req = fixtureReq({ action: 'clear_email_fixtures' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('missing SUPABASE_URL -> 403', async () => {
+      mockRole('super_admin');
+      delete process.env.SUPABASE_URL;
+      const req = fixtureReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('unrecognised SUPABASE_URL (a different project) -> 403', async () => {
+      mockRole('super_admin');
+      process.env.SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
+      const req = fixtureReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('contradictory configuration (non-production NODE_ENV, unrecognised URL) -> 403', async () => {
+      mockRole('super_admin');
+      process.env.NODE_ENV = 'development';
+      process.env.SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
+      const req = fixtureReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('client-supplied environment fields/headers cannot override the guard', async () => {
+      mockRole('super_admin');
+      process.env.NODE_ENV = 'production';
+      const req = createReq({
+        body: {
+          operation: 'test_data_fixture',
+          action: 'generate_email_fixtures',
+          NODE_ENV: 'development',
+          nodeEnv: 'test',
+          environment: 'test',
+          supabaseUrl: TEST_PROJECT_URL,
+        },
+        headers: { 'x-environment': 'test', 'x-node-env': 'development' },
+      });
+      const res = createRes();
+      await handler(req, res);
+      // Still refused: the guard never reads body fields or headers.
+      expect(res.statusCode).toBe(403);
+    });
+
+    // --- Operation / fixture-only restrictions ---
+    test('unknown action -> 400, rejected before any fixture-table database call', async () => {
+      mockRole('super_admin');
+      const req = fixtureReq({ action: 'delete_everything' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(400);
+      // Only the role lookup itself touches the database for an
+      // unrecognised action — no email_lists/email_list_subscribers call.
+      const tablesTouched = mockFrom.mock.calls.map((c) => c[0]);
+      expect(tablesTouched).toEqual(['user_roles']);
+    });
+
+    test('arbitrary client-supplied table/id/filters cannot influence the operation', async () => {
+      mockRole('super_admin');
+      const req = fixtureReq({
+        action: 'clear_email_fixtures',
+        table: 'organisations',
+        id: 'some-real-row-id',
+        filters: { status: { eq: 'active' } },
+        list_id: 'not-a-real-fixture-id',
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      // The only tables ever reached were the two fixture tables — never
+      // 'organisations' or any other client-named value.
+      const tablesTouched = mockFrom.mock.calls.map((c) => c[0]).filter((t) => t !== 'user_roles');
+      expect(tablesTouched).toEqual(['email_list_subscribers', 'email_lists']);
+    });
+
+    test('generate_email_fixtures upserts exactly the 3 fixed list IDs and inserts subscribers scoped to them', async () => {
+      mockRole('super_admin');
+      const req = fixtureReq({ action: 'generate_email_fixtures' });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const calls = mockFrom.mock.calls.map((c, i) => ({ table: c[0], chain: mockFrom.mock.results[i].value }));
+      const subscriberCalls = calls.filter((c) => c.table === 'email_list_subscribers');
+      expect(subscriberCalls.length).toBe(2); // clear, then insert
+
+      expect(subscriberCalls[0].chain.delete).toHaveBeenCalled();
+      expect(subscriberCalls[0].chain.in).toHaveBeenCalledWith('list_id', FIXTURE_LIST_IDS);
+
+      expect(subscriberCalls[1].chain.insert).toHaveBeenCalled();
+      const insertedRows = subscriberCalls[1].chain.insert.mock.calls[0][0];
+      expect(insertedRows.every((r) => FIXTURE_LIST_IDS.includes(r.list_id))).toBe(true);
+
+      const listCall = calls.find((c) => c.table === 'email_lists');
+      expect(listCall.chain.upsert).toHaveBeenCalled();
+      const upsertedLists = listCall.chain.upsert.mock.calls[0][0];
+      expect(upsertedLists.map((l) => l.id)).toEqual(FIXTURE_LIST_IDS);
+    });
+
+    test('clear_email_fixtures deletes subscribers then lists, scoped to exactly the 3 fixed IDs, touching no other table', async () => {
+      mockRole('super_admin');
+      const req = fixtureReq({ action: 'clear_email_fixtures' });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const calls = mockFrom.mock.calls.map((c, i) => ({ table: c[0], chain: mockFrom.mock.results[i].value }));
+      const nonRoleCalls = calls.filter((c) => c.table !== 'user_roles');
+      expect(nonRoleCalls.map((c) => c.table)).toEqual(['email_list_subscribers', 'email_lists']);
+
+      expect(nonRoleCalls[0].chain.delete).toHaveBeenCalled();
+      expect(nonRoleCalls[0].chain.in).toHaveBeenCalledWith('list_id', FIXTURE_LIST_IDS);
+      expect(nonRoleCalls[1].chain.delete).toHaveBeenCalled();
+      expect(nonRoleCalls[1].chain.in).toHaveBeenCalledWith('id', FIXTURE_LIST_IDS);
+    });
+
+    test('partial failure is reported accurately without exposing the raw database error', async () => {
+      mockRole('super_admin');
+      // Fail only the first fixture-table call (the pre-clear delete of
+      // subscribers); the remaining steps use the default (successful) mock.
+      mockFrom.mockImplementationOnce(() =>
+        chainable({ data: null, error: { message: 'permission denied for relation email_list_subscribers' } })
+      );
+      const req = fixtureReq({ action: 'generate_email_fixtures' });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(false);
+      expect(res.body.errors).toContain('clear fixture subscribers');
+      // The raw Postgres error text must never reach the client.
+      expect(JSON.stringify(res.body)).not.toMatch(/permission denied/);
+    });
+
+    test('unexpected exception falls back to the generic 500 without leaking detail', async () => {
+      mockRole('super_admin');
+      mockFrom.mockImplementationOnce(() => {
+        throw new Error('unexpected internal failure with sensitive stack detail');
+      });
+      const req = fixtureReq({ action: 'generate_email_fixtures' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+      expect(JSON.stringify(res.body)).not.toMatch(/sensitive stack detail/);
     });
   });
 });

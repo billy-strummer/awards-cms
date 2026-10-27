@@ -47,18 +47,33 @@ Agreed working process for all subsequent tasks on this project (mirrored in `CL
 
 ## C. Current verified state
 
-**Freshly re-verified for this task** (this is a live check, not carried forward from an older phase):
+**Superseded table, kept for history — see the dated table immediately below for what is current.** This table was accurate as of the task that wrote it (now one commit behind reality):
+
+| Item | Value | Status |
+|---|---|---|
+| Branch | `claude/supabase-cms-setup-test-e6oiza` | **Verified**, that task |
+| HEAD | `3f3f2b02536f5b3f654751c3bf3d882d4b9af3a2` | **Verified**, that task — now stale, see below |
+| `origin/main` | `f58032dced1062b4f6e08c88245eb04b3edc0023` | Previously reported (not re-checked via `ls-remote` that task) |
+| Working tree | `BTA-CMS-PROJECT-TASKS.md` staged as a new file (`A`); `CLAUDE.md` staged as a modification (`M`). Both uncommitted, unpushed | **Verified**, that task — **this claim is now stale, see below** |
+| Upstream branch | **None configured** (`git rev-parse @{u}` → "no upstream configured for branch") | **Verified**, that task — **now stale, see below** |
+| Checkout | Shallow | Previously reported |
+| PR #308 | Open, unmerged, `mergeable_state: dirty` **as of its last check only** — see Section G | Previously reported, not re-checked that task |
+| Supabase live state | Unverified. Earlier reports said `INACTIVE` with connection timeouts; not rechecked since and not rechecked that task | **Uncertain** |
+
+### C.1 — Current verified state (BTA continuity audit, 2026-10-27)
+
+**Freshly re-verified in this task** (live check — supersedes the table above):
 
 | Item | Value | Status |
 |---|---|---|
 | Branch | `claude/supabase-cms-setup-test-e6oiza` | **Verified**, this task |
-| HEAD | `3f3f2b02536f5b3f654751c3bf3d882d4b9af3a2` | **Verified**, this task |
-| `origin/main` | `f58032dced1062b4f6e08c88245eb04b3edc0023` | Previously reported (not re-checked via `ls-remote` this task) |
-| Working tree | `BTA-CMS-PROJECT-TASKS.md` staged as a new file (`A`); `CLAUDE.md` staged as a modification (`M`). Both uncommitted, unpushed | **Verified**, this task |
-| Upstream branch | **None configured** (`git rev-parse @{u}` → "no upstream configured for branch") | **Verified**, this task — new finding, not previously recorded |
-| Checkout | Shallow | Previously reported |
-| PR #308 | Open, unmerged, `mergeable_state: dirty` **as of its last check only** — see Section G | Previously reported, not re-checked this task |
-| Supabase live state | Unverified. Earlier reports said `INACTIVE` with connection timeouts; not rechecked since and not rechecked this task | **Uncertain** |
+| HEAD | `ba6c9810c622c58e0c469b3844d86690070ebc7d` | **Verified**, this task |
+| `origin/main` | `f58032dced1062b4f6e08c88245eb04b3edc0023` | **Verified**, this task (`git rev-parse origin/main`) — unchanged from previous report |
+| Upstream branch | `origin/claude/supabase-cms-setup-test-e6oiza` — **now configured** (contradicts the "none configured" row above) and exactly in sync with local HEAD (`git rev-list --left-right --count` → `0  0`) | **Verified**, this task — supersedes the stale "none configured" finding |
+| `BTA-CMS-PROJECT-TASKS.md` / `CLAUDE.md` | **Already committed** (both are part of commit `ba6c9810c622c58e0c469b3844d86690070ebc7d`, message "docs: save BTA CMS project continuity checkpoint") **and already pushed** (that commit is both local HEAD and `origin/claude/supabase-cms-setup-test-e6oiza`'s tip) | **Verified**, this task — **corrects** the stale "staged… uncommitted, unpushed" claim above; see Section H |
+| Working tree (uncommitted, beyond the two files above) | 12 pre-existing paths (6 modified, 6 deleted — unchanged, see Section D.4/below) **plus** 4 modified files and 1 untracked file from BTA-027, all unstaged | **Verified**, this task |
+| PR #308 | Open, unmerged, `mergeable_state: dirty`, `head.sha` = current HEAD exactly, 73 commits, 148 changed files | **Verified**, this task (fresh GitHub API check) |
+| Supabase live state | **Not checked this task** — this is a documentation-only continuity audit; no Supabase connection was made | Not checked |
 
 **Do not treat the un-"Verified-this-task" rows as current without re-checking at the start of the next task.**
 
@@ -66,7 +81,7 @@ Agreed working process for all subsequent tasks on this project (mirrored in `CL
 
 ## D. Task register and history
 
-Three parallel workstreams exist on this project. They are related but distinct — do not collapse them into one narrative.
+Four parallel workstreams exist on this project (originally three — D.4 added in the 2026-10-27 continuity audit, see below). They are related but distinct — do not collapse them into one narrative.
 
 ### D.1 — BTA-00x sequence (homepage/taxonomy workstream)
 
@@ -100,6 +115,63 @@ See Section G for full detail. **Do not reconstruct these from memory** — any 
 
 A large, already-pushed, unmerged pull request containing ~3 months of real accumulated work (organisation-matching fix plus many unrelated bundled changes). See Section G for full detail. **Not part of the BTA-00x sequence** — a separate body of work that happens to also touch organisation/area logic.
 
+### D.4 — Supabase RLS / data-proxy security-hardening workstream (BTA-007–BTA-027)
+
+> **CONTINUITY GAP — found and recorded for the first time in this task (2026-10-27).** This entire workstream — a long sequence of read-only Supabase RLS/grant audits culminating in one implementation task — was carried out in the same conversation/session as this continuity audit, but is **not present anywhere in any prior revision of this document**. CLAUDE.md's own mandate ("Update `BTA-CMS-PROJECT-TASKS.md` with evidence and the next action before ending a task") was not followed for any task in this workstream before now. It is being recorded here for the first time, not reconstructed from a lost source — this session has direct, first-hand knowledge of it.
+
+**Confidence note, following this document's own labelling convention:** this session has direct, verified knowledge of BTA-022 through BTA-027 — their exact task titles, scopes, and findings were produced by this session's own prior turns in this same conversation. BTA-016 through BTA-021 are known to this session in substance (a continued read-only audit tracing dynamically-generated RLS policy names and migration-array coverage) but their exact individual titles are not separately confirmed here. **BTA-007 through BTA-015 are known only to have existed and to have followed the same read-only, evidence-first Supabase RLS/grant audit pattern** — their individual titles, exact scopes, and specific findings are **not independently confirmed in this task and are not fabricated here.** A dedicated backfill task, scoped specifically to recovering BTA-007–015's (and, for completeness, BTA-016–021's) exact content while this session's own transcript remains available, is recommended — see Decision register item 14.
+
+| ID | Objective | Status |
+|---|---|---|
+| BTA-007–BTA-015 | Read-only Supabase RLS/grant audit tasks | Existence known; exact titles/scopes/findings **not confirmed** this task |
+| BTA-016–BTA-021 | Continued read-only RLS/policy/grant-provenance audits, tracing dynamically-generated policy names (e.g. via `format('"%s_select"', t)` loops) and reconciling which migrations' table arrays actually cover `email_list_subscribers`/`email_list_members` and related tables | Completed (read-only); known in substance to this session, exact titles not separately itemised here |
+| **BTA-022** | "Reconcile Migration 045's 31-Table Loop Against Migration 084's Hardening Coverage" | Completed (read-only) |
+| **BTA-023** | "`email_list_members` View Security and Schema Mismatch" | Completed (read-only) |
+| **BTA-024** | "`email_list_subscribers` Security Verification and Remediation Readiness" | Completed (read-only) |
+| **BTA-025** | "Data-Proxy Authorisation and Test-Data Manager Dependency Audit" | Completed (read-only) |
+| **BTA-026** | "Final Security Gap-Closure Audit and Implementation Specification" | Completed (read-only); produced the approved design BTA-027 implemented |
+| **BTA-027** | "Secure Email-List Test Fixtures Implementation" | Implemented and tested this session; **independently re-verified against current repository code in this continuity task** (not copied from the prior report unverified — see below). **Working-tree-only: not committed, not pushed.** |
+
+#### BTA-027 — verified record
+
+**Objective:** add a dedicated, `super_admin`-only, environment-guarded `test_data_fixture` operation to the existing `api/data-proxy.js`, supporting exactly two actions (`generate_email_fixtures`, `clear_email_fixtures`) scoped to `email_lists`/`email_list_subscribers` only; migrate `test-data-manager.js`'s email-list fixture functions off direct browser-side Supabase writes onto this operation; add security tests; author (but do not apply) a migration removing the unrestricted `email_list_subscribers` RLS policy and unnecessary client grants.
+
+**Files (verified present and in the stated state this task, via fresh `grep`/`git diff` against current source — not copied from the prior report unverified):**
+- `api/data-proxy.js` (modified, unstaged)
+- `test-data-manager.js` (modified, unstaged)
+- `tests/data-proxy.test.js` (modified, unstaged)
+- `tests/test-data-manager.test.js` (modified, unstaged)
+- `migrations/086-harden-email-list-subscribers-rls.sql` (new, untracked)
+
+**Verified this task, directly against current source:**
+- `api/data-proxy.js`: `test_data_fixture` operation present, dispatched before the generic table-operation validation path (confirmed placed immediately after the existing `nominee_delete_all` branch, well before the later generic `validateQueryParams`/`checkPermission` step). Role gate confirmed: `hasMinimumRole(role, 'super_admin')`. Environment guard confirmed: `isTestDataEnvironmentSafe()` requires `process.env.NODE_ENV !== 'production'` **and** `process.env.SUPABASE_URL` to match `TEST_DATA_ALLOWED_SUPABASE_URLS = new Set(['https://htcsewpztvxafksdzuhp.supabase.co'])` — exactly one allowlisted URL, matching the test project ref `htcsewpztvxafksdzuhp`. Action allowlist confirmed: only `generate_email_fixtures`/`clear_email_fixtures` accepted; any other value → HTTP 400.
+- `test-data-manager.js`: confirmed **zero** remaining occurrences of `STATE.client.from('email_lists')` or `STATE.client.from('email_list_subscribers')` anywhere in the file; both email-list fixture functions now call `apiClient.post('test_data_fixture', { action: ... })` with the exact action names above.
+- `migrations/086-harden-email-list-subscribers-rls.sql`: confirmed it drops `"Allow all access to email_list_subscribers"`, adds `service_role_all` and `no_direct_client_access` via the repository's established `duplicate_object`-exception idempotency pattern (matching migrations 052/080), revokes `SELECT, INSERT, UPDATE, DELETE, TRUNCATE` from `anon` and `authenticated` only (not `service_role`), is scoped to this one table, and does not touch `email_list_members`. The file's own header comment states plainly that it has not been applied.
+- **Fixture definitions confirmed verbatim**: three deterministic list IDs `B1000000-0000-0000-0000-000000000001/2/3`, named `TEST_MODE_All Entrants 2025` / `TEST_MODE_Sponsors & Partners` / `TEST_MODE_Event Guests`.
+
+**Migration status — only the statuses actually supported by evidence are marked:**
+- **Migration file created**: ✅ Yes — confirmed present at `migrations/086-harden-email-list-subscribers-rls.sql`, untracked.
+- **Migration reviewed**: ✅ Yes — reviewed as source during BTA-027 and again independently in this continuity task.
+- **Migration applied to test (`htcsewpztvxafksdzuhp`)**: ❓ **Not established.** This task made no Supabase connection and ran no query against either project. Its application status **cannot be independently verified from repository evidence alone.** The file's own content and BTA-027's report both *state* it was not applied — that is a claim about what the authoring task did, not an independent database check.
+- **Migration applied to production (`qdzyknercdqwhwijbcxf`)**: ❓ Same — not established from repository evidence; not checked this task.
+
+**Synthetic fixture-data deviation — confirmed in code, intentional, not to be "corrected":** the "All Entrants 2025" list's 15 subscriber rows use synthetic emails (`entrant1@example.com`, etc.) rather than real organisation data — 14 rows `status: 'active'`, 1 `'unsubscribed'` (`i < 14`), matching the reported ratio exactly. This is because the operation is deliberately restricted to two tables and may not read `organisations`. **Do not reintroduce an `organisations`-table dependency into this operation without a separate, explicitly authorised scope change.**
+
+**Test and build results — historical vs. newly verified, clearly distinguished:**
+- *Historical (reported by BTA-027 itself, not re-run by this task originally)*: `tests/data-proxy.test.js` 58/58; `tests/test-data-manager.test.js` 103/103; full suite 69 suites / 6,527 passed / 3 skipped / 0 failed; targeted ESLint 0 errors / 2 pre-existing warnings outside changed ranges; `npm run lint` clean; `node build.js` success.
+- ***Freshly re-verified in this continuity task***: ran `npx jest tests/data-proxy.test.js tests/test-data-manager.test.js` → **2 suites passed, 161/161 tests passed** (58 + 103, matching the historical figures). Mocked Supabase client only, no network/database access. `git status` checked immediately before and after confirmed this run made **no change whatsoever** to the working tree. The full 6,530-test suite, lint, and build were **not** re-run in this continuity task — not required to verify the continuity record, and the task's own instructions caution against representing unexecuted historical results as newly verified, which this entry avoids by distinguishing the two explicitly.
+
+**Deferred findings (recorded here per BTA-027's own report; not investigated or fixed by BTA-027 or by this continuity task):**
+- *Campaign-send authorisation*: the `supabase/functions/send-campaign` Edge Function's `verify_jwt` platform setting could not be confirmed from repository source (no `supabase/config.toml` present in this repo); `api/resend-email.js`'s `send-campaign` action requires authentication but has no role-level check. Neither depends on `email_list_subscribers`'s client grants, so neither blocks migration 086.
+- *Tenant security*: `tenantModule.getTenantId()` (`multi-tenancy.js`) is sourced from `localStorage`, an unauthenticated client-side value, with no server-side check in `api/data-proxy.js` tying a user to a specific tenant. Flagged as a standing gap, not fixed.
+- *`database-multi-tenancy-setup.sql`*: its `information_schema.tables` existence check (before adding `tenant_id` columns) lacks the `table_type = 'BASE TABLE'` guard that the equivalent numbered migration (071) has. Not fixed; unrelated to migration 086.
+
+**Outstanding for this workstream:**
+1. BTA-027's five files remain **uncommitted and unpushed** — working-tree-only, at risk of loss if this container is recreated (see Section H).
+2. Migration 086 remains unapplied to both Supabase projects, by design, pending separate authorisation.
+3. The BTA-007–021 backfill (see confidence note above / Decision register item 14).
+4. The three deferred findings above remain open, with no task currently scoped against them.
+
 ---
 
 ## E. Decision register
@@ -116,7 +188,11 @@ None of the items below have been decided by the user in any record available to
 8. **PR #308's fate** — merge as-is, split, replace, or close. Not decided; its `dirty` mergeability finding alone does not justify any of these (see Section G).
 9. **Whether to rebuild any of the six missing Package commits** (Section D.2/G) as new, separately-reviewed work, and in what order.
 10. **Whether/when to authorise resuming the Supabase project** — blocks item 4's live-schema verification and any other live check.
-11. **Continuity-document persistence** — whether/when to commit and push this task sheet and the `CLAUDE.md` addition made in this task (immediate, administrative — see Section H).
+11. **Continuity-document persistence** — whether/when to commit and push this task sheet and the `CLAUDE.md` addition made in this task (immediate, administrative — see Section H). **Partially resolved since this item was written**: that specific task-sheet/CLAUDE.md edit was in fact subsequently committed and pushed (commit `ba6c9810c622c58e0c469b3844d86690070ebc7d`) — see Section C.1/H. The underlying question (committing/pushing continuity-document edits made *after* that point, including this one) remains live.
+12. **Whether to commit and push BTA-027's five changed/new files** (`api/data-proxy.js`, `test-data-manager.js`, `tests/data-proxy.test.js`, `tests/test-data-manager.test.js`, `migrations/086-harden-email-list-subscribers-rls.sql`) — currently working-tree-only; at risk of loss if this container is recreated, the same failure mode documented in Section G. Not decided.
+13. **Whether to apply migration 086 to the test Supabase project**, and, only after verification there, to production — not decided; requires separate, explicit, migration-specific authorisation per CLAUDE.md's standing rule. No live check of either project's current policy/grant state was performed in this continuity task.
+14. **Whether to commission a dedicated backfill task for BTA-007–BTA-021's specific titles/scopes/findings** before that detail becomes unrecoverable (Section D.4) — not decided.
+15. **Whether to investigate the three deferred findings recorded in Section D.4** (campaign-send authorisation, tenant security, the `database-multi-tenancy-setup.sql` guard) as separate, bounded tasks — not decided; none are blocking item 13 above.
 
 ---
 
@@ -154,6 +230,7 @@ None of the items below have been decided by the user in any record available to
 | 2026-10-22 | Full 16-branch search for the original task sheet performed (per explicit authorisation) — found nothing on any of them. BTA-001–BTA-005 recovery attempted; underlying commits confirmed unrecoverable; `migrations/058` vs. `database-sectors-categories.sql` comparison completed (Section F.1). | INVESTIGATION COMPLETE (read-only) |
 | 2026-10-22 | Continuity-system update (this task): restructured this document into the Section A–I register format; added the BTA-00x task register (Section D.1, previously missing entirely from this document); added the consolidated Decision register (Section E); moved the migration comparison into a dedicated Evidence section (F.1); added explicit Persistence-state (H) and "Start Here Next Session" (I) sections; added a mandatory continuity-protocol section to `CLAUDE.md`. No application code, tests, migrations, or database state touched. | DOCUMENTATION UPDATE (not committed) |
 | 2026-10-22 | BTA-006 read-only audit of the Award Areas feature/CSV import (part of unreviewed PR #308 scope); added BTA-006 to Section D.1 and a full checkpoint as new Section J (findings R1–R3, M1–M4; 70/70 targeted tests reproduced passing, mocks only). Separate follow-up task then read-verified this same checkpoint, re-confirmed Git/PR state, and investigated R1–R3 further for a bounded next-task recommendation (see session report). No application code, tests, migrations, or database state touched; `CLAUDE.md` left untouched this task. | DOCUMENTATION UPDATE (not committed) |
+| 2026-10-27 | **Continuity audit** (this task): re-verified Git/worktree state fresh (branch, HEAD, upstream — now configured and in sync with origin, PR #308). **Discovered and recorded for the first time** that the entire BTA-007–BTA-027 Supabase RLS/data-proxy security-hardening workstream was absent from every prior revision of this document; added Section D.4 with a verified BTA-027 record (independently re-checked against current source, not copied from the prior report unverified) and flagged the BTA-007–021 detail gap. **Corrected a stale claim**: Section C's prior table said `BTA-CMS-PROJECT-TASKS.md`/`CLAUDE.md` were staged-but-uncommitted — they were in fact already committed (`ba6c9810c6…`) and already pushed; added Section C.1 and updated Section H accordingly, preserving the original (now-superseded) claim for history. Added Decision register items 12–15 and annotated item 11 as partially resolved. Freshly re-ran `tests/data-proxy.test.js` + `tests/test-data-manager.test.js` as a safe, read-only-equivalent check (161/161 passed; confirmed via `git status` before/after that this made no working-tree change); did not re-run the full suite, lint, or build. No application code, test, migration, or database state was touched by this task itself; no Supabase connection was made; nothing was staged, committed, or pushed. | DOCUMENTATION UPDATE (not committed) |
 
 ---
 
@@ -189,11 +266,15 @@ Three distinct levels, and what each actually guarantees for a **future, possibl
 - **Committed locally:** the file is in this container's local git history, retrievable by `git show`/`git log` from this container — but a **new** container that only clones from `origin` will not have it, since nothing has been pushed.
 - **Pushed to the intended remote branch:** retrievable by any future session that can access `origin/claude/supabase-cms-setup-test-e6oiza` (or wherever it's pushed), subject to normal remote availability/permissions.
 
-**Current actual state, verified this task:** both `BTA-CMS-PROJECT-TASKS.md` and the `CLAUDE.md` continuity-protocol addition are **currently staged** (`git status`: `A BTA-CMS-PROJECT-TASKS.md`, `M CLAUDE.md`) — **not yet committed, not pushed**. No upstream branch is even configured for this branch (`git rev-parse @{u}` fails — "no upstream configured"), so a push would need an explicit target spelled out, not just `git push`.
+**Current actual state, verified that task (now superseded — see below):** both `BTA-CMS-PROJECT-TASKS.md` and the `CLAUDE.md` continuity-protocol addition were **currently staged** (`git status`: `A BTA-CMS-PROJECT-TASKS.md`, `M CLAUDE.md`) — **not yet committed, not pushed**. No upstream branch was even configured for this branch (`git rev-parse @{u}` failed — "no upstream configured"), so a push would have needed an explicit target spelled out, not just `git push`.
 
-**A report, summary, or task sheet described only in a chat conversation — on this platform or any other, including a ChatGPT Library — is not automatically available to a new Claude session**, exactly as Section G.3 just demonstrated in practice.
+**Updated current actual state, verified in the continuity audit on 2026-10-27 (this supersedes the paragraph above — kept for history, not because it is still accurate):** the claim above is now stale. Both files **were in fact committed** — they are part of commit `ba6c9810c622c58e0c469b3844d86690070ebc7d` ("docs: save BTA CMS project continuity checkpoint") — and that commit **is** the current HEAD, which **is pushed**: `origin/claude/supabase-cms-setup-test-e6oiza` matches HEAD exactly (`git rev-list --left-right --count` → `0  0`), confirmed fresh in this task. So this task sheet, as it stood at the end of the task that wrote the paragraph above, actually reached the **"pushed to the intended remote branch"** level — the strongest of the three this section defines — genuinely safe against container loss. This is a normal, expected kind of staleness (a file's own prose, written just before its final commit, necessarily describes the parent HEAD at authoring time, not the hash the commit will end up with) — not evidence of a new loss.
 
-**Committing and pushing require your explicit authorisation, each time — not inferred from this task's instructions to "make documentation changes."**
+**However**, everything implemented *since* that checkpoint — the entire BTA-007–BTA-027 workstream's actual code output, i.e. BTA-027's five files (`api/data-proxy.js`, `test-data-manager.js`, `tests/data-proxy.test.js`, `tests/test-data-manager.test.js` modified/unstaged; `migrations/086-harden-email-list-subscribers-rls.sql` new/untracked) — is at the **working-tree-only** level right now: present on disk in this container, invisible to `git log`, and **will be lost if this container is recreated before it is committed and pushed.** This is the same risk category Section G's lost commits fell into. This continuity audit's own edits to this file are, likewise, working-tree-only until committed.
+
+**A report, summary, or task sheet described only in a chat conversation — on this platform or any other, including a ChatGPT Library — is not automatically available to a new Claude session**, exactly as Section G.3 demonstrated in practice.
+
+**Committing and pushing require your explicit authorisation, each time — not inferred from any task's instructions to "make documentation changes."**
 
 ---
 
@@ -256,3 +337,11 @@ No application code, test, migration, or SQL file was touched this task. No stag
 **Next substantive CMS step (strongest evidence-supported candidate, not yet approved):** either (a) the Award Areas import-safety follow-up proposed in Section J/this task's report, or (b) resolving Decision register item 1 (`areas.is_small` intent) — both are independent and either could go first; neither is approved yet.
 
 **Do not, without separate explicit authorisation each time:** commit or push anything; resume/restore Supabase; execute any SQL or migration; merge/rebase/split/close PR #308; rebuild any of the six missing recovery packages or the BTA-001–003 work; implement any Award Areas fix (R1/R2/R3 or otherwise); or make the `is_small`/category-model/certificate-entitlement product decisions on the user's behalf.
+
+---
+
+## UPDATE (continuity audit, 2026-10-27) — supersedes this section's guidance above for what to do next
+
+This section's guidance above is left intact for history, but a large, separate workstream (Section D.4: BTA-007–BTA-027, the Supabase RLS/data-proxy security-hardening effort) ran after it was written and is now the most recent completed work. **Immediate next step:** decide on Decision register items 12–15 — principally, whether to commit and push BTA-027's five files (currently working-tree-only, at real risk of loss per Section H) and whether/when to apply migration 086 to the test project. The BTA-00x/Award-Areas guidance above remains open and unaddressed by this workstream; both tracks can proceed independently once their respective decisions are made.
+
+**Do not, without separate explicit authorisation each time:** commit or push BTA-027's files or this document; apply migration 086 to the test or production Supabase project; investigate or fix any of the three deferred findings in Section D.4; or backfill BTA-007–021's detail from assumption rather than from this session's own surviving transcript.

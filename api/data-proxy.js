@@ -1881,6 +1881,172 @@ async function executeSegmentQuery(rules, logic) {
   };
 }
 
+// ============================================
+// TEST-DATA FIXTURE OPERATION
+// ============================================
+// Server-defined, non-client-influenceable replacement for
+// test-data-manager.js's former direct-browser-client writes to
+// email_lists/email_list_subscribers. The client may only name one of the
+// two actions below — every table name, row ID, and filter used here is a
+// fixed constant; nothing from the request body other than `action` is
+// ever read by executeTestDataFixture() or isTestDataEnvironmentSafe().
+
+/**
+ * The 3 deterministic email-list fixtures, matching the long-standing
+ * EMAIL_LIST_PREFIX ('B1000000-0000-0000-0000-') ids 1/2/3 convention in
+ * test-data-manager.js. These are the ONLY email_lists rows this operation
+ * will ever touch.
+ */
+const EMAIL_FIXTURE_LISTS = [
+  {
+    id: 'B1000000-0000-0000-0000-000000000001',
+    list_name: 'TEST_MODE_All Entrants 2025',
+    list_type: 'entrants',
+    is_active: true,
+    color: '#007bff',
+    icon: 'bi-file-earmark-text',
+    description: 'All organisations that submitted entries in 2025',
+    subscriber_count: 15,
+    active_subscriber_count: 14,
+  },
+  {
+    id: 'B1000000-0000-0000-0000-000000000002',
+    list_name: 'TEST_MODE_Sponsors & Partners',
+    list_type: 'sponsors',
+    is_active: true,
+    color: '#28a745',
+    icon: 'bi-star',
+    description: 'Current sponsors and strategic partners',
+    subscriber_count: 8,
+    active_subscriber_count: 8,
+  },
+  {
+    id: 'B1000000-0000-0000-0000-000000000003',
+    list_name: 'TEST_MODE_Event Guests',
+    list_type: 'general',
+    is_active: true,
+    color: '#6f42c1',
+    icon: 'bi-calendar-event',
+    description: 'Invited guests for the awards ceremony',
+    subscriber_count: 20,
+    active_subscriber_count: 18,
+  },
+];
+
+const EMAIL_FIXTURE_LIST_IDS = EMAIL_FIXTURE_LISTS.map((l) => l.id);
+
+/**
+ * Build the fixed set of fixture subscriber rows for the 3 email-list
+ * fixtures. Synthetic data only: unlike the legacy browser-side generator,
+ * this operation deliberately does not read the `organisations` table
+ * (out of scope — restricted to email_lists/email_list_subscribers only),
+ * so the "All Entrants 2025" list's subscribers use synthetic names/emails
+ * rather than real TEST_MODE_ organisation rows. Row counts and the
+ * active/unsubscribed ratio match the original generator exactly; the
+ * "Event Guests" fixture intentionally has no subscriber rows, also
+ * matching the original.
+ * @returns {Object[]} Subscriber rows ready for insert.
+ */
+function buildEmailFixtureSubscribers() {
+  const entrants = Array.from({ length: 15 }, (_, i) => ({
+    list_id: EMAIL_FIXTURE_LIST_IDS[0],
+    email: `entrant${i + 1}@example.com`,
+    first_name: 'Contact',
+    last_name: `Entrant ${i + 1}`,
+    company_name: `TEST_MODE_Entrant Company ${i + 1}`,
+    status: i < 14 ? 'active' : 'unsubscribed',
+    source: 'entry_submission',
+  }));
+
+  const sponsorNames = [
+    { first: 'Sarah', last: 'Platinum', company: 'Platinum Corp' },
+    { first: 'James', last: 'Gold', company: 'Gold Industries' },
+    { first: 'Emma', last: 'Silver', company: 'Silver Solutions' },
+    { first: 'Tom', last: 'Bronze', company: 'Bronze Partners' },
+    { first: 'Lisa', last: 'Partner', company: 'Community Partner' },
+  ];
+  const sponsors = sponsorNames.map((s, i) => ({
+    list_id: EMAIL_FIXTURE_LIST_IDS[1],
+    email: `sponsor${i + 1}@example.com`,
+    first_name: s.first,
+    last_name: s.last,
+    company_name: s.company,
+    status: 'active',
+    source: 'manual',
+  }));
+
+  return [...entrants, ...sponsors];
+}
+
+/**
+ * Known-safe test Supabase project URL, independently verified for this
+ * project (not a secret — a public project API endpoint, not a key).
+ * Used only to confirm the server is actually pointed at the test
+ * project before allowing any destructive fixture operation.
+ */
+const TEST_DATA_ALLOWED_SUPABASE_URLS = new Set(['https://htcsewpztvxafksdzuhp.supabase.co']);
+
+/**
+ * Fail-closed environment guard for the test-data fixture operation only.
+ * Reads exclusively from trusted server-side process.env values — never
+ * from the request body or headers, which a caller fully controls.
+ * @returns {boolean} true only if this is confirmed to be a non-production
+ *   deployment whose configured SUPABASE_URL matches the known test project.
+ */
+function isTestDataEnvironmentSafe() {
+  if (process.env.NODE_ENV === 'production') return false;
+  const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  if (!url || !TEST_DATA_ALLOWED_SUPABASE_URLS.has(url)) return false;
+  return true;
+}
+
+/**
+ * Execute the test-data fixture operation. Restricted to exactly the two
+ * named actions and exactly the two tables (email_lists,
+ * email_list_subscribers) — every ID and filter is one of the fixed
+ * constants above, never anything derived from the request.
+ * @param {string} action - 'generate_email_fixtures' | 'clear_email_fixtures'
+ * @returns {Promise<{success: boolean, errors: string[]}>}
+ */
+async function executeTestDataFixture(action) {
+  const errors = [];
+
+  async function runStep(label, fn) {
+    const { error } = await fn();
+    if (error) {
+      console.error(`[data-proxy] test_data_fixture(${action}) — ${label} failed:`, error.message);
+      errors.push(label);
+    }
+  }
+
+  if (action === 'clear_email_fixtures' || action === 'generate_email_fixtures') {
+    // Always clear subscribers for the fixed fixture lists first, whether
+    // generating (so inserts start from a clean slate, matching the
+    // original generator's own "clear existing test subscribers" step) or
+    // clearing outright.
+    await runStep('clear fixture subscribers', () =>
+      supabase.from('email_list_subscribers').delete().in('list_id', EMAIL_FIXTURE_LIST_IDS)
+    );
+  }
+
+  if (action === 'clear_email_fixtures') {
+    await runStep('clear fixture lists', () => supabase.from('email_lists').delete().in('id', EMAIL_FIXTURE_LIST_IDS));
+    return { success: errors.length === 0, errors };
+  }
+
+  if (action === 'generate_email_fixtures') {
+    await runStep('create fixture lists', () => supabase.from('email_lists').upsert(EMAIL_FIXTURE_LISTS));
+    await runStep('create fixture subscribers', () =>
+      supabase.from('email_list_subscribers').insert(buildEmailFixtureSubscribers())
+    );
+    return { success: errors.length === 0, errors };
+  }
+
+  // Unreachable given the handler's own action allowlist check below, but
+  // fail safe rather than silently no-op if ever reached some other way.
+  return { success: false, errors: ['Unknown action'] };
+}
+
 /**
  * Vercel serverless function handler.
  * POST /api/data-proxy
@@ -2021,6 +2187,30 @@ module.exports = async function handler(req, res) {
       await supabase.from('nominee_upload_rows').delete().eq('batch_id', batchId);
       await supabase.from('nominee_upload_batches').delete().eq('id', batchId);
       return res.status(200).json({ deleted: true });
+    }
+
+    // 7a2. Test-data email-list fixtures — server-derived IDs only, never
+    // a client-supplied table/id/filter. Super-admin only, and refused
+    // outright unless the server can confirm this is a non-production
+    // deployment pointed at the known test Supabase project.
+    if (body.operation === 'test_data_fixture') {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Test-data fixture operations require super_admin role' });
+      }
+      if (!isTestDataEnvironmentSafe()) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Test-data fixture operations are disabled in this environment',
+        });
+      }
+      const fixtureAction = body.action;
+      if (fixtureAction !== 'generate_email_fixtures' && fixtureAction !== 'clear_email_fixtures') {
+        return res.status(400).json({ error: `Unknown test_data_fixture action: "${fixtureAction}"` });
+      }
+      const fixtureResult = await executeTestDataFixture(fixtureAction);
+      return res.status(200).json(fixtureResult);
     }
 
     // 7b. Award Areas CSV import — validates and/or imports nominees into a

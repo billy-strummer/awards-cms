@@ -1511,79 +1511,20 @@ const testDataManager = {
     const tplResult = await this._safeWrite('email_templates', templates, 'Email templates', 'upsert');
     this._logErr('Email templates', tplResult.error);
 
-    // Email lists (3 lists)
-    const emailLists = [
-      {
-        id: this.uid(this.EMAIL_LIST_PREFIX, 1),
-        list_name: 'TEST_MODE_All Entrants 2025',
-        list_type: 'entrants',
-        is_active: true,
-        color: '#007bff',
-        icon: 'bi-file-earmark-text',
-        description: 'All organisations that submitted entries in 2025',
-        subscriber_count: 15,
-        active_subscriber_count: 14,
-      },
-      {
-        id: this.uid(this.EMAIL_LIST_PREFIX, 2),
-        list_name: 'TEST_MODE_Sponsors & Partners',
-        list_type: 'sponsors',
-        is_active: true,
-        color: '#28a745',
-        icon: 'bi-star',
-        description: 'Current sponsors and strategic partners',
-        subscriber_count: 8,
-        active_subscriber_count: 8,
-      },
-      {
-        id: this.uid(this.EMAIL_LIST_PREFIX, 3),
-        list_name: 'TEST_MODE_Event Guests',
-        list_type: 'general',
-        is_active: true,
-        color: '#6f42c1',
-        icon: 'bi-calendar-event',
-        description: 'Invited guests for the awards ceremony',
-        subscriber_count: 20,
-        active_subscriber_count: 18,
-      },
-    ];
-    const listResult = await this._safeWrite('email_lists', emailLists, 'Email lists', 'upsert');
-    this._logErr('Email lists', listResult.error);
-
-    // Email list subscribers (populate lists with org data)
-    const subscribers = [];
-    for (let sl = 0; sl < Math.min(15, orgs.length); sl++) {
-      subscribers.push({
-        list_id: emailLists[0].id,
-        email: orgs[sl].email,
-        first_name: 'Contact',
-        last_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
-        company_name: orgs[sl].company_name.replace('TEST_MODE_', ''),
-        status: sl < 14 ? 'active' : 'unsubscribed',
-        source: 'entry_submission',
-      });
+    // Email lists + subscribers (3 fixed fixtures). Routed through the
+    // dedicated, super_admin-only, environment-guarded data-proxy
+    // operation instead of direct STATE.client writes — the server
+    // derives the exact list/subscriber IDs itself; no table name, ID, or
+    // filter is sent from here. See api/data-proxy.js's
+    // executeTestDataFixture() for the exact fixture content.
+    try {
+      const fixtureResult = await apiClient.post('test_data_fixture', { action: 'generate_email_fixtures' });
+      if (!fixtureResult?.success) {
+        this._logErr('Email list fixtures', { message: (fixtureResult?.errors || []).join(', ') || 'Unknown error' });
+      }
+    } catch (fixtureErr) {
+      this._logErr('Email list fixtures', fixtureErr);
     }
-    for (let ss = 0; ss < 5; ss++) {
-      subscribers.push({
-        list_id: emailLists[1].id,
-        email: 'sponsor' + (ss + 1) + '@example.com',
-        first_name: ['Sarah', 'James', 'Emma', 'Tom', 'Lisa'][ss],
-        last_name: ['Platinum', 'Gold', 'Silver', 'Bronze', 'Partner'][ss],
-        company_name: ['Platinum Corp', 'Gold Industries', 'Silver Solutions', 'Bronze Partners', 'Community Partner'][
-          ss
-        ],
-        status: 'active',
-        source: 'manual',
-      });
-    }
-    // Clear existing test subscribers
-    for (let dl = 0; dl < emailLists.length; dl++) {
-      try {
-        await STATE.client.from('email_list_subscribers').delete().eq('list_id', emailLists[dl].id);
-      } catch (e3) {}
-    }
-    const subResult = await this._safeWrite('email_list_subscribers', subscribers, 'Email subscribers', 'insert');
-    this._logErr('Email subscribers', subResult.error);
 
     // Social media posts (6 posts across different statuses)
     const socialPosts = [
@@ -1807,22 +1748,20 @@ const testDataManager = {
         await self._safeDel(STATE.client.from('social_media_posts').delete().in('company_id', orgIds));
       }
 
-      // D. Email list subscribers (must be before email lists)
+      // D. Email list fixtures (subscribers, then lists). Routed through
+      // the dedicated, super_admin-only, environment-guarded data-proxy
+      // operation instead of direct STATE.client writes; scoped
+      // server-side to the 3 fixed fixture IDs only (not a broad
+      // TEST_MODE_% match — see api/data-proxy.js's
+      // executeTestDataFixture()).
       try {
-        const { data: testLists } = await STATE.client
-          .from('email_lists')
-          .select('id')
-          .like('list_name', 'TEST_MODE_%');
-        if (testLists && testLists.length > 0) {
-          for (let els = 0; els < testLists.length; els++) {
-            await self._safeDel(STATE.client.from('email_list_subscribers').delete().eq('list_id', testLists[els].id));
-          }
+        const fixtureResult = await apiClient.post('test_data_fixture', { action: 'clear_email_fixtures' });
+        if (!fixtureResult?.success) {
+          console.warn('Cleanup skip: email list fixtures', (fixtureResult?.errors || []).join(', '));
         }
       } catch (e3) {
-        console.warn('Cleanup skip: email_list_subscribers', e3.message);
+        console.warn('Cleanup skip: email list fixtures', e3.message);
       }
-
-      await self._safeDel(STATE.client.from('email_lists').delete().like('list_name', 'TEST_MODE_%'));
       await self._safeDel(STATE.client.from('email_templates').delete().like('name', 'TEST_MODE_%'));
       await self._safeDel(STATE.client.from('event_tickets').delete().eq('event_id', eventId));
       await self._safeDel(STATE.client.from('event_ticket_types').delete().eq('event_id', eventId));

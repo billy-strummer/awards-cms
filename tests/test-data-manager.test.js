@@ -141,6 +141,23 @@ for (const key of Object.keys(global.window)) {
   }
 }
 
+// File-wide safety net: test-data-manager.js's email-list fixture
+// functions now call the real apiClient.post(), which performs a real
+// fetch() to '/api/data-proxy'. Without a default mock, any test that
+// exercises generateMarketingExtras()/removeTestData() (most of them,
+// since those are called from executeTestDataGeneration()/removeTestData()
+// directly) would attempt a real network call and hang. This beforeEach
+// runs before every test in this file (outermost scope), and the
+// companion afterEach runs after every test's own afterEach (including
+// any jest.restoreAllMocks()), so the default is always back in place for
+// the next test regardless of what an individual describe block does.
+beforeEach(() => {
+  apiClient.post = jest.fn().mockResolvedValue({ success: true, errors: [] });
+});
+afterEach(() => {
+  apiClient.post = jest.fn().mockResolvedValue({ success: true, errors: [] });
+});
+
 // ==========================================
 // TESTS
 // ==========================================
@@ -1026,21 +1043,69 @@ describe('Test Data Manager - generateMarketingExtras', () => {
     const calls = testDataManager._safeWrite.mock.calls;
     const tables = calls.map((c) => c[0]);
     expect(tables).toContain('email_templates');
-    expect(tables).toContain('email_lists');
-    expect(tables).toContain('email_list_subscribers');
     expect(tables).toContain('social_media_posts');
+    // Email lists/subscribers no longer go through STATE.client/_safeWrite —
+    // they are generated server-side via the dedicated data-proxy operation.
+    expect(tables).not.toContain('email_lists');
+    expect(tables).not.toContain('email_list_subscribers');
 
     // 5 email templates
     const tplCall = calls.find((c) => c[0] === 'email_templates');
     expect(tplCall[1].length).toBe(5);
 
-    // 3 email lists
-    const listCall = calls.find((c) => c[0] === 'email_lists');
-    expect(listCall[1].length).toBe(3);
-
     // 6 social posts
     const socialCall = calls.find((c) => c[0] === 'social_media_posts');
     expect(socialCall[1].length).toBe(6);
+
+    // Email-list fixtures requested via the dedicated, server-derived
+    // data-proxy operation — exact action name, no table/id/filter sent.
+    expect(apiClient.post).toHaveBeenCalledWith('test_data_fixture', { action: 'generate_email_fixtures' });
+    expect(apiClient.post).toHaveBeenCalledTimes(1);
+  });
+
+  test('logs an error without throwing when the fixture operation reports failure', async () => {
+    jest.spyOn(testDataManager, '_safeWrite').mockResolvedValue({ error: null, stripped: [] });
+    jest.spyOn(testDataManager, '_logErr');
+    apiClient.post = jest.fn().mockResolvedValue({ success: false, errors: ['create fixture lists'] });
+
+    const awards = Array.from({ length: 10 }, (_, i) => ({
+      id: testDataManager.uid(testDataManager.AWARD_PREFIX, i + 1),
+    }));
+    const orgs = Array.from({ length: 15 }, (_, i) => ({
+      id: testDataManager.uid(testDataManager.ORG_PREFIX, i + 1),
+      company_name: 'TEST_MODE_Org ' + i,
+      email: `org${i}@example.com`,
+    }));
+
+    await testDataManager.generateMarketingExtras(awards, orgs);
+
+    expect(apiClient.post).toHaveBeenCalledWith('test_data_fixture', { action: 'generate_email_fixtures' });
+    expect(testDataManager._logErr).toHaveBeenCalledWith(
+      'Email list fixtures',
+      expect.objectContaining({ message: 'create fixture lists' })
+    );
+  });
+
+  test('logs an error without throwing when the fixture request itself rejects', async () => {
+    jest.spyOn(testDataManager, '_safeWrite').mockResolvedValue({ error: null, stripped: [] });
+    jest.spyOn(testDataManager, '_logErr');
+    apiClient.post = jest.fn().mockRejectedValue(new Error('network error'));
+
+    const awards = Array.from({ length: 10 }, (_, i) => ({
+      id: testDataManager.uid(testDataManager.AWARD_PREFIX, i + 1),
+    }));
+    const orgs = Array.from({ length: 15 }, (_, i) => ({
+      id: testDataManager.uid(testDataManager.ORG_PREFIX, i + 1),
+      company_name: 'TEST_MODE_Org ' + i,
+      email: `org${i}@example.com`,
+    }));
+
+    await testDataManager.generateMarketingExtras(awards, orgs);
+
+    expect(testDataManager._logErr).toHaveBeenCalledWith(
+      'Email list fixtures',
+      expect.objectContaining({ message: 'network error' })
+    );
   });
 });
 
@@ -1872,65 +1937,43 @@ describe('Test Data Manager - removeTestData with email lists and segments', () 
     jest.restoreAllMocks();
   });
 
-  test('handles email list subscriber cleanup with test lists', async () => {
+  test('clears email-list fixtures via the dedicated data-proxy operation, not STATE.client', async () => {
     jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
     jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
-
-    // Return test email lists
-    const _fromCallCount = 0;
-    mockSupabase.from.mockImplementation((table) => {
-      const chain = buildChainableMock({ data: [], error: null });
-      chain.select.mockReturnValue(chain);
-      chain.delete.mockReturnValue(chain);
-      chain.eq.mockReturnValue(chain);
-      chain.in.mockReturnValue(chain);
-      chain.like.mockImplementation(() => {
-        const result = { ...chain };
-        if (table === 'email_lists') {
-          result.then = jest.fn((cb) =>
-            Promise.resolve({
-              data: [{ id: 'list-1' }, { id: 'list-2' }],
-              error: null,
-            }).then(cb)
-          );
-        }
-        return result;
-      });
-      chain.then = jest.fn((cb) => Promise.resolve({ data: [], error: null }).then(cb));
-      return chain;
-    });
+    apiClient.post = jest.fn().mockResolvedValue({ success: true, errors: [] });
 
     await testDataManager.removeTestData();
 
-    expect(testDataManager._safeDel).toHaveBeenCalled();
+    expect(apiClient.post).toHaveBeenCalledWith('test_data_fixture', { action: 'clear_email_fixtures' });
+    // email_lists/email_list_subscribers must never be reached directly for
+    // this cleanup step any more.
+    expect(mockSupabase.from).not.toHaveBeenCalledWith('email_lists');
+    expect(mockSupabase.from).not.toHaveBeenCalledWith('email_list_subscribers');
   });
 
-  test('handles email list subscriber cleanup exception', async () => {
+  test('warns and continues (does not throw) when the fixture clear operation reports failure', async () => {
     jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
     jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
     jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
-
-    // Make the email lists query throw
-    let callCount = 0;
-    const _origFrom = mockSupabase.from;
-    mockSupabase.from.mockImplementation((table) => {
-      if (table === 'email_lists' && callCount === 0) {
-        callCount++;
-        return {
-          select: jest.fn(() => ({
-            like: jest.fn(() => {
-              throw new Error('email_lists query fail');
-            }),
-          })),
-        };
-      }
-      return fromChain;
-    });
+    apiClient.post = jest.fn().mockResolvedValue({ success: false, errors: ['clear fixture lists'] });
 
     await testDataManager.removeTestData();
 
-    // Should still succeed overall
+    expect(console.warn).toHaveBeenCalledWith('Cleanup skip: email list fixtures', 'clear fixture lists');
+    // Should still succeed overall — one failed step doesn't abort cleanup.
+    expect(utils.hideLoading).toHaveBeenCalled();
+  });
+
+  test('warns and continues (does not throw) when the fixture clear request itself rejects', async () => {
+    jest.spyOn(testDataManager, 'showConfirmDialog').mockResolvedValue(true);
+    jest.spyOn(testDataManager, '_safeDel').mockResolvedValue();
+    jest.spyOn(testDataManager, 'showModal').mockImplementation(() => {});
+    apiClient.post = jest.fn().mockRejectedValue(new Error('network error'));
+
+    await testDataManager.removeTestData();
+
+    expect(console.warn).toHaveBeenCalledWith('Cleanup skip: email list fixtures', 'network error');
     expect(utils.hideLoading).toHaveBeenCalled();
   });
 });

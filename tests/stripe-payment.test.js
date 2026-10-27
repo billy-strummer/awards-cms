@@ -205,6 +205,19 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     expect(res.statusCode).toBe(403);
   });
 
+  test('accepts "finance" role, not just "editor"+ (BTA-047)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'finance' }, error: null }));
+    const req = createReq({ body: { entryId: '123' } });
+    const res = createRes();
+    await createCheckoutSession(req, res);
+    expect(res.statusCode).not.toBe(403);
+  });
+
   test('rejects missing entryId', async () => {
     const req = createReq({ body: {} });
     const res = createRes();
@@ -323,6 +336,60 @@ describe('Stripe Payment API - Webhook', () => {
     await handleStripeWebhook(req, res);
 
     expect(res.body).toEqual({ received: true });
+  });
+
+  test('checkout.session.completed creates the invoice already marked Paid (CMS-AUDIT-TODO 10.2)', async () => {
+    // NOTE: the "handles checkout.session.completed event" test above shares
+    // one resolveWith across every chained call, so its .maybeSingle() (the
+    // idempotency guard) also resolves truthy and the handler returns early
+    // before ever reaching the update/insert logic below — it only proves
+    // the webhook responds 200, not that an invoice gets created. This test
+    // sequences each from() call separately so the real path actually runs.
+    mockWebhooksConstruct.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          metadata: { entry_id: 'e-1' },
+          payment_intent: 'pi_456',
+          amount_total: 9999,
+        },
+      },
+    });
+
+    const entryData = {
+      id: 'e-1',
+      entry_number: 'BTA-002',
+      contact_email: 'test@test.com',
+      contact_name: 'Test',
+      entry_title: 'Best Plumber',
+      organisation_id: 'org-1',
+    };
+    const invoiceInsertChain = chainable();
+
+    mockFrom
+      .mockReturnValueOnce(chainable({ data: null, error: null })) // invoices.select.maybeSingle: no duplicate
+      .mockReturnValueOnce(chainable({ data: null, error: null })) // entries.update
+      .mockReturnValueOnce(chainable({ data: entryData, error: null })) // entries.select('*').single
+      .mockReturnValueOnce(chainable({ data: [], error: null })) // generateInvoiceNumber's invoices lookup
+      .mockReturnValueOnce(invoiceInsertChain); // invoices.insert — captured below
+    // Every subsequent from() call (activity_logs insert, email branding
+    // lookup, admin-notification lookup/insert) falls through to mockFrom's
+    // default implementation, a neutral chainable() — safe no-ops.
+
+    const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
+    const res = createRes();
+    await handleStripeWebhook(req, res);
+
+    expect(res.body).toEqual({ received: true });
+    expect(invoiceInsertChain.insert).toHaveBeenCalledTimes(1);
+    expect(invoiceInsertChain.insert.mock.calls[0][0][0]).toMatchObject({
+      status: 'paid',
+      payment_status: 'paid',
+      balance_due: 0,
+      total_amount: 99.99,
+      paid_amount: 99.99,
+      payment_reference: 'pi_456',
+    });
   });
 
   test('handles payment_intent.payment_failed event', async () => {
@@ -600,7 +667,21 @@ describe('createPublicCheckout', () => {
 describe('processRefund', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockReset (not just clearAllMocks) so no mockReturnValueOnce left
+    // queued by an earlier describe block's test can shift this block's
+    // call sequence — matches createCheckoutSession's own "insufficient
+    // role" test precedent above. Restore the module's base fallback
+    // implementation afterwards, since mockReset() clears that too.
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
     mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+    // First from() call after auth is the new role check (BTA-043) — default
+    // to a passing role; tests that care about a different role override
+    // this with their own mockReturnValueOnce before calling processRefund.
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'admin' }, error: null }));
   });
 
   test('returns 401 without auth token', async () => {
@@ -609,6 +690,29 @@ describe('processRefund', () => {
     const res = createRes();
     await processRefund(req, res);
     expect(res.statusCode).toBe(401);
+  });
+
+  test('rejects insufficient role (viewer cannot issue refunds) (BTA-043)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'viewer' }, error: null }));
+    const req = createReq({ body: { payment_intent: 'pi_test' } });
+    const res = createRes();
+    await processRefund(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test('accepts "finance" role, not just "editor"+ (BTA-047)', async () => {
+    mockRefundsCreate.mockResolvedValue({ id: 'ref_finance', status: 'succeeded' });
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'finance' }, error: null }));
+    const req = createReq({ body: { payment_intent: 'pi_test' } });
+    const res = createRes();
+    await processRefund(req, res);
+    expect(res.statusCode).not.toBe(403);
   });
 
   test('returns 400 when no payment reference provided', async () => {
@@ -666,7 +770,20 @@ describe('processRefund', () => {
 describe('createEventCheckout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockReset (not just clearAllMocks) so no mockReturnValueOnce left
+    // queued by an earlier describe block's test can shift this block's
+    // call sequence. Restore the module's base fallback implementation
+    // afterwards, since mockReset() clears that too.
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
     mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+    // First from() call after auth is the new role check (BTA-043) — default
+    // to a passing role; tests that care about a different role override
+    // this with their own mockReturnValueOnce before calling createEventCheckout.
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'admin' }, error: null }));
   });
 
   test('returns 401 without auth', async () => {
@@ -675,6 +792,28 @@ describe('createEventCheckout', () => {
     const res = createRes();
     await createEventCheckout(req, res);
     expect(res.statusCode).toBe(401);
+  });
+
+  test('rejects insufficient role (viewer cannot create event checkout sessions) (BTA-043)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'viewer' }, error: null }));
+    const req = createReq({ body: { eventId: 'ev-1', tickets: [{ name: 'Alice' }] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test('accepts "finance" role, not just "editor"+ (BTA-047)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'finance' }, error: null }));
+    const req = createReq({ body: { eventId: 'ev-1', tickets: [{ name: 'Alice' }] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).not.toBe(403);
   });
 
   test('returns 400 when eventId missing', async () => {

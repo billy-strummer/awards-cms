@@ -2583,6 +2583,25 @@
             </div>
           </li>
         </ul>
+        <div class="countdown-block" id="countdown-block" style="display:none;">
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-days">–</span>
+            <span class="countdown-label">Days</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-hours">–</span>
+            <span class="countdown-label">Hrs</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-mins">–</span>
+            <span class="countdown-label">Min</span>
+          </div>
+          <div class="countdown-unit">
+            <span class="countdown-number" id="cd-secs">–</span>
+            <span class="countdown-label">Sec</span>
+          </div>
+        </div>
+        <p class="countdown-open-msg" id="countdown-open-msg">Entries are now open</p>
       </article>
 
       <!-- Box 3: Vote -->
@@ -3102,9 +3121,12 @@
 
 <script>
   // ── Countdown timer ──────────────────────────────────────────────────────────
-  // Target: 1 September 2026 00:00:00 UTC (entries open)
-  (function () {
-    var target = Date.UTC(2026, 6, 1, 0, 0, 0); // month is 0-indexed: 6 = July
+  // Informational only — does not gate entry submission or voting, which have
+  // their own independent logic. Initialised by home.js once it has fetched
+  // the default award season's entry_open_date from /api/entry-proxy
+  // (action: get_public_data). If no valid future date is available, this
+  // function is simply never called and the countdown stays hidden.
+  window.initBTAEntryCountdown = function (targetMs) {
     var block = document.getElementById('countdown-block');
     var openMsg = document.getElementById('countdown-open-msg');
     var elDays = document.getElementById('cd-days');
@@ -3112,15 +3134,15 @@
     var elMins = document.getElementById('cd-mins');
     var elSecs = document.getElementById('cd-secs');
 
-    if (!block || !elDays) return;
+    if (!block || !elDays || typeof targetMs !== 'number' || isNaN(targetMs)) return;
+    if (targetMs <= Date.now()) return; // already passed — leave hidden
 
     function pad(n) {
       return n < 10 ? '0' + n : String(n);
     }
 
     function tick() {
-      var now = Date.now();
-      var diff = target - now;
+      var diff = targetMs - Date.now();
       if (diff <= 0) {
         block.style.display = 'none';
         if (openMsg) openMsg.style.display = 'block';
@@ -3138,9 +3160,10 @@
       elSecs.textContent  = pad(secs);
     }
 
+    block.style.display = 'flex';
     tick();
     var timer = setInterval(tick, 1000);
-  })();
+  };
 </script>
 
 <script>

@@ -20,8 +20,31 @@ const fs = require('fs');
 const path = require('path');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const { verifyAuth } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const { isUUID } = require('./_lib/validate');
+
+/**
+ * Minimum role required per action. rbac.js's own ROLES table already
+ * restricts create/update actions on the 'winners' and 'events' modules
+ * (where every one of these actions is used or would be used) to 'editor'
+ * and above — 'viewer' only has 'read'/'export' there. 'preview-certificate'
+ * is the one read-only, no-mutation, no-email action (renders a sample PDF
+ * in memory, writes nothing), so it matches 'viewer's existing rights
+ * instead. Every other action creates a file, mutates a check-in/ticket
+ * record, or sends a real email, so none of them were previously enforced
+ * beyond plain authentication.
+ */
+const CERTIFICATES_QR_ACTION_ROLES = {
+  'preview-certificate': 'viewer',
+  'generate-certificate': 'editor',
+  'generate-bulk-certificates': 'editor',
+  'generate-qr-ticket': 'editor',
+  'generate-badge': 'editor',
+  'generate-all-badges': 'editor',
+  'verify-qr': 'editor',
+  'generate-and-email': 'editor',
+  generate_and_email: 'editor',
+};
 
 /**
  * Parse a hex color string to pdf-lib rgb values.
@@ -748,6 +771,17 @@ module.exports = async function handler(req, res) {
 
   const action = req.query.action || req.body?.action;
 
+  const requiredRole = CERTIFICATES_QR_ACTION_ROLES[action];
+  if (requiredRole) {
+    const role = await getUserRole(user.email);
+    if (!hasMinimumRole(role, requiredRole)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: `Role "${role}" cannot perform "${action}" (requires ${requiredRole})`,
+      });
+    }
+  }
+
   switch (action) {
     case 'generate-certificate':
       return generateCertificateEndpoint(req, res);
@@ -776,11 +810,19 @@ module.exports = async function handler(req, res) {
           .eq('id', winner_id)
           .single();
         const recipientEmail = winnerRow?.organisations?.email;
+        let emailSent = false;
         if (recipientEmail) {
           const appUrl = process.env.APP_URL || '';
-          await fetch(`${appUrl}/api/email-automation`, {
+          // Forward the caller's own bearer token — email-automation.js
+          // requires JWT authentication on this action, and this was
+          // previously sent with no Authorization header at all, so the
+          // downstream request always failed (401, silently ignored since
+          // the response was never checked) and no email was ever actually
+          // sent, despite the success response and certificate_sent_at
+          // stamp below implying otherwise.
+          const emailRes = await fetch(`${appUrl}/api/email-automation`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: req.headers.authorization || '' },
             body: JSON.stringify({
               action: 'sendTemplate',
               templateKey: 'WINNER_ANNOUNCEMENT',
@@ -791,11 +833,17 @@ module.exports = async function handler(req, res) {
               },
             }),
           });
+          emailSent = emailRes.ok;
+          if (!emailSent) {
+            console.error(`[certificates-qr] generate_and_email: email send failed for winner ${winner_id}`);
+          }
         } else {
           console.warn(`[certificates-qr] generate_and_email: no recipient email for winner ${winner_id}`);
         }
-        await supabase.from('winners').update({ certificate_sent_at: new Date().toISOString() }).eq('id', winner_id);
-        return res.json({ success: true, certificate_url: cert.publicUrl });
+        if (emailSent) {
+          await supabase.from('winners').update({ certificate_sent_at: new Date().toISOString() }).eq('id', winner_id);
+        }
+        return res.json({ success: true, certificate_url: cert.publicUrl, email_sent: emailSent });
       } catch (err) {
         console.error('[certificates-qr] generate_and_email error:', err.message);
         return res.status(500).json({ error: 'Certificate generation failed' });

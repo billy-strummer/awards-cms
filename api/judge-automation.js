@@ -27,7 +27,7 @@ const escHtml = (str) =>
     .replace(/"/g, '&quot;');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const { verifyAuth } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const { isUUID } = require('./_lib/validate');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -678,6 +678,19 @@ module.exports = async function handler(req, res) {
   // Every other action requires an authenticated admin user
   const user = await verifyAuth(req, res);
   if (!user) return;
+
+  // The comment above has always stated this requires an admin user, but
+  // until now nothing actually enforced it beyond authentication — any
+  // authenticated viewer/judge could call these bulk judge-assignment and
+  // shortlist-generation actions directly. Enforce what was already
+  // documented.
+  const role = await getUserRole(user.email);
+  if (!hasMinimumRole(role, 'admin')) {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: `Role "${role}" cannot run judge automation (requires admin)`,
+    });
+  }
 
   switch (action) {
     case 'assign-judges':

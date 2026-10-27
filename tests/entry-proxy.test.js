@@ -10,6 +10,7 @@ function chainable(resolveWith = { data: null, error: null }) {
     insert: jest.fn(() => obj),
     update: jest.fn(() => obj),
     eq: jest.fn(() => obj),
+    in: jest.fn(() => obj),
     neq: jest.fn(() => obj),
     gte: jest.fn(() => obj),
     lte: jest.fn(() => obj),
@@ -477,6 +478,108 @@ describe('Entry Proxy API', () => {
     expect(res.statusCode).toBe(500);
     expect(res.body.error).toContain('Could not save your entry');
     consoleSpy.mockRestore();
+  });
+
+  // --- get_public_data: homepage entry countdown (BTA-001B) ---
+  // supabase.from() call order inside handleGetPublicData is always:
+  // custom_sectors, custom_categories, cms_config, award_seasons.
+  describe('get_public_data', () => {
+    test('existing response fields remain present and unchanged', async () => {
+      mockFromResults.push(chainable({ data: [{ id: 's1', name: 'Plumbing' }], error: null }));
+      mockFromResults.push(
+        chainable({ data: [{ id: 'c1', name: 'Best Plumber', sector_name: 'Plumbing' }], error: null })
+      );
+      mockFromResults.push(chainable({ data: [{ key: 'sponsors_visible', value: 'true' }], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.custom_sectors).toEqual([{ id: 's1', name: 'Plumbing' }]);
+      expect(res.body.custom_categories).toEqual([{ id: 'c1', name: 'Best Plumber', sector_name: 'Plumbing' }]);
+      expect(res.body.sponsors_visible).toBe(true);
+    });
+
+    test('exposes entry_open_date when exactly one default season has a valid future date', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [{ entry_open_date: '2027-01-01' }], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBe('2027-01-01');
+    });
+
+    test('returns null entry_open_date when no default season exists', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBeNull();
+    });
+
+    test('returns null entry_open_date when multiple default seasons exist (no fallback selection)', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [{ entry_open_date: '2027-01-01' }, { entry_open_date: '2027-06-01' }],
+          error: null,
+        })
+      );
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBeNull();
+    });
+
+    test('returns null entry_open_date when the default season has a missing date', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [{ entry_open_date: null }], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBeNull();
+    });
+
+    test('returns null entry_open_date when the season query fails', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: null, error: { message: 'DB error' } }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBeNull();
+      // Other fields must still be served even though the season query failed
+      expect(res.body.custom_sectors).toEqual([]);
+      expect(res.body.custom_categories).toEqual([]);
+      expect(res.body.sponsors_visible).toBe(false);
+    });
   });
 
   // --- Organisation matching: escaping + area-scoping regression tests ---

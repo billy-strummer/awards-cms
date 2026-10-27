@@ -559,17 +559,30 @@ async function handleDataExport(req, res) {
 }
 
 async function handleGetPublicData(_req, res) {
-  const [sectorsResult, catsResult, configResult] = await Promise.all([
+  const [sectorsResult, catsResult, configResult, seasonsResult] = await Promise.all([
     supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
     supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
     supabase.from('cms_config').select('key, value').in('key', ['sponsors_visible']),
+    supabase.from('award_seasons').select('entry_open_date').eq('is_default', true),
   ]);
   const config = {};
   for (const row of configResult.data || []) config[row.key] = row.value;
+
+  // Homepage entry countdown (BTA-001B): only expose a date when exactly one
+  // default season exists and it has a real entry_open_date. Never fall back
+  // to another season, and never leak how many seasons exist or whether the
+  // default is ambiguous — this is informational only, not an entry/voting gate.
+  let entryOpenDate = null;
+  const defaultSeasons = seasonsResult.data || [];
+  if (!seasonsResult.error && defaultSeasons.length === 1 && defaultSeasons[0].entry_open_date) {
+    entryOpenDate = defaultSeasons[0].entry_open_date;
+  }
+
   return res.status(200).json({
     custom_sectors: sectorsResult.data || [],
     custom_categories: catsResult.data || [],
     sponsors_visible: config['sponsors_visible'] === 'true',
+    entry_open_date: entryOpenDate,
   });
 }
 

@@ -19,7 +19,7 @@ const { assertEnv } = require('./_lib/env');
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'RESEND_API_KEY']);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const { verifyAuth } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const crypto = require('crypto');
 
 // Initialize Resend (replacing SendGrid)
@@ -869,9 +869,23 @@ module.exports = async function handler(req, res) {
       return res.json({ success: result });
     }
     case 'send-deadline-reminders':
-      return sendDeadlineRemindersEndpoint(req, res);
-    case 'send-winner-announcements':
-      return sendWinnerAnnouncementsEndpoint(req, res);
+    case 'send-winner-announcements': {
+      // Both mass-send to every matching entry/winner, the same blast
+      // radius as send-campaign in api/resend-email.js, which requires
+      // 'admin' (matching the live UI's send_campaign_emails RPC in
+      // api/data-proxy.js's ALLOWED_RPCS map) — applying the same
+      // established floor here, not a new rule.
+      const role = await getUserRole(user.email);
+      if (!hasMinimumRole(role, 'admin')) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role "${role}" cannot run "${action}" (requires admin)`,
+        });
+      }
+      return action === 'send-deadline-reminders'
+        ? sendDeadlineRemindersEndpoint(req, res)
+        : sendWinnerAnnouncementsEndpoint(req, res);
+    }
     default:
       return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });
   }

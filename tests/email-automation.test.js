@@ -596,6 +596,60 @@ describe('Email Automation - sendWinnerAnnouncementsEndpoint', () => {
   });
 });
 
+describe('Email Automation - handler role gate on mass-send actions (BTA-043)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTableResponses = {};
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-123', email: 'someone@test.com' } },
+      error: null,
+    });
+  });
+
+  test.each(['send-deadline-reminders', 'send-winner-announcements'])(
+    'rejects "%s" for an authenticated viewer with 403 (requires admin, matching send-campaign\'s existing floor)',
+    async (action) => {
+      mockTableResponses['user_roles'] = chainable({ data: { role: 'viewer' }, error: null });
+
+      const req = createReq({ body: { action } });
+      const res = createRes();
+      await emailAutomationHandler(req, res);
+      expect(res.statusCode).toBe(403);
+    }
+  );
+
+  test('rejects "send-winner-announcements" for an authenticated editor with 403', async () => {
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'editor' }, error: null });
+
+    const req = createReq({ body: { action: 'send-winner-announcements' } });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test('does not 403 an admin-role user on "send-deadline-reminders"', async () => {
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'admin' }, error: null });
+    mockTableResponses['entries'] = chainable({ data: [], error: null });
+
+    const req = createReq({ body: { action: 'send-deadline-reminders' } });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).not.toBe(403);
+  });
+
+  test('"send-template" (used internally by certificates-qr.js and broadly elsewhere) is unaffected by the new gate', async () => {
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'viewer' }, error: null });
+    setupDefaultMocks();
+
+    const req = createReq({
+      body: { action: 'send-template', templateKey: 'ENTRY_CONFIRMATION', toEmail: 'user@test.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).not.toBe(403);
+  });
+});
+
 describe('Email Automation - Resend webhook signature verification', () => {
   const crypto = require('crypto');
 

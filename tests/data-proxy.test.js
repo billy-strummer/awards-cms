@@ -257,6 +257,73 @@ describe('Data Proxy API', () => {
     expect(res.statusCode).toBe(200);
   });
 
+  // --- Tenant isolation tests (BTA-047) ---
+  // No mechanism anywhere independently verifies a user belongs to a given
+  // tenant, so a client-supplied tenantId other than 'default' must be
+  // rejected outright rather than honoured for scoping.
+
+  test('rejects a select request with a non-default tenantId', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', tenantId: '11111111-1111-1111-1111-111111111111' },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details).toEqual(
+      expect.arrayContaining([expect.stringContaining('"tenantId" other than "default" is not currently supported')])
+    );
+  });
+
+  test('rejects an insert request with a non-default tenantId (cross-tenant write attempt)', async () => {
+    const req = createReq({
+      body: {
+        table: 'awards',
+        operation: 'insert',
+        data: { award_name: 'Best Plumber', county: 'Kent', year: 2026 },
+        tenantId: '22222222-2222-2222-2222-222222222222',
+      },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('accepts a request with tenantId explicitly set to "default"', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select', tenantId: 'default' },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+  });
+
+  test('accepts a request with no tenantId at all (unchanged behaviour)', async () => {
+    const req = createReq({
+      body: { table: 'awards', operation: 'select' },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+  });
+
+  test('rejects an award_area_import request with a non-default tenantId', async () => {
+    const req = createReq({
+      body: {
+        operation: 'award_area_import',
+        mode: 'validate',
+        areaId: 'area-1',
+        rows: [{}],
+        tenantId: '33333333-3333-3333-3333-333333333333',
+      },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(400);
+    expect(res.body.details).toEqual(
+      expect.arrayContaining([expect.stringContaining('"tenantId" other than "default" is not currently supported')])
+    );
+  });
+
   // --- Insert Tests ---
 
   test('accepts valid insert request', async () => {

@@ -37,6 +37,24 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const { hasMinimumRole, getUserRole, verifyAuth } = require('./_lib/auth');
 
 /**
+ * Can this role initiate payment actions (create a checkout session, issue
+ * a refund)? 'editor'+ via the normal role hierarchy, OR 'finance' — which
+ * sits below 'editor' in `_lib/auth.js`'s linear ROLE_HIERARCHY but is the
+ * one role rbac.js's own module grid (finance.modules includes 'payments')
+ * and api/data-proxy.js's own per-role table permissions (the `finance`
+ * entry explicitly grants write access to `invoices`/`payments`) both
+ * already trust with this exact area. Resolved BTA-047: this was a real
+ * inconsistency, not an intentional restriction — nothing anywhere
+ * documents "finance can manage payment records but not trigger a
+ * checkout or refund", and the role exists specifically for this module.
+ * @param {string} role - The user's role.
+ * @returns {boolean}
+ */
+function canManagePayments(role) {
+  return hasMinimumRole(role, 'editor') || (role || '').toLowerCase() === 'finance';
+}
+
+/**
  * Generate a unique invoice number (INV-YYYY-NNNNN).
  * @returns {Promise<string>}
  */
@@ -65,9 +83,9 @@ async function createCheckoutSession(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
-    // Role check: only editor+ can initiate payment sessions
+    // Role check: editor+ or finance can initiate payment sessions (BTA-047)
     const role = await getUserRole(user.email);
-    if (!hasMinimumRole(role, 'editor')) {
+    if (!canManagePayments(role)) {
       return res.status(403).json({ error: 'Insufficient permissions to create payment sessions' });
     }
 
@@ -947,6 +965,15 @@ async function createEventCheckout(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
+    // Same floor as createCheckoutSession above (BTA-047: editor+ or
+    // finance) — this is the admin-initiated event-ticket checkout path
+    // (called from ticket-management.js), not the unauthenticated public
+    // one (createPublicCheckout).
+    const role = await getUserRole(user.email);
+    if (!canManagePayments(role)) {
+      return res.status(403).json({ error: 'Insufficient permissions to create payment sessions' });
+    }
+
     const { eventId, tickets, success_url, cancel_url } = req.body;
 
     if (!eventId || !Array.isArray(tickets) || tickets.length === 0) {
@@ -1034,6 +1061,14 @@ async function processRefund(req, res) {
   try {
     const user = await verifyAuth(req, res);
     if (!user) return;
+
+    // Issuing a real, irreversible Stripe refund is at least as sensitive
+    // as creating the original checkout session above — same floor
+    // (BTA-047: editor+ or finance).
+    const role = await getUserRole(user.email);
+    if (!canManagePayments(role)) {
+      return res.status(403).json({ error: 'Insufficient permissions to process refunds' });
+    }
 
     const { ticketId, payment_intent, payment_reference } = req.body;
 

@@ -846,12 +846,11 @@
   }
 
   /* ============================================================
-     11. SPONSORS VISIBILITY — read from CMS config
+     11. PUBLIC CMS DATA — sponsors visibility + homepage entry countdown
+     (one shared request; see api/entry-proxy.js's handleGetPublicData)
   ============================================================ */
   try {
-    (function initSponsorsVisibility() {
-      const section = document.getElementById('sponsors');
-      if (!section) return;
+    (function initPublicData() {
       fetch('/api/entry-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -861,13 +860,18 @@
           return r.json();
         })
         .then(function (data) {
-          if (data.sponsors_visible) {
+          const section = document.getElementById('sponsors');
+          if (section && data.sponsors_visible) {
             section.style.display = '';
+          }
+          if (data.entry_open_date && typeof window.initBTAEntryCountdown === 'function') {
+            const targetMs = new Date(data.entry_open_date).getTime();
+            if (!isNaN(targetMs)) window.initBTAEntryCountdown(targetMs);
           }
         })
         .catch(function () {});
     })();
   } catch (e) {
-    console.warn('[BTA] initSponsorsVisibility', e);
+    console.warn('[BTA] initPublicData', e);
   }
 })();

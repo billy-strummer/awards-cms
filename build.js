@@ -284,11 +284,6 @@ async function build() {
   // These standalone pages have their own JS/CSS (not part of the admin bundle)
   const PUBLIC_PAGES = [
     'home.html',
-    'home-blue.html',
-    'home-blue1.html',
-    'home-blue2.html',
-    'home-blue3.html',
-    'home2.html',
     'submit-entry.html',
     'submit-entry.js',
     'vote.html',
@@ -396,7 +391,6 @@ async function build() {
     'footer-year.js',
     'global-actions.js',
     'home.js',
-    'home2.js',
     'home-data.js',
   ];
 

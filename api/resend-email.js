@@ -20,7 +20,7 @@ if (process.env.NODE_ENV !== 'production') {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const { verifyAuth } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'awards@britishtradeawards.com';
 
@@ -506,6 +506,17 @@ module.exports = async function handler(req, res) {
         return res.status(result.success ? 200 : 500).json(result);
       }
       case 'send-campaign': {
+        // Mass sends to an entire email list require the same minimum role
+        // the live admin UI's equivalent path enforces (the
+        // send_campaign_emails RPC in api/data-proxy.js's ALLOWED_RPCS map
+        // requires 'admin') — this direct endpoint was missing that check.
+        const role = await getUserRole(user.email);
+        if (!hasMinimumRole(role, 'admin')) {
+          return res.status(403).json({
+            error: 'Forbidden',
+            message: `Role "${role}" cannot send campaigns (requires admin)`,
+          });
+        }
         const { campaignId } = req.body;
         if (!campaignId) {
           return res.status(400).json({ error: 'Missing required field: campaignId' });

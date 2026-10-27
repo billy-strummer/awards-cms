@@ -757,7 +757,10 @@ const assignmentsModule = {
   },
 
   /**
-   * Return the HTML badge for a winner position (1st/2nd/3rd).
+   * Return the HTML badge for an assigned winner position. Mirrors the
+   * Winner / Top 3 / Finalist result labels used elsewhere (winners.js,
+   * public-winners-app.js, setWinnerPosition()'s toast) since this badge
+   * displays the same already-confirmed winner_position, not a ranking.
    * @param {Object} assignment - Assignment record
    * @returns {string} HTML badge markup or empty string
    */
@@ -767,12 +770,15 @@ const assignmentsModule = {
     }
 
     const positions = {
-      1: '<span class="badge" style="background-color: #ffd700; color: #000;"><i class="bi bi-star-fill me-1"></i>#1 Recommended</span>',
-      2: '<span class="badge" style="background-color: #c0c0c0; color: #000;"><i class="bi bi-star-fill me-1"></i>#2 Recommended</span>',
-      3: '<span class="badge" style="background-color: #cd7f32; color: #fff;"><i class="bi bi-star-fill me-1"></i>#3 Recommended</span>',
+      1: '<span class="badge" style="background-color: #ffd700; color: #000;"><i class="bi bi-star-fill me-1"></i>Winner</span>',
+      2: '<span class="badge" style="background-color: #c0c0c0; color: #000;"><i class="bi bi-star-fill me-1"></i>Top 3</span>',
+      3: '<span class="badge" style="background-color: #cd7f32; color: #fff;"><i class="bi bi-star-fill me-1"></i>Top 3</span>',
     };
 
-    return positions[assignment.winner_position] || '';
+    return (
+      positions[assignment.winner_position] ||
+      '<span class="badge bg-info"><i class="bi bi-star-fill me-1"></i>Finalist</span>'
+    );
   },
 
   /**
@@ -785,7 +791,7 @@ const assignmentsModule = {
     try {
       utils.showLoading();
 
-      const positionLabels = { 1: '1st Place (Gold)', 2: '2nd Place (Silver)', 3: '3rd Place (Bronze)' };
+      const positionLabels = { 1: 'Winner', 2: 'Top 3', 3: 'Top 3' };
 
       await apiClient.update('award_assignments', assignmentId, {
         status: 'winner',

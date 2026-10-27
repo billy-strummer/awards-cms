@@ -58,6 +58,31 @@ const TENANT_SCOPED_TABLES = new Set([
   'banners',
 ]);
 
+/**
+ * SECURITY (BTA-047): reject any client-supplied tenantId other than
+ * 'default'. The tenant-scoping mechanism below (TENANT_SCOPED_TABLES,
+ * isTenantScoped) was built to one day support real multi-tenancy, but
+ * nothing anywhere in this codebase independently verifies that the
+ * authenticated user actually belongs to the tenant they name — there is
+ * no membership table, no app_metadata tenant claim, and the client's own
+ * value comes from an unauthenticated localStorage read
+ * (multi-tenancy.js's getTenantId()). Confirmed this task: no live UI
+ * path ever sets a tenant other than 'default' anyway (switchTenant() has
+ * no caller), so this only ever disables a currently-unused passthrough —
+ * it changes no real workflow. Without this, any authenticated user could
+ * read or write another tenant's scoped rows merely by naming its UUID.
+ * Remove this check only once a real server-side user-to-tenant binding
+ * exists to replace it.
+ * @param {*} tenantId - The client-supplied tenantId value from the request body.
+ * @returns {string|null} An error message if tenantId is untrusted, otherwise null.
+ */
+function rejectUntrustedTenantId(tenantId) {
+  if (tenantId && typeof tenantId === 'string' && tenantId !== 'default') {
+    return '"tenantId" other than "default" is not currently supported — no server-side tenant membership check exists yet';
+  }
+  return null;
+}
+
 // ============================================
 // ALLOWED RPC FUNCTIONS
 // ============================================
@@ -564,11 +589,11 @@ function validateQueryParams(body) {
     errors.push('Operation must be one of: select, insert, update, delete, count, upsert');
   }
 
-  // Validate tenantId format if provided
-  if (tenantId && typeof tenantId === 'string' && tenantId !== 'default') {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId)) {
-      errors.push('"tenantId" must be a valid UUID or "default"');
-    }
+  // SECURITY (BTA-047): reject any tenantId other than 'default' — see
+  // rejectUntrustedTenantId()'s own comment for why.
+  const tenantIdError = rejectUntrustedTenantId(tenantId);
+  if (tenantIdError) {
+    errors.push(tenantIdError);
   }
 
   if (['insert', 'update', 'delete', 'upsert'].includes(operation) && table && !MUTABLE_TABLES.has(table)) {
@@ -2220,6 +2245,13 @@ module.exports = async function handler(req, res) {
         return res
           .status(403)
           .json({ error: 'Forbidden', message: 'Award Areas import requires editor role or above' });
+      }
+      // SECURITY (BTA-047): this operation derives its own tenantId
+      // independently of validateQueryParams (it doesn't go through that
+      // path) — apply the same rejection here.
+      const importTenantIdError = rejectUntrustedTenantId(body.tenantId);
+      if (importTenantIdError) {
+        return res.status(400).json({ error: 'Validation failed', details: [importTenantIdError] });
       }
       const importResult = await executeAwardAreaImport(body, user);
       return res.status(200).json(importResult);

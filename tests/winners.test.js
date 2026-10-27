@@ -41,6 +41,9 @@ const dom = new JSDOM(
   <div id="uploadProgress" class="d-none"></div>
   <div id="viewMediaTitle"></div>
   <div id="mediaGalleryContent"></div>
+  <div id="awardPlacementsModal"></div>
+  <div id="awardPlacementsModalTitle"></div>
+  <div id="awardPlacementsContent"></div>
 </body></html>`,
   { url: 'http://localhost' }
 );
@@ -264,6 +267,37 @@ describe('Winners Module - Initialization & Structure', () => {
     expect(winnersModule._pagination).toHaveProperty('totalPages');
     expect(winnersModule._pagination).toHaveProperty('count');
     expect(winnersModule._pagination).toHaveProperty('pageSize');
+  });
+});
+
+describe('Winners Module - showAwardPlacements() result labels', () => {
+  beforeEach(() => {
+    jest.spyOn(apiClient, 'selectAll');
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('labels position 1 "Winner", positions 2 and 3 "Top 3", and position 4+ "Finalist"', async () => {
+    apiClient.selectAll.mockResolvedValue([
+      { id: 'a1', status: 'winner', winner_position: 1, organisations: { company_name: 'Acme' } },
+      { id: 'a2', status: 'winner', winner_position: 2, organisations: { company_name: 'Beta' } },
+      { id: 'a3', status: 'winner', winner_position: 3, organisations: { company_name: 'Gamma' } },
+      { id: 'a4', status: 'winner', winner_position: 4, organisations: { company_name: 'Delta' } },
+    ]);
+
+    await winnersModule.showAwardPlacements('award-1', 'Test Award');
+
+    const html = document.getElementById('awardPlacementsContent').innerHTML;
+    expect(html).toContain('Winner');
+    // "Top 3" must appear for both position 2 and position 3 (two occurrences).
+    expect(html.match(/Top 3/g) || []).toHaveLength(2);
+    expect(html).toContain('Finalist');
+    // None of the legacy ordinal labels the documented rule replaces.
+    expect(html).not.toContain('1st Place');
+    expect(html).not.toContain('2nd Place');
+    expect(html).not.toContain('3rd Place');
   });
 });
 
@@ -1695,6 +1729,28 @@ describe('Winners Module - generateShieldSVG()', () => {
     const svg = winnersModule.generateShieldSVG(noAwards, '#000', '#fff');
     expect(svg).toContain('Winner');
   });
+
+  test('labels placement 1 (and missing placement) "WINNER"', () => {
+    const svg1 = winnersModule.generateShieldSVG({ ...testWinner, placement: 1 }, '#000', '#fff');
+    expect(svg1).toContain('WINNER');
+    const svgMissing = winnersModule.generateShieldSVG(testWinner, '#000', '#fff');
+    expect(svgMissing).toContain('WINNER');
+  });
+
+  test('labels placement 2 and 3 "TOP 3", not "WINNER"', () => {
+    const svg2 = winnersModule.generateShieldSVG({ ...testWinner, placement: 2 }, '#000', '#fff');
+    expect(svg2).toContain('TOP 3');
+    expect(svg2).not.toContain('WINNER');
+    const svg3 = winnersModule.generateShieldSVG({ ...testWinner, placement: 3 }, '#000', '#fff');
+    expect(svg3).toContain('TOP 3');
+    expect(svg3).not.toContain('WINNER');
+  });
+
+  test('labels placement 4+ "FINALIST", not "WINNER"', () => {
+    const svg = winnersModule.generateShieldSVG({ ...testWinner, placement: 4 }, '#000', '#fff');
+    expect(svg).toContain('FINALIST');
+    expect(svg).not.toContain('WINNER');
+  });
 });
 
 describe('Winners Module - generateEmailBannerSVG()', () => {
@@ -1718,6 +1774,19 @@ describe('Winners Module - generateEmailBannerSVG()', () => {
     const svg = winnersModule.generateEmailBannerSVG(testWinner, '#000', '#fff');
     expect(svg).toContain('Test Company');
   });
+
+  test('shows "AWARD WINNER" for placement 1 / missing placement, "TOP 3"/"FINALIST" otherwise', () => {
+    const winnerSvg = winnersModule.generateEmailBannerSVG(testWinner, '#000', '#fff');
+    expect(winnerSvg).toContain('AWARD WINNER');
+
+    const top3Svg = winnersModule.generateEmailBannerSVG({ ...testWinner, placement: 2 }, '#000', '#fff');
+    expect(top3Svg).toContain('TOP 3');
+    expect(top3Svg).not.toContain('AWARD WINNER');
+
+    const finalistSvg = winnersModule.generateEmailBannerSVG({ ...testWinner, placement: 5 }, '#000', '#fff');
+    expect(finalistSvg).toContain('FINALIST');
+    expect(finalistSvg).not.toContain('AWARD WINNER');
+  });
 });
 
 describe('Winners Module - generateWebBannerSVG()', () => {
@@ -1740,6 +1809,19 @@ describe('Winners Module - generateWebBannerSVG()', () => {
   test('includes year', () => {
     const svg = winnersModule.generateWebBannerSVG(testWinner, '#000', '#fff');
     expect(svg).toContain('2025');
+  });
+
+  test('shows "AWARD WINNER" for placement 1 / missing placement, "TOP 3"/"FINALIST" otherwise', () => {
+    const winnerSvg = winnersModule.generateWebBannerSVG(testWinner, '#000', '#fff');
+    expect(winnerSvg).toContain('AWARD WINNER');
+
+    const top3Svg = winnersModule.generateWebBannerSVG({ ...testWinner, placement: 3 }, '#000', '#fff');
+    expect(top3Svg).toContain('TOP 3');
+    expect(top3Svg).not.toContain('AWARD WINNER');
+
+    const finalistSvg = winnersModule.generateWebBannerSVG({ ...testWinner, placement: 'nominee' }, '#000', '#fff');
+    expect(finalistSvg).toContain('FINALIST');
+    expect(finalistSvg).not.toContain('AWARD WINNER');
   });
 });
 

@@ -679,9 +679,9 @@ const winnersModule = {
       const nominated = data.filter((a) => a.status === 'nominated');
 
       const positionLabels = {
-        1: { label: '1st Place', icon: 'bi-trophy-fill', color: 'warning' },
-        2: { label: '2nd Place', icon: 'bi-award-fill', color: 'secondary' },
-        3: { label: '3rd Place', icon: 'bi-award', color: 'dark' },
+        1: { label: 'Winner', icon: 'bi-trophy-fill', color: 'warning' },
+        2: { label: 'Top 3', icon: 'bi-award-fill', color: 'secondary' },
+        3: { label: 'Top 3', icon: 'bi-award', color: 'dark' },
       };
 
       let html = '';
@@ -692,7 +692,7 @@ const winnersModule = {
         winners.forEach((w) => {
           const name = w.organisations?.company_name || 'Unknown';
           const pos = w.winner_position || 1;
-          const meta = positionLabels[pos] || { label: `Position ${pos}`, icon: 'bi-award', color: 'info' };
+          const meta = positionLabels[pos] || { label: 'Finalist', icon: 'bi-award', color: 'info' };
           html += `
             <div class="d-flex align-items-center p-2 mb-2 rounded border">
               <span class="badge bg-${meta.color} me-3 px-3 py-2">
@@ -2373,12 +2373,41 @@ const winnersModule = {
   },
 
   /**
+   * Map a winners.placement value to the documented result label
+   * (Winner / Top 3 / Finalist) — same mapping as public-winners-app.js's
+   * placementLabel(), reused here so shield/banner assets never brand a
+   * Top-3 or Finalist winner as "WINNER".
+   * @param {*} placement - winners.placement value
+   * @returns {string} 'Winner' | 'Top 3' | 'Finalist'
+   */
+  _resultBadgeWord(placement) {
+    if (!placement) return 'Winner';
+    const p = String(placement).toLowerCase().trim();
+    if (p === '1' || p === 'winner' || p === 'gold') return 'Winner';
+    if (
+      p === '2' ||
+      p === '3' ||
+      p === 'runner-up' ||
+      p === 'runner_up' ||
+      p === 'silver' ||
+      p === 'highly commended' ||
+      p === 'highly_commended' ||
+      p === 'commended' ||
+      p === 'bronze'
+    ) {
+      return 'Top 3';
+    }
+    return 'Finalist';
+  },
+
+  /**
    * Generate Shield SVG
    */
   generateShieldSVG(winner, brandColor, accentColor) {
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Winner';
     const year = winner.awards?.year || new Date().getFullYear();
     const winnerName = winner.winner_name || 'Winner';
+    const resultWord = this._resultBadgeWord(winner.placement).toUpperCase();
 
     // Shorten long names
     const displayName = winnerName.length > 30 ? winnerName.substring(0, 27) + '...' : winnerName;
@@ -2406,9 +2435,9 @@ const winnersModule = {
           ${year}
         </text>
 
-        <!-- Winner text -->
+        <!-- Result text -->
         <text x="200" y="275" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="Arial, sans-serif">
-          WINNER
+          ${resultWord}
         </text>
 
         <!-- Award name -->
@@ -2431,6 +2460,8 @@ const winnersModule = {
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award Winner';
     const year = winner.awards?.year || new Date().getFullYear();
     const organizerName = document.getElementById('organizerName')?.value || 'Awards';
+    const resultWord = this._resultBadgeWord(winner.placement);
+    const bannerSubtitle = resultWord === 'Winner' ? 'AWARD WINNER' : resultWord.toUpperCase();
 
     return `
       <svg width="600" height="150" xmlns="http://www.w3.org/2000/svg">
@@ -2453,7 +2484,7 @@ const winnersModule = {
           ${year} ${utils.escapeHtml(organizerName)}
         </text>
         <text x="170" y="75" fill="white" font-size="14" font-family="Arial, sans-serif" opacity="0.9">
-          AWARD WINNER
+          ${bannerSubtitle}
         </text>
         <text x="170" y="100" fill="${accentColor}" font-size="16" font-weight="600" font-family="Arial, sans-serif">
           ${utils.escapeHtml(awardName)}
@@ -2472,6 +2503,8 @@ const winnersModule = {
     const awardName = winner.awards?.award_name || winner.awards?.award_category || 'Award Winner';
     const year = winner.awards?.year || new Date().getFullYear();
     const organizerName = document.getElementById('organizerName')?.value || 'British Trade Awards';
+    const resultWord = this._resultBadgeWord(winner.placement);
+    const bannerHeadlineSuffix = resultWord === 'Winner' ? 'AWARD WINNER' : resultWord.toUpperCase();
 
     return `
       <svg width="1200" height="300" xmlns="http://www.w3.org/2000/svg">
@@ -2498,7 +2531,7 @@ const winnersModule = {
 
         <!-- Main text -->
         <text x="280" y="100" fill="white" font-size="48" font-weight="bold" font-family="Arial, sans-serif">
-          ${year} AWARD WINNER
+          ${year} ${bannerHeadlineSuffix}
         </text>
         <text x="280" y="150" fill="${accentColor}" font-size="32" font-weight="600" font-family="Arial, sans-serif">
           ${utils.escapeHtml(awardName)}

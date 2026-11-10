@@ -2071,7 +2071,10 @@ const entriesModule = {
       await this.loadStats();
     } catch (error) {
       console.error('Error deleting entry:', error);
-      utils.showToast('Failed to delete entry: ' + error.message, 'error');
+      // BTA-116 (m2): the full error detail stays in the console for support/
+      // debugging; the toast only ever shows a plain-English message (either
+      // apiClient's own human-readable error, per M2, or this safe fallback).
+      utils.showToast(error.message || 'Could not delete this entry. Please try again.', 'error');
     }
   },
 

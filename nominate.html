@@ -344,7 +344,7 @@
             <label class="form-label" for="nomineeCategory">
               Award Category <span class="required-star">*</span>
             </label>
-            <select class="form-control form-control-lg" id="nomineeCategory" required>
+            <select class="form-control form-control-lg" id="nomineeCategory" required aria-describedby="nomineeCategoryErr">
               <option value="">Select a category&hellip;</option>
               <!-- Options populated by JS -->
             </select>
@@ -357,7 +357,7 @@
                 Nominee's Name <span class="required-star">*</span>
               </label>
               <input type="text" class="form-control form-control-lg" id="nomineeName"
-                placeholder="e.g. Jane Smith" required autocomplete="off">
+                placeholder="e.g. Jane Smith" required autocomplete="off" aria-describedby="nomineeNameErr">
               <div class="invalid-feedback" id="nomineeNameErr"></div>
             </div>
 
@@ -366,7 +366,7 @@
                 Nominee's Company <span class="required-star">*</span>
               </label>
               <input type="text" class="form-control form-control-lg" id="nomineeCompany"
-                placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
+                placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off" aria-describedby="nomineeCompanyErr">
               <div class="field-hint">The company the nominee works for or owns &mdash; not your own employer.</div>
               <div class="invalid-feedback" id="nomineeCompanyErr"></div>
             </div>
@@ -378,7 +378,7 @@
                 Business Name <span class="required-star">*</span>
               </label>
               <input type="text" class="form-control form-control-lg" id="businessName"
-                placeholder="e.g. Smith & Sons Electrical Ltd" autocomplete="off">
+                placeholder="e.g. Smith & Sons Electrical Ltd" autocomplete="off" aria-describedby="businessNameErr">
               <div class="invalid-feedback" id="businessNameErr"></div>
             </div>
 
@@ -387,7 +387,7 @@
                 Business Owner's Name <span class="required-star">*</span>
               </label>
               <input type="text" class="form-control form-control-lg" id="businessOwner"
-                placeholder="e.g. Jane Smith" autocomplete="off">
+                placeholder="e.g. Jane Smith" autocomplete="off" aria-describedby="businessOwnerErr">
               <div class="invalid-feedback" id="businessOwnerErr"></div>
             </div>
           </div>
@@ -405,7 +405,7 @@
               Phone Number of Company or Tradesperson <span class="required-star">*</span>
             </label>
             <input type="tel" class="form-control form-control-lg" id="nomineePhone"
-              placeholder="e.g. 01234 567890" required autocomplete="off">
+              placeholder="e.g. 01234 567890" required autocomplete="off" aria-describedby="nomineePhoneErr">
             <div class="invalid-feedback" id="nomineePhoneErr"></div>
           </div>
 
@@ -414,7 +414,7 @@
               Brief Description of Work <span class="required-star">*</span>
             </label>
             <textarea class="form-control form-control-lg" id="nomineeWorkDesc" rows="3"
-              placeholder="What job or project did they undertake?" maxlength="1000" required></textarea>
+              placeholder="What job or project did they undertake?" maxlength="1000" required aria-describedby="nomineeWorkDescErr"></textarea>
             <div class="char-count" id="workDescCount">0 / 1,000</div>
             <div class="invalid-feedback" id="nomineeWorkDescErr"></div>
           </div>
@@ -424,7 +424,7 @@
               Why does this company or tradesperson deserve to be nominated in British Trade Awards? <span class="required-star">*</span>
             </label>
             <textarea class="form-control form-control-lg" id="nominationReason" rows="4"
-              placeholder="Tell us what impressed you about this company or tradesperson, the quality of their work, and how they went the extra mile..." maxlength="2000" required></textarea>
+              placeholder="Tell us what impressed you about this company or tradesperson, the quality of their work, and how they went the extra mile..." maxlength="2000" required aria-describedby="nominationReasonErr"></textarea>
             <div class="char-count" id="reasonCount">0 / 2,000</div>
             <div class="invalid-feedback" id="nominationReasonErr"></div>
           </div>
@@ -437,7 +437,7 @@
               Full Name <span class="required-star">*</span>
             </label>
             <input type="text" class="form-control form-control-lg" id="nominatorName"
-              placeholder="Your full name" required autocomplete="name">
+              placeholder="Your full name" required autocomplete="name" aria-describedby="nominatorNameErr">
             <div class="invalid-feedback" id="nominatorNameErr"></div>
           </div>
 
@@ -446,7 +446,7 @@
               Email Address <span class="required-star">*</span>
             </label>
             <input type="email" class="form-control form-control-lg" id="nominatorEmail"
-              placeholder="you@example.co.uk" required autocomplete="email">
+              placeholder="you@example.co.uk" required autocomplete="email" aria-describedby="nominatorEmailErr">
             <div class="invalid-feedback" id="nominatorEmailErr"></div>
           </div>
 

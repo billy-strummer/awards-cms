@@ -3049,7 +3049,12 @@ const crmModule = {
       const modal = new bootstrap.Modal(document.getElementById('createMeetingNoteModal'));
       modal.show();
       utils.initInlineValidation('createMeetingNoteForm');
+      // BTA-116 (M1): track unsaved edits in this note form; the modal is
+      // rebuilt fresh each time (removed on close), so no stale flag can
+      // survive between opens.
+      utils.trackUnsavedChanges('createMeetingNoteForm', 'crmNotes');
       document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function () {
+        utils.clearFormDirty('crmNotes');
         this.remove();
       });
     } catch (error) {

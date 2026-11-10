@@ -1271,9 +1271,13 @@ const eventsModule = {
     clearTimeout(this._orgSearchTimeout);
     this._orgSearchTimeout = setTimeout(async () => {
       try {
+        // BTA-116 (M3): escape %/_ in the typed term before wrapping it in
+        // the search pattern, so a literal wildcard character in a company
+        // name search can't widen the match beyond a true substring search.
+        const safeTerm = term.replace(/[%_\\]/g, '\\$&');
         const { data } = await apiClient.select('organisations', {
           select: 'id, company_name',
-          filters: { company_name_ilike: `%${term}%` },
+          filters: { company_name_ilike: `%${safeTerm}%` },
           pageSize: 10,
         });
         if (!data || data.length === 0) {

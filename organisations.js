@@ -1059,6 +1059,11 @@ const orgsModule = {
 
   async openCompanyProfile(orgId, companyName) {
     utils.trackRecentlyViewed('organisation', orgId, companyName);
+    // BTA-116 (M1): every (re-)render of this modal — initial open, post-save
+    // refresh, or cancel — represents a clean slate, so clear any stale dirty
+    // flag before tracking new edits against the freshly rendered content.
+    utils.clearFormDirty('orgEdit');
+    utils.trackUnsavedChanges('companyProfileModal', 'orgEdit');
     const modal = new bootstrap.Modal(document.getElementById('companyProfileModal'));
     const contentDiv = document.getElementById('companyProfileContent');
     const titleEl = document.getElementById('companyProfileModalLabel');

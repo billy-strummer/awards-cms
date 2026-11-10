@@ -23,7 +23,7 @@ const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
 const { resolveCategory } = require('./_lib/award-categories');
-const { findMatchingOrganisation } = require('./_lib/organisation-matching');
+const { findMatchingOrganisation, escapeLikePattern } = require('./_lib/organisation-matching');
 const { createTestDataFixtures } = require('./_lib/test-data-fixtures');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
@@ -1798,7 +1798,10 @@ async function executeSegmentQuery(rules, logic) {
           q = q.neq(col, r.val);
           break;
         case 'contains':
-          q = q.ilike(col, `%${r.val}%`);
+          // BTA-116 (M3): escape %/_ in the user-supplied term so a literal
+          // wildcard character in r.val can't widen the match beyond a true
+          // substring search.
+          q = q.ilike(col, `%${escapeLikePattern(r.val)}%`);
           break;
         case 'gt':
           q = q.gt(col, r.val);

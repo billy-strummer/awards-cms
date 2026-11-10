@@ -292,11 +292,12 @@ const COUNTIES_CITIES = Object.values(REGIONS_GROUPED).flat();
  * | allEvents              | events.js            |
  * | allEntries, filteredEntries | entries.js      |
  * | _loggingOut            | auth.js              |
+ * | unsavedChanges         | utils.js (markFormDirty/clearFormDirty/trackUnsavedChanges — BTA-116) |
  *
  * WARNING: Do not add cross-module race conditions by writing another
  * module's owned property. Use the owning module's load function instead.
  *
- * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array, _loggingOut: boolean }}
+ * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array, _loggingOut: boolean, unsavedChanges: Object }}
  */
 const STATE = {
   client: null,
@@ -314,6 +315,7 @@ const STATE = {
   allEntries: [],
   filteredEntries: [],
   _loggingOut: false,
+  unsavedChanges: {},
 };
 
 // ============================================

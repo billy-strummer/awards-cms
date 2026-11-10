@@ -2823,3 +2823,50 @@ Per FF.1, `BTA-CMS-PROJECT-TASKS.md`, `CLAUDE.md`, `EMAIL_AUTOMATION_SETUP.md`, 
 ### FF.6 — Git/worktree state
 
 Branch `claude/supabase-cms-setup-test-e6oiza`. **HEAD before this task:** `602d432`. **HEAD after:** `2861ab1` (pushed). **0 ahead/0 behind origin** after the push. 4 paths remain unstaged (listed in FF.5), plus this section's own addition to `BTA-CMS-PROJECT-TASKS.md`.
+
+## GG. BTA-116 — Post-Audit UX Safeguards & Technical Polish (2026-11-10)
+
+Implemented the full BTA-115 resolution plan under explicit authorisation.
+
+**M1 (Unsaved Work Guard):** New shared utility in `utils.js` — `markFormDirty`/`clearFormDirty`/`hasUnsavedFormChanges`/`trackUnsavedChanges` — backed by a new `STATE.unsavedChanges` bag (documented in `config.js`'s ownership table). Wired into Settings (`#settings` tab-pane, tracked once at app init; cleared generically on any successful API call while that tab is active), CRM meeting notes (`createMeetingNoteForm`, tracked on open, cleared on `hidden.bs.modal`), and Organisation edit (`companyProfileModal`, cleared at the top of every `openCompanyProfile` render — covers both the save-then-refresh and cancel-then-refresh paths). `app.js`'s existing `beforeunload` handler now also checks this flag alongside its pre-existing save-spinner and Email Builder checks.
+
+**M2 (Human-Readable Errors):** `utils.js`'s `apiClient._call` no longer throws `"API error <status>"` — the JSON-parse-failure path and the generic `!res.ok` fallback both now throw plain-English messages. Three pre-existing tests in `tests/api-client.test.js` asserted the old raw-string messages; updated to assert the new message rather than reverting the fix (two of the three failures were a cascade from the first — `MAX_RETRIES` never got reset to `2` once the first assertion failed mid-test, not a second independent defect).
+
+**M3 (Query Escaping) — implemented with a documented deviation:** `api/data-proxy.js:1801` (CRM segment-builder's `contains` operator) now wraps the user term in `escapeLikePattern()` before building the `%...%` pattern, exactly as specified. The second named site, `api/data-proxy.js:735` (the generic filter dispatcher), was **not** blanket-escaped — tracing its callers (`crm.js`, `awards.js`, `events.js`, `gdpr.js`) found they already pre-build the full `%...%` pattern themselves before it reaches this dispatcher, so escaping the whole value there would escape the wildcard delimiters themselves and break every existing substring-search feature. Instead, the fix was applied at the genuine root cause: `events.js`'s organisation-search autocomplete (`_searchOrgsForAttendee`) was the one caller among those four that built its pattern from an **unescaped** raw term — the other three were already either escaped (`gdpr.js`'s own `_escapeLike`), fed from a fixed `<select>` (`crm.js`, no free text), or a hardcoded literal pattern, not user input (`awards.js`).
+
+**M4 (FK Indexing):** New `migrations/094-add-fk-indexes.sql` written (hyphenated to match this project's existing migration-file naming convention, rather than the literally-requested underscore style) — adds `CREATE INDEX IF NOT EXISTS` for the 7 FK columns BTA-115 found unindexed on the test project. **Not applied to any database** — file only, per the standing migration process (must be verified on test and separately authorised before production, same as migration 093).
+
+**UI/accessibility polish (m1–m4):** "Payload URL" → "Webhook URL" (`src/partials/99-shell-foot.html`); `entries.js`'s delete-failure toast no longer concatenates a technical prefix onto `error.message` (and falls back to a friendly default if empty); `public-voting.js`'s vote-submit button now gets a visible `disabled` state (previously only `aria-busy`) during submission; all 10 of `nominate.html`'s validated fields gained `aria-describedby` linking them to their `.invalid-feedback` error elements.
+
+**Verification:** `node build.js` — clean, 0 lint errors. `npx jest` — 84 suites, 6818 passed, 3 pre-existing skips, 0 failed (after the test-assertion fix above).
+
+**Git/worktree state:** commit `a5d330e` (13 files changed, 173 insertions, 23 deletions, including the new migration file) on `claude/supabase-cms-setup-test-e6oiza`, pushed — `9cab542..a5d330e`. Working tree clean immediately after.
+
+## HH. BTA-117 — Project Continuity Finalization & Closeout (2026-11-10)
+
+**Final sign-off record** for the BTA-096→BTA-116 work programme covered by this continuity log's Sections W through GG.
+
+### HH.1 — Summary of what this stretch of work covered
+
+- **Migration 093 (RLS/grant hardening for 8 tables):** authored (BTA-080), locally tested, re-audited for compatibility multiple times (BTA-097/099/100/101/105), applied to and independently verified on the test Supabase project (BTA-104), applied to and independently verified on **production** (BTA-106), and confirmed to have caused zero application-level regression via a dedicated post-hardening integration audit (BTA-107) and the BTA-115 enterprise audit's own Vertical 3/4 findings.
+- **Application security dependencies** that would otherwise have blocked the above: Test Data Manager moved fully server-side (BTA-098) and `payment-success.html`'s insecure direct `payments` query replaced with a Stripe-session-authorised public endpoint (BTA-100) — both independently re-confirmed intact as recently as BTA-105/107.
+- **Local environment/readiness audits:** BTA-108 (local startup procedure and env-var inventory) and BTA-109 (documentation-structure audit, which caught and self-corrected its own section-ordering mistake).
+- **Working-tree consolidation:** BTA-110/113/114 committed and pushed the entire accumulated backlog of already-completed, already-reported work (migrations 087–093, every hardened API handler, the full frontend/CMS UI work, and the BTA-084–093 audit deliverables) in deliberately scoped, thematic commits, each with an explicit account of anything left out and why.
+- **BTA-112:** a full working-tree inventory and documentation cross-check confirming nothing in the 93 then-outstanding paths was unaccounted-for or undocumented. (Note: this programme's task numbering has no BTA-111 — the sequence runs BTA-110 directly to BTA-112; recorded here as a correction rather than silently smoothed over, per this project's continuity protocol.)
+- **BTA-115/116:** a 6-vertical, zero-Critical-finding enterprise audit (parallelised across 3 background investigations covering non-technical usability, public/admin UI, API/auth/data-integrity, database/RLS, build/environment, and code hygiene/test coverage), followed by full implementation of its Moderate/Minor resolution plan — including one explicitly-documented, reasoned deviation from a literal instruction where following it exactly would have introduced a regression.
+
+### HH.2 — Outstanding items carried forward (not resolved by this programme, by design)
+
+- **The broader, separate exposure** on `event_guests`, `documents`, `document_versions`, `user_roles`, and migration 088's other ~22 tables on production (tracked in `CLAUDE.md`'s banner since BTA-078/079) — explicitly out of scope for migration 093 and never claimed otherwise.
+- **`document-management.js`'s orphaned, un-role-gated access** to `documents`/`document_versions` (BTA-099/100/105) — still requires a business decision (wire in with a role check, or retire) that was never this programme's to make unilaterally.
+- **Migration 094** (FK indexes) is written but not applied anywhere — needs its own test-project verification and separate production authorisation, following the exact precedent this programme itself established for migration 093.
+- **BTA-115's M5 finding** (data-input masking/character-counter coverage) was explicitly flagged as partially verified only, not exhaustively audited — a dedicated follow-up pass across Settings/Invoices/Payments forms was recommended, not performed.
+- **`sponsorship_opportunities`'s dual table-definition ambiguity** (migration 091's own documented, pre-existing finding) remains open.
+
+### HH.3 — Final verification
+
+`git status` (run immediately before this append): clean working tree, 0 unstaged/untracked paths, branch up to date with `origin/claude/supabase-cms-setup-test-e6oiza` at `a5d330e`. This section's own append is the only change this task makes, staged and committed as part of the same action per this task's explicit instruction (unlike several prior sections in this log, which were deliberately left uncommitted pending separate authorisation that has now been given).
+
+### HH.4 — Git/worktree state
+
+Branch `claude/supabase-cms-setup-test-e6oiza`. **HEAD before this task:** `a5d330e`. Committed and pushed as part of this same task, per its explicit instruction — see the commit referenced in this task's own completion report for the resulting HEAD.

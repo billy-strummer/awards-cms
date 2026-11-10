@@ -1,6 +1,6 @@
 # Email Automation Setup Guide
 
-This guide will help you set up automatic confirmation emails when entries are submitted.
+> **Note (2026-10-27, BTA-050): this guide describes a superseded architecture.** Entry-confirmation emails are now sent server-side via `api/entry-proxy.js` calling `sendEntryConfirmation()`/`sendNominationConfirmation()` in `api/email-automation.js` directly — confirmed by grep that `submit-entry.js` never calls `supabase.functions.invoke('send-entry-confirmation', ...)` as this guide describes, and that no live frontend code invokes the `send-entry-confirmation` or `send-campaign` Supabase Edge Functions at all. Those two Edge Functions' *source* still exists under `supabase/functions/`, but they are not part of any current send path. Do not deploy or rely on them for release; if they are already deployed from an earlier setup, see `BTA-CMS-PROJECT-TASKS.md`'s BTA-050 section for why their `verify_jwt` setting still matters regardless (they remain directly callable by anyone holding the project's public anon key, independent of whether the app's own UI uses them) and what to check.
 
 ## Overview
 

@@ -2754,3 +2754,72 @@ Reviewed Sections `AA`/`BB`/`CC` (BTA-106/107/108) for formatting and structural
 ### DD.3 — Git/worktree state
 
 Branch `claude/supabase-cms-setup-test-e6oiza`, HEAD `fd2e14522d2259c3cd0ceb73176e65db1096ec81` — unchanged throughout (re-checked before and after the build sanity check, and again after correcting DD.1's ordering mistake). 0 staged. 93 unstaged/untracked paths, same composition as before this task, plus this section's append. No application code, test, config, or migration file was changed; the only filesystem write this task made outside the gitignored `dist/` directory is this documentation section. No commit, push, stage, merge, rebase, or deploy occurred — left unstaged, per this task's explicit instruction.
+
+## EE. BTA-110 — Commit & Remote GitHub Sync (2026-11-10)
+
+**Explicit authorisation given** to stage, commit, and push. Objective 1 scoped the commit specifically to `BTA-CMS-PROJECT-TASKS.md` ("Stage BTA-CMS-PROJECT-TASKS.md and commit with message: ..."); the other 92 modified/untracked paths in the working tree (spanning many prior, separately-reported tasks never reviewed for inclusion in this specific commit) were deliberately **not** staged, per the standing rule to match the scope of an action to what was actually requested.
+
+**Executed:**
+```
+git add BTA-CMS-PROJECT-TASKS.md
+git commit -m "docs(bta): update project continuity log through BTA-109"
+git push -u origin claude/supabase-cms-setup-test-e6oiza
+```
+
+**Result:**
+- Commit `602d432` created on `claude/supabase-cms-setup-test-e6oiza` (1 file changed, 2199 insertions, 7 deletions — matches the cumulative, purely-additive BTA-096→BTA-109 documentation record).
+- Push succeeded: `fd2e145..602d432  claude/supabase-cms-setup-test-e6oiza -> claude/supabase-cms-setup-test-e6oiza`. Remote tracking branch set.
+- `lint-staged` ran automatically via the commit hook and reported no matching tasks for the staged file (expected — it only configures rules for `*.js`/`api/*.js`, not Markdown).
+
+**This section (EE) itself is appended after that push and is not included in it** — Objective 3 asked only that it be appended, not that it be committed too, so it remains an uncommitted addition on top of commit `602d432` unless a future task authorises committing it.
+
+### EE.1 — Git/worktree state
+
+Branch `claude/supabase-cms-setup-test-e6oiza`. **HEAD before this task:** `fd2e14522d2259c3cd0ceb73176e65db1096ec81`. **HEAD after:** `602d432` (pushed to remote). **Staged at time of commit:** `BTA-CMS-PROJECT-TASKS.md` only. **Remaining unstaged/untracked:** the same other 92 paths as before, now the sole contents of the working tree's diff (this `EE` section's own addition makes 93 again until it too is committed). No application code, test, or migration file was touched by this task.
+
+## FF. BTA-113 — Structured Working Tree Commit & Remote Push (2026-11-10)
+
+**Explicit, full authorisation given** to stage, commit, and push the remaining working-tree backlog (catalogued in BTA-112, Section "Full Repository, Working Tree & Task Audit") using three named, thematic commits.
+
+### FF.1 — Grouping decisions (made explicit, since the task's wording left some)
+
+The task named 3 groups covering 89 of the 93 then-outstanding paths. Two interpretive calls were made and are recorded here for transparency:
+- **"security API handlers (`api/data-proxy.js`, `api/stripe-payment.js`, etc.)"** was read as covering all 8 modified `api/*.js` files plus the new `api/_lib/test-data-fixtures.js` (a server-side security module gating Test Data Manager behind `super_admin` + a non-production check) — grouped with migrations under Group 1.
+- **"test fixtures"** in Group 2's description was read as covering all `tests/*.test.js` files generally (both modified and new), since Group 1's description did not mention tests at all.
+- **4 files named in no group** — `BTA-CMS-PROJECT-TASKS.md`, `CLAUDE.md`, `EMAIL_AUTOMATION_SETUP.md`, `PRE-PRODUCTION-FIXES.md` — were deliberately left uncommitted rather than guessed into a group, per the standing rule to match action scope to what was actually requested.
+
+### FF.2 — Commits made
+
+| Commit | Message | Files | Insertions/Deletions |
+|---|---|---|---|
+| `c0151fc` | `feat(db,security): add migrations 087-093 and harden API proxy security handlers` | 15 (6 new migrations, 8 modified `api/*.js`, 1 new `api/_lib/test-data-fixtures.js`) | +2973 / −55 |
+| `7cae829` | `refactor(cms,frontend): update UI modules, public pages, and test fixtures for production readiness` | 63 (17 frontend modules incl. 2 new, 16 public HTML pages, 3 `src/partials/*`, `app.js`/`build.js`, 25 test files incl. 10 new) | +7938 / −4928 |
+| `2861ab1` | `docs(audit): add comprehensive phase and audit report deliverables` | 11 (10 `BTA-084`–`093-*.md` reports + `BTA-PROJECT-CONTINUITY-CHECKPOINT.md`) | +1118 / 0 |
+
+`lint-staged`'s pre-commit hook ran `prettier --write` + `eslint --quiet` automatically on all staged `.js` files across the first two commits (the project's own existing tooling, not a change made by this task) — both passed cleanly with no manual intervention needed.
+
+### FF.3 — Push
+
+```
+git push origin claude/supabase-cms-setup-test-e6oiza
+602d432..2861ab1  claude/supabase-cms-setup-test-e6oiza -> claude/supabase-cms-setup-test-e6oiza
+```
+Succeeded. All three commits are now on the remote.
+
+### FF.4 — Final git history
+
+```
+2861ab1 docs(audit): add comprehensive phase and audit report deliverables
+7cae829 refactor(cms,frontend): update UI modules, public pages, and test fixtures for production readiness
+c0151fc feat(db,security): add migrations 087-093 and harden API proxy security handlers
+602d432 docs(bta): update project continuity log through BTA-109
+fd2e145 Harden server-side role checks, close tenant-scope trust gap, fix stale winner-position labels
+```
+
+### FF.5 — Working tree is not fully synchronised — 4 paths remain
+
+Per FF.1, `BTA-CMS-PROJECT-TASKS.md`, `CLAUDE.md`, `EMAIL_AUTOMATION_SETUP.md`, and `PRE-PRODUCTION-FIXES.md` remain modified and uncommitted (confirmed: `git status --short` shows exactly these 4, down from 93). This section's own addition keeps `BTA-CMS-PROJECT-TASKS.md` itself in that set. **This is not a full synchronisation of the working tree** — it is the complete commit of everything the task's 3 groups named, plus a clear account of what was left out and why. A future task would need to explicitly name these 4 files if they are also meant to be committed.
+
+### FF.6 — Git/worktree state
+
+Branch `claude/supabase-cms-setup-test-e6oiza`. **HEAD before this task:** `602d432`. **HEAD after:** `2861ab1` (pushed). **0 ahead/0 behind origin** after the push. 4 paths remain unstaged (listed in FF.5), plus this section's own addition to `BTA-CMS-PROJECT-TASKS.md`.

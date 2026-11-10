@@ -42,6 +42,21 @@ These pages intentionally use a plain/light design to ensure readability and leg
 
 ---
 
+## PERMANENT BUSINESS DECISION: Geographic Coverage (Northern Ireland Excluded)
+
+> **CLAUDE: Read this before touching anything related to areas, regions, countries, counties, cities, or location dropdowns. This is a settled business decision, not an open question to re-investigate.**
+
+**Northern Ireland is explicitly excluded from the British Trade Awards' intended geographic coverage** (decided BTA-070, 2026-11-02). The supported countries are England, Scotland and Wales only.
+
+- Do **not** reintroduce Northern Ireland into any public or admin geographic option, dropdown, select, or CSV-import help text.
+- Do **not** add Northern Ireland to any supported country, county, region, city or area list (`location.js`, `areas-manager.js`, `home-data.js`'s `REGION_DATA`, the `areas`/`regions` tables, or anywhere else).
+- Do **not** create Northern Ireland award areas or geographic seed records.
+- `migrations/090-allow-northern-ireland-areas.sql` (which would have widened `areas.country`'s CHECK constraint to permit Northern Ireland) was authored in BTA-069 and **deleted in BTA-070** as a direct consequence of this decision — it is not needed and must not be recreated for this purpose.
+- No historical Northern Ireland data exists anywhere in this repository's migrations or seed files (confirmed by a repository-wide audit, BTA-070) — there was nothing to clean up at the database level. If a live database somehow contains Northern Ireland rows at some future point, that is a separate, explicit data-cleanup decision, not something to infer from this rule.
+- **Future geographic expansion** (adding/removing a country, region, county, city or other classification) must go through the CMS once the relevant admin capability exists, and requires its own business approval — it is not something to implement unilaterally just because this exclusion decision exists. See `BTA-CMS-PROJECT-TASKS.md` Decision register item 23 (resolved) and the geographic-architecture findings in BTA-070's report (Section M) for the current state of `areas`/`regions`-based geographic management.
+
+---
+
 ## ACTIVE WORK: Full System Audit
 
 > **CLAUDE: There is a master system audit at `CMS-AUDIT-TODO.md` covering 118 checks across 12 categories (automated tests, database schema, auth, multi-user, end-to-end flows, API health, frontend tabs, forms, security, integrations, performance, error recovery). Read it at the start of every session and work through items in order. Mark each item `[x]` in the same commit as the verification or fix. If an item reveals a bug, fix it before marking it done. Resume from the first unchecked `[ ]` item.**
@@ -65,6 +80,14 @@ These pages intentionally use a plain/light design to ensure readability and leg
 ## ACTIVE WORK: Database Schema Audit
 
 > **CLAUDE: A database schema audit was run on 2026-05-30 covering all 48 SQL migration files. Findings are tracked at `DB-SCHEMA-AUDIT-TODO.md` with 3 Critical, 3 High, 3 Medium, and 1 Low item. The most urgent finding is missing RLS policies on 8 tables (DB-C3) — without RLS, authenticated Supabase users can read all data directly. Work through items DB-C1 → DB-C3 → DB-H1 → … → DB-L1. Mark each `[x]` when committed and pushed.**
+
+## ACTIVE WORK: Live Production RLS/Grant Exposure and Migration 093 (HIGHEST PRIORITY)
+
+> **CLAUDE: BTA-078/079 confirmed, via a direct live read-only connection to production (`qdzyknercdqwhwijbcxf`), that `organisations`, `organisation_contacts`, `gdpr_requests`, `entries`, `award_assignments`, `invoices`, `payments`, `award_years`, `event_guests`, `sponsorship_opportunities` and all 22 of migration 088's tables are currently fully exposed to the public `anon` key (original permissive policy never dropped by migration 052). `anonymize_organisation` is confirmed directly callable by `anon`. A corrective migration, `migrations/093-harden-remaining-permissive-policy-tables.sql`, was authored in BTA-080 and locally tested (40 static tests) but has **not been applied to any database** — verifying it against the test project (`htcsewpztvxafksdzuhp`) has been blocked since BTA-081 by that project's Postgres connection timing out despite the control plane reporting healthy; a Supabase support ticket is open. Read `BTA-PROJECT-CONTINUITY-CHECKPOINT.md` first for the full current state, migration inventory, and exact resume instructions before touching this area. Do not apply any migration to production without it first being verified on the test project and separately, explicitly authorised.
+>
+> **UPDATE (BTA-098/099/100):** the `test-data-manager.js` dependency (BTA-085, resolved BTA-098) and the `payment-success.html` anon-key `payments` dependency (BTA-097/099, resolved BTA-100 — replaced with a public, rate-limited, Stripe-session-authorised lookup, `api/stripe-payment.js`'s `public-payment-confirmation` action) have both been resolved. A fresh repository-wide re-check at the end of BTA-100 found **zero remaining browser-side dependency on any of migration 093's 8 target tables**. This is a **repository-evidence conclusion only** — the live Supabase schema/policy state has not been re-verified since BTA-078/079. See `BTA-CMS-PROJECT-TASKS.md` Section Y for full detail. Migration 093 must still not be applied without live test-project verification and separate, explicit authorisation — the connectivity blocker from BTA-081/082 has not been re-checked.**
+>
+> **UPDATE (BTA-101–105):** the BTA-081/082 test-project connectivity blocker is resolved (confirmed live, BTA-101). Migration 093 has been **applied to and independently verified on the test project** (`htcsewpztvxafksdzuhp`) — BTA-104, after two timed-out `apply_migration` confirmation attempts (BTA-102, and BTA-104's own second attempt) and a successful third attempt made with the user actively present to answer the MCP confirmation prompt (see BTA-103 for why the timeouts occurred — an unanswered MCP human-confirmation/elicitation request, not a database or SQL defect). **Production (`qdzyknercdqwhwijbcxf`) is untouched and still fully exposed** — BTA-105's fresh live read-only re-inspection confirms production's 8 target tables are unchanged since BTA-078/079. BTA-105 classifies migration 093 as **Ready with prerequisites** for production: no technical incompatibility was found (every policy it drops and grant it revokes matches production's live state exactly, statement-by-statement), and the remaining prerequisites are procedural — explicit separate authorisation, and a human actively present for the confirmation prompt during the call. See `BTA-CMS-PROJECT-TASKS.md` Section Z for full detail. **Do not apply migration 093 to production without that separate, explicit authorisation — this update does not constitute it.**
 
 ## ACTIVE WORK: Vercel / Build / CSP Configuration Audit
 

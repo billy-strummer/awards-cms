@@ -2381,7 +2381,11 @@ const winnersModule = {
    * @returns {string} 'Winner' | 'Top 3' | 'Finalist'
    */
   _resultBadgeWord(placement) {
-    if (!placement) return 'Winner';
+    // BTA-074: a blank/unset placement must never be displayed as "Winner"
+    // (it falls through to the same "Finalist" default as any other
+    // unrecognised value below, consistent with award_assignments'
+    // getWinnerPositionBadge treating an unset winner_position as no
+    // badge at all rather than defaulting to the top placement).
     const p = String(placement).toLowerCase().trim();
     if (p === '1' || p === 'winner' || p === 'gold') return 'Winner';
     if (

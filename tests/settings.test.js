@@ -32,6 +32,27 @@ const dom = new JSDOM(
   <div id="uxSettingsContainer"></div>
   <div id="auditLogContainer"></div>
   <div id="seasonsContainer"></div>
+  <div id="publicSiteSettingsContainer"></div>
+  <div id="customSectorsContainer"></div>
+  <div id="manageAreasContainer"></div>
+  <div id="addSectorModal" class="modal fade">
+    <h5 id="addSectorModalTitle"></h5>
+    <input id="newSectorName">
+  </div>
+  <div id="addCategoryModal" class="modal fade">
+    <h5 id="addCategoryModalTitle"></h5>
+    <select id="newCategorySector"></select>
+    <input id="newCategoryName">
+    <input type="checkbox" id="newCategorySmall">
+    <select id="newCategoryCountry">
+      <option value="">Any country</option>
+      <option value="England">England</option>
+      <option value="Scotland">Scotland</option>
+      <option value="Wales">Wales</option>
+    </select>
+    <select id="newCategoryRegion" disabled><option value="">Select country first…</option></select>
+    <select id="newCategoryArea" disabled><option value="">Select region first…</option></select>
+  </div>
   <div id="backupSettings"></div>
   <input type="checkbox" id="weeklyBackup">
   <input type="checkbox" id="monthlyBackup">
@@ -78,6 +99,9 @@ global.bootstrap = {
     hide() {}
     static getInstance() {
       return { hide() {} };
+    }
+    static getOrCreateInstance() {
+      return { show() {}, hide() {} };
     }
   },
   Tooltip: class {},
@@ -141,6 +165,16 @@ syncWindowToGlobal();
 // Mock rbacModule
 global.rbacModule = { canAccess: jest.fn(() => true), guard: jest.fn(() => true), currentRole: 'admin' };
 global.window.rbacModule = global.rbacModule;
+
+global.locationModule = {
+  loadAreas: jest.fn().mockResolvedValue([]),
+  _cachedRegions: [],
+  _cachedAreas: [],
+  populateCountryDropdown: jest.fn(),
+  populateRegionDropdown: jest.fn(),
+  populateAreaDropdown: jest.fn(),
+};
+global.window.locationModule = global.locationModule;
 
 require('../settings.js');
 syncWindowToGlobal();
@@ -951,6 +985,612 @@ describe('Settings Module - exportEntriesCSV', () => {
     expect(toastSpy).toHaveBeenCalledWith('Failed to export entries', 'error');
     consoleSpy.mockRestore();
     toastSpy.mockRestore();
+  });
+});
+
+describe('Settings Module - renderPublicSiteSettings (BTA-069)', () => {
+  test('renders company/social/footer cards with values from cms_config', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { key: 'sponsors_visible', value: 'true' },
+        { key: 'company_name', value: 'British Trade Awards Ltd' },
+        { key: 'company_registration_number', value: '12345678' },
+        { key: 'company_address', value: '1 Example Street, London' },
+        { key: 'contact_email', value: 'info@britishtradeawards.com' },
+        { key: 'contact_phone', value: '+44 20 1234 5678' },
+        {
+          key: 'social_links',
+          value: JSON.stringify([{ platform: 'linkedin', url: 'https://linkedin.com/company/bta', visible: true }]),
+        },
+        { key: 'footer_contact_url', value: '' },
+        { key: 'footer_sitemap_url', value: '' },
+      ],
+    });
+
+    await settingsModule.renderPublicSiteSettings();
+
+    expect(document.getElementById('wsCompanyName').value).toBe('British Trade Awards Ltd');
+    expect(document.getElementById('wsCompanyRegNumber').value).toBe('12345678');
+    expect(document.getElementById('wsContactEmail').value).toBe('info@britishtradeawards.com');
+    expect(document.getElementById('wsSocial_linkedin').value).toBe('https://linkedin.com/company/bta');
+    expect(document.getElementById('wsSocialVisible_linkedin').checked).toBe(true);
+    expect(document.getElementById('wsSocialVisible_instagram').checked).toBe(false);
+  });
+
+  test('shows a warning when loading fails', async () => {
+    apiClient.select = jest.fn().mockRejectedValue(new Error('db down'));
+    await settingsModule.renderPublicSiteSettings();
+    expect(document.getElementById('publicSiteSettingsContainer').innerHTML).toContain('Could not load');
+  });
+});
+
+describe('Settings Module - isValidOptionalUrl', () => {
+  test('accepts an empty value', () => {
+    expect(settingsModule.isValidOptionalUrl('')).toBe(true);
+  });
+  test('accepts http(s) URLs', () => {
+    expect(settingsModule.isValidOptionalUrl('https://example.com')).toBe(true);
+    expect(settingsModule.isValidOptionalUrl('http://example.com')).toBe(true);
+  });
+  test('rejects a non-http(s) scheme', () => {
+    expect(settingsModule.isValidOptionalUrl('javascript:alert(1)')).toBe(false);
+    expect(settingsModule.isValidOptionalUrl('ftp://example.com')).toBe(false);
+  });
+});
+
+describe('Settings Module - saveCompanyInfo (BTA-069)', () => {
+  beforeEach(async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.renderPublicSiteSettings();
+    apiClient.upsert = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('rejects an invalid contact email without saving', async () => {
+    document.getElementById('wsContactEmail').value = 'not-an-email';
+    await settingsModule.saveCompanyInfo();
+    expect(apiClient.upsert).not.toHaveBeenCalled();
+    expect(utils.showToast).toHaveBeenCalledWith(expect.stringContaining('valid contact email'), 'error');
+  });
+
+  test('saves all company fields as cms_config rows', async () => {
+    document.getElementById('wsCompanyName').value = 'British Trade Awards Ltd';
+    document.getElementById('wsCompanyRegNumber').value = '12345678';
+    document.getElementById('wsCompanyAddress').value = '1 Example Street, London';
+    document.getElementById('wsContactEmail').value = 'info@britishtradeawards.com';
+    document.getElementById('wsContactPhone').value = '+44 20 1234 5678';
+
+    await settingsModule.saveCompanyInfo();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.arrayContaining([
+        expect.objectContaining({ key: 'company_name', value: 'British Trade Awards Ltd' }),
+        expect.objectContaining({ key: 'contact_email', value: 'info@britishtradeawards.com' }),
+      ]),
+      { onConflict: 'key' }
+    );
+    expect(utils.showToast).toHaveBeenCalledWith('Company details saved', 'success');
+  });
+});
+
+describe('Settings Module - saveSocialLinks (BTA-069)', () => {
+  beforeEach(async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.renderPublicSiteSettings();
+    apiClient.upsert = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('rejects a non-http(s) social URL without saving', async () => {
+    document.getElementById('wsSocial_linkedin').value = 'javascript:alert(1)';
+    await settingsModule.saveSocialLinks();
+    expect(apiClient.upsert).not.toHaveBeenCalled();
+    expect(utils.showToast).toHaveBeenCalledWith(expect.stringContaining('linkedin'), 'error');
+  });
+
+  test('saves the social_links JSON with one entry per platform', async () => {
+    document.getElementById('wsSocial_linkedin').value = 'https://linkedin.com/company/bta';
+    document.getElementById('wsSocialVisible_linkedin').checked = true;
+
+    await settingsModule.saveSocialLinks();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith('cms_config', expect.objectContaining({ key: 'social_links' }), {
+      onConflict: 'key',
+    });
+    const savedValue = JSON.parse(apiClient.upsert.mock.calls[0][1].value);
+    expect(savedValue).toEqual(
+      expect.arrayContaining([{ platform: 'linkedin', url: 'https://linkedin.com/company/bta', visible: true }])
+    );
+    expect(utils.showToast).toHaveBeenCalledWith('Social media links saved', 'success');
+  });
+});
+
+describe('Settings Module - saveFooterLinks (BTA-069)', () => {
+  beforeEach(async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.renderPublicSiteSettings();
+    apiClient.upsert = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('rejects an invalid footer URL without saving', async () => {
+    document.getElementById('wsFooterSitemapUrl').value = 'not-a-url';
+    await settingsModule.saveFooterLinks();
+    expect(apiClient.upsert).not.toHaveBeenCalled();
+  });
+
+  test('saves both footer link keys', async () => {
+    document.getElementById('wsFooterContactUrl').value = 'https://britishtradeawards.com/contact';
+    document.getElementById('wsFooterSitemapUrl').value = 'https://britishtradeawards.com/sitemap';
+
+    await settingsModule.saveFooterLinks();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      [
+        expect.objectContaining({ key: 'footer_contact_url', value: 'https://britishtradeawards.com/contact' }),
+        expect.objectContaining({ key: 'footer_sitemap_url', value: 'https://britishtradeawards.com/sitemap' }),
+      ],
+      { onConflict: 'key' }
+    );
+    expect(utils.showToast).toHaveBeenCalledWith('Footer links saved', 'success');
+  });
+});
+
+describe('Settings Module - saveNavLabels (BTA-071)', () => {
+  beforeEach(async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.renderPublicSiteSettings();
+    apiClient.upsert = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('renders one input per nav label field, pre-filled from cms_config', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [{ key: 'nav_labels', value: JSON.stringify({ categories: 'Trade Categories' }) }],
+    });
+    await settingsModule.renderPublicSiteSettings();
+    expect(document.getElementById('wsNav_categories').value).toBe('Trade Categories');
+    expect(document.getElementById('wsNav_enterNow').value).toBe('');
+  });
+
+  test('saves only the fields an admin actually filled in, omitting blank ones', async () => {
+    document.getElementById('wsNav_categories').value = 'Trade Categories';
+    document.getElementById('wsNav_regions').value = '';
+    document.getElementById('wsNav_findATrade').value = '';
+    document.getElementById('wsNav_about').value = '';
+    document.getElementById('wsNav_enterNow').value = 'Apply Now';
+
+    await settingsModule.saveNavLabels();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({
+        key: 'nav_labels',
+        value: JSON.stringify({ categories: 'Trade Categories', enterNow: 'Apply Now' }),
+      }),
+      { onConflict: 'key' }
+    );
+    expect(utils.showToast).toHaveBeenCalledWith('Navigation labels saved', 'success');
+  });
+
+  test('saves an empty object when every field is left blank', async () => {
+    await settingsModule.saveNavLabels();
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({ key: 'nav_labels', value: '{}' }),
+      { onConflict: 'key' }
+    );
+  });
+});
+
+describe('Settings Module - savePageSeo (BTA-071)', () => {
+  beforeEach(async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.renderPublicSiteSettings();
+    apiClient.upsert = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('renders one title/description pair per SEO page, pre-filled from cms_config', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        { key: 'page_seo', value: JSON.stringify({ home: { title: 'Custom Title', description: 'Custom desc' } }) },
+      ],
+    });
+    await settingsModule.renderPublicSiteSettings();
+    expect(document.getElementById('wsSeoTitle_home').value).toBe('Custom Title');
+    expect(document.getElementById('wsSeoDesc_home').value).toBe('Custom desc');
+    expect(document.getElementById('wsSeoTitle_about').value).toBe('');
+  });
+
+  test('saves only pages with at least one non-blank field, omitting the rest', async () => {
+    document.getElementById('wsSeoTitle_home').value = 'Custom Home Title';
+    document.getElementById('wsSeoDesc_home').value = '';
+    document.getElementById('wsSeoTitle_about').value = '';
+    document.getElementById('wsSeoDesc_about').value = '';
+
+    await settingsModule.savePageSeo();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({
+        key: 'page_seo',
+        value: JSON.stringify({ home: { title: 'Custom Home Title' } }),
+      }),
+      { onConflict: 'key' }
+    );
+    expect(utils.showToast).toHaveBeenCalledWith('Page SEO saved', 'success');
+  });
+
+  test('saves an empty object when every field is left blank', async () => {
+    await settingsModule.savePageSeo();
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({ key: 'page_seo', value: '{}' }),
+      { onConflict: 'key' }
+    );
+  });
+});
+
+describe('Settings Module - saveFormContent (BTA-072)', () => {
+  beforeEach(async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.renderPublicSiteSettings();
+    apiClient.upsert = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('renders step title/subtitle inputs and confirmation fields, pre-filled from cms_config', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        {
+          key: 'form_content',
+          value: JSON.stringify({
+            submit_entry: {
+              steps: { step1: { title: 'Custom Location Heading', subtitle: 'Custom location subtitle' } },
+              confirmationTitle: 'Custom Entry Confirmation',
+            },
+            nominate: { confirmationMessage: 'Custom nominate confirmation message' },
+          }),
+        },
+      ],
+    });
+    await settingsModule.renderPublicSiteSettings();
+
+    expect(document.getElementById('wsForm_submit_entry_step1_title').value).toBe('Custom Location Heading');
+    expect(document.getElementById('wsForm_submit_entry_step1_subtitle').value).toBe('Custom location subtitle');
+    expect(document.getElementById('wsForm_submit_entry_confirmTitle').value).toBe('Custom Entry Confirmation');
+    expect(document.getElementById('wsForm_submit_entry_step0_title').value).toBe('');
+    expect(document.getElementById('wsForm_nominate_confirmMessage').value).toBe(
+      'Custom nominate confirmation message'
+    );
+    // step4 has no subtitle in submit-entry.html -- no subtitle input should be rendered for it
+    expect(document.getElementById('wsForm_submit_entry_step4_subtitle')).toBeNull();
+  });
+
+  test('renders page title/meta description inputs, pre-filled from cms_config (BTA-073)', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({
+      data: [
+        {
+          key: 'form_content',
+          value: JSON.stringify({
+            submit_entry: { pageTitle: 'Custom Entry Title', metaDescription: 'Custom entry description' },
+          }),
+        },
+      ],
+    });
+    await settingsModule.renderPublicSiteSettings();
+
+    expect(document.getElementById('wsForm_submit_entry_pageTitle').value).toBe('Custom Entry Title');
+    expect(document.getElementById('wsForm_submit_entry_metaDescription').value).toBe('Custom entry description');
+    expect(document.getElementById('wsForm_nominate_pageTitle').value).toBe('');
+    expect(document.getElementById('wsForm_nominate_pageTitle').placeholder).toBe(
+      'Nominate a Company or Trade Professional - British Trade Awards'
+    );
+  });
+
+  test('saves page title/meta description fields alongside the rest of a form entry (BTA-073)', async () => {
+    document.getElementById('wsForm_industry_leader_pageTitle').value = 'Custom Nomination Title';
+    document.getElementById('wsForm_industry_leader_metaDescription').value = 'Custom nomination description';
+
+    await settingsModule.saveFormContent();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({
+        key: 'form_content',
+        value: JSON.stringify({
+          industry_leader: { pageTitle: 'Custom Nomination Title', metaDescription: 'Custom nomination description' },
+        }),
+      }),
+      { onConflict: 'key' }
+    );
+  });
+
+  test('saves only steps/forms with at least one non-blank field, omitting the rest', async () => {
+    document.getElementById('wsForm_submit_entry_step1_title').value = 'New Heading';
+    document.getElementById('wsForm_submit_entry_step1_subtitle').value = '';
+    document.getElementById('wsForm_submit_entry_confirmTitle').value = '';
+    document.getElementById('wsForm_submit_entry_confirmMessage').value = '';
+
+    await settingsModule.saveFormContent();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({
+        key: 'form_content',
+        value: JSON.stringify({ submit_entry: { steps: { step1: { title: 'New Heading' } } } }),
+      }),
+      { onConflict: 'key' }
+    );
+    expect(utils.showToast).toHaveBeenCalledWith('Entry & nomination form content saved', 'success');
+  });
+
+  test('saves an empty object when every field is left blank', async () => {
+    await settingsModule.saveFormContent();
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({ key: 'form_content', value: '{}' }),
+      { onConflict: 'key' }
+    );
+  });
+
+  test('saves nominate confirmation fields without a steps object (nominate.html has no multi-step headings)', async () => {
+    document.getElementById('wsForm_nominate_confirmTitle').value = 'Thanks!';
+
+    await settingsModule.saveFormContent();
+
+    expect(apiClient.upsert).toHaveBeenCalledWith(
+      'cms_config',
+      expect.objectContaining({
+        key: 'form_content',
+        value: JSON.stringify({ nominate: { confirmationTitle: 'Thanks!' } }),
+      }),
+      { onConflict: 'key' }
+    );
+  });
+});
+
+describe('Settings Module - custom sectors/categories admin UI (BTA-069)', () => {
+  beforeEach(() => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    apiClient.update = jest.fn().mockResolvedValue({});
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    settingsModule._editSectorId = null;
+    settingsModule._editCategoryId = null;
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('loadCustomSectorsCategories renders built-in and custom sectors', async () => {
+    apiClient.select = jest.fn((table) => {
+      if (table === 'custom_sectors') {
+        return Promise.resolve({ data: [{ id: 'cs1', name: 'RENEWABLE ENERGY' }] });
+      }
+      if (table === 'custom_categories') {
+        return Promise.resolve({ data: [{ id: 'cc1', sector_name: 'RENEWABLE ENERGY', name: 'Best Installer' }] });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    await settingsModule.loadCustomSectorsCategories();
+
+    const html = document.getElementById('customSectorsContainer').innerHTML;
+    expect(html).toContain('Renewable Energy');
+    expect(html).toContain('Best Installer');
+    expect(html).toContain('Custom');
+  });
+
+  test('openAddSectorModal resets to add mode', () => {
+    settingsModule._editSectorId = 'stale-id';
+    settingsModule.openAddSectorModal();
+    expect(settingsModule._editSectorId).toBeNull();
+    expect(document.getElementById('newSectorName').value).toBe('');
+    expect(document.getElementById('addSectorModalTitle').textContent).toBe('Add Sector');
+  });
+
+  test('editCustomSector pre-fills the name and switches to rename mode', () => {
+    settingsModule.editCustomSector('cs1', 'RENEWABLE ENERGY');
+    expect(settingsModule._editSectorId).toBe('cs1');
+    expect(document.getElementById('newSectorName').value).toBe('RENEWABLE ENERGY');
+    expect(document.getElementById('addSectorModalTitle').textContent).toBe('Rename Sector');
+  });
+
+  test('saveNewSector rejects a name that duplicates a built-in sector', async () => {
+    document.getElementById('newSectorName').value = window.SECTORS[0];
+    await settingsModule.saveNewSector();
+    expect(apiClient.insert).not.toHaveBeenCalled();
+    expect(utils.showToast).toHaveBeenCalledWith(expect.stringContaining('already exists'), 'error');
+  });
+
+  test('saveNewSector inserts a new custom sector when not in edit mode', async () => {
+    settingsModule._editSectorId = null;
+    document.getElementById('newSectorName').value = 'Renewable Energy';
+    await settingsModule.saveNewSector();
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'custom_sectors',
+      expect.objectContaining({ name: 'RENEWABLE ENERGY' })
+    );
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('saveNewSector updates the existing row when in edit mode', async () => {
+    settingsModule._editSectorId = 'cs1';
+    document.getElementById('newSectorName').value = 'Renamed Sector';
+    await settingsModule.saveNewSector();
+    expect(apiClient.update).toHaveBeenCalledWith('custom_sectors', 'cs1', { name: 'RENAMED SECTOR' });
+    expect(apiClient.insert).not.toHaveBeenCalled();
+    expect(settingsModule._editSectorId).toBeNull();
+  });
+
+  test('openAddCategoryModal resets to add mode', async () => {
+    settingsModule._editCategoryId = 'stale-id';
+    await settingsModule.openAddCategoryModal(window.SECTORS[0]);
+    expect(settingsModule._editCategoryId).toBeNull();
+    expect(document.getElementById('addCategoryModalTitle').textContent).toBe('Add Category');
+    expect(document.getElementById('newCategorySector').value).toBe(window.SECTORS[0]);
+  });
+
+  test('saveNewCategory inserts a new custom category with location scoping', async () => {
+    await settingsModule.openAddCategoryModal(window.SECTORS[0]);
+    document.getElementById('newCategoryName').value = 'Best App';
+    document.getElementById('newCategorySmall').checked = true;
+    document.getElementById('newCategoryCountry').value = 'Scotland';
+
+    await settingsModule.saveNewCategory();
+
+    expect(apiClient.insert).toHaveBeenCalledWith(
+      'custom_categories',
+      expect.objectContaining({
+        sector_name: window.SECTORS[0],
+        name: 'Best App',
+        available_for_small: true,
+        country: 'Scotland',
+        region_id: null,
+        area_id: null,
+      })
+    );
+  });
+
+  test('editCustomCategory loads the row, pre-fills the form, and saveNewCategory updates it', async () => {
+    apiClient.select = jest.fn((table) => {
+      if (table === 'custom_categories') {
+        return Promise.resolve({
+          data: [
+            { id: 'cc1', sector_name: window.SECTORS[0], name: 'Old Name', available_for_small: false, country: null },
+          ],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    await settingsModule.editCustomCategory('cc1');
+
+    expect(document.getElementById('addCategoryModalTitle').textContent).toBe('Edit Category');
+    expect(document.getElementById('newCategoryName').value).toBe('Old Name');
+    expect(settingsModule._editCategoryId).toBe('cc1');
+
+    document.getElementById('newCategoryName').value = 'New Name';
+    await settingsModule.saveNewCategory();
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'custom_categories',
+      'cc1',
+      expect.objectContaining({ name: 'New Name' })
+    );
+    expect(apiClient.insert).not.toHaveBeenCalled();
+  });
+
+  test('editCustomCategory shows an error toast when the category is not found', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    await settingsModule.editCustomCategory('missing-id');
+    expect(utils.showToast).toHaveBeenCalledWith('Category not found', 'error');
+  });
+
+  test('deleteCustomSector deletes after confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    await settingsModule.deleteCustomSector('cs1', 'RENEWABLE ENERGY');
+    expect(apiClient.delete).toHaveBeenCalledWith('custom_sectors', 'cs1');
+  });
+
+  test('deleteCustomCategory does not delete when cancelled', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    await settingsModule.deleteCustomCategory('cc1', 'Best App');
+    expect(apiClient.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('Settings Module - saveSeason default-change confirmation', () => {
+  beforeEach(() => {
+    document.getElementById('seasonFormName').value = 'Test Season';
+    document.getElementById('seasonFormYear').value = '2025';
+    document.getElementById('seasonFormId').value = '';
+    document.getElementById('seasonFormDefault').checked = false;
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    apiClient.update = jest.fn().mockResolvedValue({});
+    apiClient.updateByFilters = jest.fn().mockResolvedValue({});
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+  });
+
+  test('asks for confirmation when newly setting a season as default, and aborts on cancel', async () => {
+    settingsModule.allSeasons = [];
+    document.getElementById('seasonFormDefault').checked = true;
+    const confirmSpy = jest.fn().mockResolvedValue(false);
+    utils.confirmDialog = confirmSpy;
+
+    await settingsModule.saveSeason();
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.objectContaining({ title: 'Set as Default Season' }));
+    expect(apiClient.insert).not.toHaveBeenCalled();
+    expect(apiClient.updateByFilters).not.toHaveBeenCalled();
+  });
+
+  test('proceeds with save when the default-change confirmation is accepted', async () => {
+    settingsModule.allSeasons = [];
+    document.getElementById('seasonFormDefault').checked = true;
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+
+    await settingsModule.saveSeason();
+
+    expect(apiClient.updateByFilters).toHaveBeenCalledWith(
+      'award_seasons',
+      { is_default: true },
+      { is_default: false }
+    );
+    expect(apiClient.insert).toHaveBeenCalled();
+  });
+
+  test('does not ask for confirmation when the season is already the default', async () => {
+    document.getElementById('seasonFormId').value = 's1';
+    document.getElementById('seasonFormDefault').checked = true;
+    settingsModule.allSeasons = [{ id: 's1', name: 'Test Season', year: 2025, is_default: true }];
+    const confirmSpy = jest.fn().mockResolvedValue(true);
+    utils.confirmDialog = confirmSpy;
+
+    await settingsModule.saveSeason();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(apiClient.update).toHaveBeenCalledWith('award_seasons', 's1', expect.objectContaining({ is_default: true }));
+  });
+
+  test('does not ask for confirmation when the default checkbox stays unchecked', async () => {
+    settingsModule.allSeasons = [];
+    document.getElementById('seasonFormDefault').checked = false;
+    const confirmSpy = jest.fn().mockResolvedValue(true);
+    utils.confirmDialog = confirmSpy;
+
+    await settingsModule.saveSeason();
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(apiClient.insert).toHaveBeenCalled();
   });
 });
 

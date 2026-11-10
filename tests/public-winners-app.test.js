@@ -84,4 +84,18 @@ describe('public-winners-app.js result labels', () => {
     expect(html).not.toContain('Runner-up');
     expect(html).not.toContain('Highly Commended');
   });
+
+  test('a blank/missing placement is labelled "Finalist", never "Winner" (BTA-074)', async () => {
+    mockWinners([
+      { id: 'w1', placement: null, organisations: { company_name: 'Acme' }, award_name: 'Best A' },
+      { id: 'w2', organisations: { company_name: 'Beta' }, award_name: 'Best A' },
+    ]);
+
+    require('../public-winners-app.js');
+    await flush();
+
+    const html = document.getElementById('winnersContent').innerHTML;
+    expect(html.match(/Finalist/g) || []).toHaveLength(2);
+    expect(html).not.toContain('Winner');
+  });
 });

@@ -427,12 +427,16 @@ const authModule = {
     document.getElementById('loginPage').classList.add('d-none');
     document.getElementById('dashboardPage').classList.remove('d-none');
 
-    // Hide Test Mode button in production (only show on localhost or ?testMode=1)
-    const isDevEnv =
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      new URLSearchParams(window.location.search).has('testMode');
-    document.getElementById('testModeDropdown')?.classList.toggle('d-none', !isDevEnv);
+    // Test Mode button visibility (BTA-098): shown only when the server
+    // itself confirms both that this user is super_admin and that this is
+    // an approved non-production environment — never from a client-side
+    // hostname or URL-parameter guess, which could neither verify nor
+    // enforce either condition (a user could reveal the old UI in
+    // production just by adding ?testMode=1 to the URL). The dropdown's
+    // visibility now simply mirrors the same test_data_manager API gate
+    // every actual operation already enforces; it grants no access of its
+    // own.
+    this.refreshTestModeVisibility();
 
     // Set user email in navbar
     if (STATE.currentUser) {
@@ -547,6 +551,38 @@ const authModule = {
     if (STATE.inactivityTimer) {
       clearTimeout(STATE.inactivityTimer);
       STATE.inactivityTimer = null;
+    }
+  },
+
+  /**
+   * Show or hide the Test Mode dropdown (BTA-098).
+   *
+   * The dropdown is shown only when a lightweight, read-only
+   * test_data_manager('status') call to the server succeeds — meaning
+   * the server itself has independently confirmed both that this user
+   * is super_admin and that this is an approved non-production
+   * environment (see api/data-proxy.js's isTestDataEnvironmentSafe()).
+   * This UI toggle grants no access by itself; every actual fixture
+   * operation re-checks both conditions server-side regardless of
+   * whether this check ran, succeeded, or was bypassed entirely (e.g. by
+   * calling testDataManager's methods directly from a console).
+   */
+  async refreshTestModeVisibility() {
+    const dropdown = document.getElementById('testModeDropdown');
+    if (!dropdown) return;
+    dropdown.classList.add('d-none');
+
+    if (typeof rbacModule === 'undefined' || rbacModule.currentRole !== 'super_admin') {
+      return;
+    }
+    if (typeof apiClient === 'undefined') return;
+
+    try {
+      await apiClient.post('test_data_manager', { action: 'status' });
+      dropdown.classList.remove('d-none');
+    } catch (_e) {
+      // Any failure (403 Forbidden in production, network error, etc.)
+      // leaves the dropdown hidden — fail closed.
     }
   },
 };

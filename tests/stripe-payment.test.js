@@ -116,6 +116,7 @@ const {
   handleStripeWebhook,
   getPaymentStatus: _getPaymentStatus,
   verifyPayment,
+  getPublicPaymentConfirmation,
 } = require('../api/stripe-payment');
 
 // ==========================================
@@ -586,6 +587,163 @@ describe('Stripe Payment API - verifyPayment', () => {
 });
 
 // ==========================================
+// getPublicPaymentConfirmation (BTA-100)
+// ==========================================
+
+describe('getPublicPaymentConfirmation', () => {
+  function confirmationReq(sessionId, overrides = {}) {
+    return {
+      query: { session_id: sessionId },
+      headers: { 'x-forwarded-for': '1.2.3.4', ...overrides.headers },
+      params: {},
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('missing session_id -> 400, no Stripe or Supabase call made', async () => {
+    const req = confirmationReq(undefined);
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockSessionRetrieve).not.toHaveBeenCalled();
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test.each(['', 'not-a-session-id', '../../etc/passwd', 'cs_valid; DROP TABLE payments', '  cs_123  '])(
+    'malformed session_id "%s" -> 400, rejected before any Stripe call',
+    async (badId) => {
+      const req = confirmationReq(badId);
+      const res = createRes();
+      await getPublicPaymentConfirmation(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(mockSessionRetrieve).not.toHaveBeenCalled();
+    }
+  );
+
+  test('a well-formed but non-existent session_id -> 404, Stripe error text never leaked', async () => {
+    mockSessionRetrieve.mockRejectedValue(new Error('No such checkout.session: cs_fake_internal_detail'));
+    const req = confirmationReq('cs_test_doesnotexist');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(JSON.stringify(res.body)).not.toMatch(/cs_fake_internal_detail/);
+  });
+
+  test('unpaid session -> status "pending", no payment reference returned', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'unpaid', metadata: { entry_id: 'entry-1' } });
+    const req = confirmationReq('cs_test_unpaid');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('pending');
+    expect(res.body.paymentReference).toBeUndefined();
+    expect(mockFrom).not.toHaveBeenCalled(); // no DB lookup for an unpaid session
+  });
+
+  test('paid session with a matching entry returns only status + paymentReference, nothing else', async () => {
+    mockSessionRetrieve.mockResolvedValue({
+      payment_status: 'paid',
+      payment_intent: 'pi_123',
+      amount_total: 9500,
+      customer_email: 'buyer@test.com',
+      metadata: { entry_id: 'entry-1' },
+    });
+    currentChain = chainable({ data: { payment_reference: 'pi_123' }, error: null });
+    mockFrom.mockImplementation(() => currentChain);
+
+    const req = confirmationReq('cs_test_paid');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ status: 'paid', paymentReference: 'pi_123' });
+    expect(res.body.amount).toBeUndefined();
+    expect(res.body.amountTotal).toBeUndefined();
+    expect(res.body.customerEmail).toBeUndefined();
+    expect(res.body.entryId).toBeUndefined();
+  });
+
+  test("the entry_id used for the database lookup comes only from Stripe's verified session metadata, never from any client-supplied field", async () => {
+    mockSessionRetrieve.mockResolvedValue({
+      payment_status: 'paid',
+      payment_intent: 'pi_456',
+      metadata: { entry_id: 'real-entry-from-stripe' },
+    });
+    currentChain = chainable({ data: { payment_reference: 'pi_456' }, error: null });
+    mockFrom.mockImplementation(() => currentChain);
+
+    // Attempt to smuggle a different entry_id via the query string —
+    // the handler never reads req.query.entry_id at all.
+    const req = confirmationReq('cs_test_paid', {
+      query: { session_id: 'cs_test_paid', entry_id: 'someone-elses-entry' },
+    });
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(currentChain.eq).toHaveBeenCalledWith('id', 'real-entry-from-stripe');
+    expect(currentChain.eq).not.toHaveBeenCalledWith('id', 'someone-elses-entry');
+  });
+
+  test('a paid session with no entry_id in metadata (e.g. an event-ticket session) still returns a safe response', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'paid', payment_intent: 'pi_789', metadata: {} });
+    const req = confirmationReq('cs_test_noentry');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('paid');
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test('does not require an Authorization header or any client-side environment flag', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'paid', payment_intent: 'pi_999', metadata: {} });
+    const req = { query: { session_id: 'cs_test_noauth' }, headers: {}, params: {} }; // no authorization header at all
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  test('rate limits repeated requests from the same IP', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'paid', payment_intent: 'pi_rl', metadata: {} });
+    const ip = '9.9.9.9';
+    let lastRes;
+    for (let i = 0; i < 25; i++) {
+      const req = confirmationReq('cs_test_ratelimit', { headers: { 'x-forwarded-for': ip } });
+      lastRes = createRes();
+      await getPublicPaymentConfirmation(req, lastRes);
+    }
+    expect(lastRes.statusCode).toBe(429);
+  });
+
+  test('unexpected internal exception returns a generic 500 without leaking detail', async () => {
+    mockSessionRetrieve.mockResolvedValue({
+      payment_status: 'paid',
+      payment_intent: 'pi_x',
+      metadata: { entry_id: 'e1' },
+    });
+    mockFrom.mockImplementation(() => {
+      throw new Error('internal secret connection detail');
+    });
+    const req = confirmationReq('cs_test_err', { headers: { 'x-forwarded-for': '5.5.5.5' } });
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(500);
+    expect(JSON.stringify(res.body)).not.toMatch(/internal secret connection detail/);
+  });
+});
+
+// ==========================================
 // createPublicCheckout
 // ==========================================
 
@@ -759,7 +917,9 @@ describe('processRefund', () => {
     await processRefund(req, res);
 
     expect(res.statusCode).toBe(500);
-    expect(res.body.error).toMatch(/Refund failed/i);
+    // BTA-050: error.message is no longer leaked to the client, matching
+    // the sanitization already applied to this file's other handlers.
+    expect(res.body.error).toBe('An internal error occurred');
   });
 });
 

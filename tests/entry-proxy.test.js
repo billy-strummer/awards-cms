@@ -264,7 +264,9 @@ describe('Entry Proxy API', () => {
   test('creates entry with existing organisation', async () => {
     // 0. DB rate-limit check (count=0 → allowed)
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // 1. Award match (resolved first -- its area_id scopes the org lookup)
+    // 1. areas lookup by display_name
+    mockFromResults.push(chainable({ data: [{ id: 'area-1' }], error: null }));
+    // 1b. Award match (resolved first -- its area_id scopes the org lookup)
     mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // 2. Org lookup, scoped to area-1: found
     mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null }));
@@ -290,7 +292,9 @@ describe('Entry Proxy API', () => {
   test('creates entry and new organisation when org not found in the resolved area', async () => {
     // 0. DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // 1. Award match (resolved area-1)
+    // 1. areas lookup by display_name
+    mockFromResults.push(chainable({ data: [{ id: 'area-1' }], error: null }));
+    // 1b. Award match (resolved area-1)
     mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // 2. Org lookup, scoped to area-1: not found
     mockFromResults.push(chainable({ data: [], error: null }));
@@ -315,12 +319,14 @@ describe('Entry Proxy API', () => {
 
   test('creates a new organisation without matching when no award (and so no area) resolves', async () => {
     // This is the "unresolvable area ⇒ never match, always create" fallback:
-    // no award match means no area_id, so findMatchingOrganisation must
-    // short-circuit and never even query organisations for a match.
+    // the submitted county/city doesn't resolve to any area, so the award
+    // match is never even attempted (no area_id to scope it), and
+    // findMatchingOrganisation must short-circuit and never query
+    // organisations for a match either.
     mockFromResults.push(chainable({ count: 0, error: null }));
-    // 1. Award match: none found -- no area_id available
+    // 1. areas lookup by display_name: no match -- award match is skipped entirely
     mockFromResults.push(chainable({ data: [], error: null }));
-    // 2. Org insert (no org lookup call is made at all)
+    // 2. Org insert (no award match and no org lookup call is made at all)
     mockFromResults.push(chainable({ data: { id: 'new-org-2' }, error: null }));
     // 3. Entry number generation
     mockFromResults.push(chainable({ data: [], error: null }));
@@ -347,6 +353,8 @@ describe('Entry Proxy API', () => {
   test('returns 500 when organisation creation fails', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
+    // areas lookup by display_name
+    mockFromResults.push(chainable({ data: [{ id: 'area-1' }], error: null }));
     // Award match (resolved area-1)
     mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // Org lookup: not found
@@ -394,6 +402,8 @@ describe('Entry Proxy API', () => {
   test('accepts entry with all optional fields', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
+    // areas lookup by display_name
+    mockFromResults.push(chainable({ data: [{ id: 'area-1' }], error: null }));
     // Award match (resolved area-1)
     mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // Org lookup, scoped to area-1: found
@@ -431,6 +441,8 @@ describe('Entry Proxy API', () => {
   test('falls back to base columns when extended insert fails', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
+    // areas lookup by display_name
+    mockFromResults.push(chainable({ data: [{ id: 'area-1' }], error: null }));
     // Award match (resolved area-1)
     mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // Org lookup, scoped to area-1: found
@@ -460,6 +472,8 @@ describe('Entry Proxy API', () => {
   test('returns 500 when both extended and fallback entry inserts fail', async () => {
     // DB rate-limit check
     mockFromResults.push(chainable({ count: 0, error: null }));
+    // areas lookup by display_name
+    mockFromResults.push(chainable({ data: [{ id: 'area-1' }], error: null }));
     // Award match (resolved area-1)
     mockFromResults.push(chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-1' }], error: null }));
     // Org lookup, scoped to area-1: found
@@ -492,6 +506,7 @@ describe('Entry Proxy API', () => {
       mockFromResults.push(chainable({ data: [{ key: 'sponsors_visible', value: 'true' }], error: null }));
       mockFromResults.push(chainable({ data: [], error: null }));
 
+      mockFromResults.push(chainable({ data: [], error: null }));
       const req = createReq({ body: { action: 'get_public_data' } });
       const res = createRes();
       await handler(req, res);
@@ -508,6 +523,7 @@ describe('Entry Proxy API', () => {
       mockFromResults.push(chainable({ data: [], error: null }));
       mockFromResults.push(chainable({ data: [{ entry_open_date: '2027-01-01' }], error: null }));
 
+      mockFromResults.push(chainable({ data: [], error: null }));
       const req = createReq({ body: { action: 'get_public_data' } });
       const res = createRes();
       await handler(req, res);
@@ -516,12 +532,93 @@ describe('Entry Proxy API', () => {
       expect(res.body.entry_open_date).toBe('2027-01-01');
     });
 
+    test('exposes all season date fields (BTA-064) when exactly one default season has them set', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            {
+              entry_open_date: '2027-01-01',
+              entry_close_date: '2027-01-24',
+              nominees_announcement_date: '2027-01-29',
+              voting_open_date: '2027-02-03',
+              voting_close_date: '2027-04-01',
+              winners_announcement_date: '2027-05-26',
+            },
+          ],
+          error: null,
+        })
+      );
+
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBe('2027-01-01');
+      expect(res.body.entry_close_date).toBe('2027-01-24');
+      expect(res.body.nominees_announcement_date).toBe('2027-01-29');
+      expect(res.body.voting_open_date).toBe('2027-02-03');
+      expect(res.body.voting_close_date).toBe('2027-04-01');
+      expect(res.body.winners_announcement_date).toBe('2027-05-26');
+    });
+
+    test('exposes only the season date fields that are actually set, leaving the rest null (BTA-064)', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({ data: [{ entry_open_date: '2027-01-01', entry_close_date: '2027-01-24' }], error: null })
+      );
+
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBe('2027-01-01');
+      expect(res.body.entry_close_date).toBe('2027-01-24');
+      expect(res.body.nominees_announcement_date).toBeNull();
+      expect(res.body.voting_open_date).toBeNull();
+      expect(res.body.voting_close_date).toBeNull();
+      expect(res.body.winners_announcement_date).toBeNull();
+    });
+
+    test('returns all season date fields null when multiple default seasons exist (no fallback selection)', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            { entry_open_date: '2027-01-01', voting_open_date: '2027-02-01' },
+            { entry_open_date: '2027-06-01', voting_open_date: '2027-07-01' },
+          ],
+          error: null,
+        })
+      );
+
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry_open_date).toBeNull();
+      expect(res.body.voting_open_date).toBeNull();
+    });
+
     test('returns null entry_open_date when no default season exists', async () => {
       mockFromResults.push(chainable({ data: [], error: null }));
       mockFromResults.push(chainable({ data: [], error: null }));
       mockFromResults.push(chainable({ data: [], error: null }));
       mockFromResults.push(chainable({ data: [], error: null }));
 
+      mockFromResults.push(chainable({ data: [], error: null }));
       const req = createReq({ body: { action: 'get_public_data' } });
       const res = createRes();
       await handler(req, res);
@@ -541,6 +638,7 @@ describe('Entry Proxy API', () => {
         })
       );
 
+      mockFromResults.push(chainable({ data: [], error: null }));
       const req = createReq({ body: { action: 'get_public_data' } });
       const res = createRes();
       await handler(req, res);
@@ -555,6 +653,7 @@ describe('Entry Proxy API', () => {
       mockFromResults.push(chainable({ data: [], error: null }));
       mockFromResults.push(chainable({ data: [{ entry_open_date: null }], error: null }));
 
+      mockFromResults.push(chainable({ data: [], error: null }));
       const req = createReq({ body: { action: 'get_public_data' } });
       const res = createRes();
       await handler(req, res);
@@ -569,6 +668,7 @@ describe('Entry Proxy API', () => {
       mockFromResults.push(chainable({ data: [], error: null }));
       mockFromResults.push(chainable({ data: null, error: { message: 'DB error' } }));
 
+      mockFromResults.push(chainable({ data: [], error: null }));
       const req = createReq({ body: { action: 'get_public_data' } });
       const res = createRes();
       await handler(req, res);
@@ -582,15 +682,350 @@ describe('Entry Proxy API', () => {
     });
   });
 
+  // --- get_public_data: central website settings (BTA-069 Priority A) ---
+  describe('get_public_data - site_settings', () => {
+    test('returns all null/empty fields when no cms_config rows are set', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings).toEqual({
+        company_name: null,
+        company_registration_number: null,
+        company_address: null,
+        contact_email: null,
+        contact_phone: null,
+        social_links: [],
+        footer_contact_url: null,
+        footer_sitemap_url: null,
+        nav_labels: { categories: null, regions: null, findATrade: null, about: null, enterNow: null },
+        page_seo: {},
+        form_content: { submit_entry: {}, industry_leader: {}, nominate: {} },
+      });
+    });
+
+    test('returns configured company details and parsed social links', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            { key: 'company_name', value: 'British Trade Awards Ltd' },
+            { key: 'company_registration_number', value: '12345678' },
+            { key: 'company_address', value: '1 Example Street, London' },
+            { key: 'contact_email', value: 'info@britishtradeawards.com' },
+            { key: 'contact_phone', value: '+44 20 1234 5678' },
+            {
+              key: 'social_links',
+              value: JSON.stringify([{ platform: 'linkedin', url: 'https://linkedin.com/company/bta', visible: true }]),
+            },
+            { key: 'footer_contact_url', value: 'https://britishtradeawards.com/contact' },
+            { key: 'footer_sitemap_url', value: 'https://britishtradeawards.com/sitemap' },
+          ],
+          error: null,
+        })
+      );
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings).toEqual({
+        company_name: 'British Trade Awards Ltd',
+        company_registration_number: '12345678',
+        company_address: '1 Example Street, London',
+        contact_email: 'info@britishtradeawards.com',
+        contact_phone: '+44 20 1234 5678',
+        social_links: [{ platform: 'linkedin', url: 'https://linkedin.com/company/bta', visible: true }],
+        footer_contact_url: 'https://britishtradeawards.com/contact',
+        footer_sitemap_url: 'https://britishtradeawards.com/sitemap',
+        nav_labels: { categories: null, regions: null, findATrade: null, about: null, enterNow: null },
+        page_seo: {},
+        form_content: { submit_entry: {}, industry_leader: {}, nominate: {} },
+      });
+    });
+
+    test('returns configured nav label overrides, leaving unset ones null', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            { key: 'nav_labels', value: JSON.stringify({ categories: 'Trade Categories', enterNow: 'Apply Now' }) },
+          ],
+          error: null,
+        })
+      );
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.nav_labels).toEqual({
+        categories: 'Trade Categories',
+        regions: null,
+        findATrade: null,
+        about: null,
+        enterNow: 'Apply Now',
+      });
+    });
+
+    test('falls back to all-null nav_labels when the stored JSON is malformed', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [{ key: 'nav_labels', value: '{not valid json' }], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.nav_labels).toEqual({
+        categories: null,
+        regions: null,
+        findATrade: null,
+        about: null,
+        enterNow: null,
+      });
+    });
+
+    test('returns configured per-page SEO overrides', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            {
+              key: 'page_seo',
+              value: JSON.stringify({ home: { title: 'Custom Home Title', description: 'Custom home description' } }),
+            },
+          ],
+          error: null,
+        })
+      );
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.page_seo).toEqual({
+        home: { title: 'Custom Home Title', description: 'Custom home description' },
+      });
+    });
+
+    test('falls back to an empty page_seo object when the stored JSON is malformed', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [{ key: 'page_seo', value: '{not valid json' }], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.page_seo).toEqual({});
+    });
+
+    test('falls back to an empty social_links array when the stored JSON is malformed', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [{ key: 'social_links', value: '{not valid json' }], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      mockFromResults.push(chainable({ data: [], error: null }));
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.social_links).toEqual([]);
+    });
+
+    test('returns configured form_content for entry/nomination forms', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            {
+              key: 'form_content',
+              value: JSON.stringify({
+                submit_entry: {
+                  steps: { step1: { title: 'Custom heading', subtitle: 'Custom subtitle' } },
+                  confirmationTitle: 'Custom!',
+                },
+                nominate: { confirmationMessage: 'Custom nominate message' },
+              }),
+            },
+          ],
+          error: null,
+        })
+      );
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.form_content).toEqual({
+        submit_entry: {
+          steps: { step1: { title: 'Custom heading', subtitle: 'Custom subtitle' } },
+          confirmationTitle: 'Custom!',
+        },
+        industry_leader: {},
+        nominate: { confirmationMessage: 'Custom nominate message' },
+      });
+    });
+
+    test('falls back to empty form_content object when the stored JSON is malformed', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [{ key: 'form_content', value: '{not valid json' }], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.site_settings.form_content).toEqual({ submit_entry: {}, industry_leader: {}, nominate: {} });
+    });
+  });
+
+  // --- get_public_data: sponsorship catalogue (BTA-070 Priority 5) ---
+  describe('get_public_data - sponsorship_packages', () => {
+    test('returns an empty array when no packages are published', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.sponsorship_packages).toEqual([]);
+    });
+
+    test('returns published packages in display order', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({
+          data: [
+            { id: 'p1', name: 'Bronze', price: null, benefits: ['Logo on website'], is_featured: false },
+            {
+              id: 'p2',
+              name: 'Gold',
+              price: 5000,
+              benefits: ['Logo on website', 'Category sponsorship'],
+              is_featured: true,
+            },
+          ],
+          error: null,
+        })
+      );
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.sponsorship_packages).toHaveLength(2);
+      expect(res.body.sponsorship_packages[0].name).toBe('Bronze');
+      expect(res.body.sponsorship_packages[1].is_featured).toBe(true);
+    });
+
+    test('returns an empty array (not an error) when the table does not exist yet (migration 091 unapplied)', async () => {
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(chainable({ data: [], error: null }));
+      mockFromResults.push(
+        chainable({ data: null, error: { message: 'relation "sponsorship_catalogue_packages" does not exist' } })
+      );
+
+      const req = createReq({ body: { action: 'get_public_data' } });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.sponsorship_packages).toEqual([]);
+      // Other fields must still be served even though this query failed
+      expect(res.body.custom_sectors).toEqual([]);
+    });
+  });
+
   // --- Organisation matching: escaping + area-scoping regression tests ---
   // These prove the fix for the ILIKE-wildcard and cross-area-collision
   // findings on the two public, unauthenticated submission endpoints.
   describe('organisation matching (submit_entry)', () => {
+    test('matches the award on area_id (resolved from the submitted county/city), not the legacy county column (BTA-061)', async () => {
+      mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(chainable({ data: [{ id: 'area-kent' }], error: null })); // areas lookup by display_name
+      const awardMatchChain = chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-kent' }], error: null });
+      mockFromResults.push(awardMatchChain);
+      mockFromResults.push(chainable({ data: [{ id: 'org-1' }], error: null })); // org lookup: found
+      mockFromResults.push(chainable({ data: [], error: null })); // entry number gen
+      mockFromResults.push(chainable({ data: { id: 'entry-6', entry_number: 'BTA-2026-0001' }, error: null })); // entry insert
+
+      const req = createReq({ body: validEntryBody({ county_city: 'Kent' }) });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(awardMatchChain.eq).toHaveBeenCalledWith('area_id', 'area-kent');
+      expect(awardMatchChain.eq).not.toHaveBeenCalledWith('county', expect.anything());
+    });
+
+    test('skips the award-match query entirely when the submitted county/city does not resolve to any area', async () => {
+      mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(chainable({ data: [], error: null })); // areas lookup: no match
+      mockFromResults.push(chainable({ data: { id: 'new-org-3' }, error: null })); // org insert (no lookup attempted)
+      mockFromResults.push(chainable({ data: [], error: null })); // entry number gen
+      mockFromResults.push(chainable({ data: { id: 'entry-7', entry_number: 'BTA-2026-0001' }, error: null })); // entry insert
+
+      const req = createReq({ body: validEntryBody({ county_city: 'Nonexistent Place' }) });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.entry.id).toBe('entry-7');
+    });
+
     test('escapes wildcard characters and scopes the lookup to the resolved award area', async () => {
       mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(chainable({ data: [{ id: 'area-somerset' }], error: null })); // areas lookup by display_name
       mockFromResults.push(
         chainable({ data: [{ id: 'award-1', entry_fee: 0, area_id: 'area-somerset' }], error: null })
-      ); // award match
+      ); // award match (on area_id, not the legacy county column — BTA-061)
       const orgLookupChain = chainable({ data: [], error: null }); // org lookup: no match
       mockFromResults.push(orgLookupChain);
       mockFromResults.push(chainable({ data: { id: 'new-org-1' }, error: null })); // org insert
@@ -655,6 +1090,149 @@ describe('Entry Proxy API', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // BTA-095: frontend-payload contract regression test. Builds the exact
+  // payload shape nominate.js's buildPayload() / industry-leader.js's
+  // submitNomination() now send (not a hand-picked minimal body) and feeds
+  // it straight into the real handleSubmitNomination handler, asserting a
+  // 200 response. This is the test that should have caught the original
+  // defect: both forms previously sent a payload shape the handler
+  // rejected with a 400, and no existing test exercised the handler with
+  // the frontend's actual payload shape to catch it.
+  // -----------------------------------------------------------------------
+  describe('frontend payload contract (BTA-095)', () => {
+    function pushSuccessfulNominationChain() {
+      mockFromResults.push(chainable({ count: 0, error: null })); // rate limit
+      mockFromResults.push(chainable({ data: [{ id: 'area-kent' }], error: null })); // areas lookup
+      mockFromResults.push(chainable({ data: [], error: null })); // org lookup: no match
+      mockFromResults.push(chainable({ data: { id: 'new-org-contract' }, error: null })); // org insert
+      mockFromResults.push(chainable({ data: [], error: null })); // entry number gen
+      mockFromResults.push(chainable({ data: { id: 'entry-contract', entry_number: 'BTA-2026-0001' }, error: null })); // entry insert
+    }
+
+    test("nominate.js's person-branch payload shape is accepted (no awardCategory/nomineeCompany 400)", async () => {
+      pushSuccessfulNominationChain();
+
+      // Exact shape of nominate.js's buildPayload() for a normal category.
+      const req = createReq({
+        body: {
+          action: 'submit_nomination',
+          awardCategory: 'Above & Beyond',
+          nominationReason: 'They went above and beyond on every job this year.',
+          nominatorName: 'Jane Customer',
+          nominatorEmail: 'jane@example.co.uk',
+          nominatorPhone: '01234567890',
+          supportingInfo: 'Company phone: 07000000000',
+          nomineeName: 'John Nominee',
+          nomineeCompany: 'Test Nominee Ltd',
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    test("nominate.js's New Business branch payload shape is accepted (no businessName/businessOwner 400)", async () => {
+      pushSuccessfulNominationChain();
+
+      // Exact shape of nominate.js's buildPayload() for New Business of the Year.
+      const req = createReq({
+        body: {
+          action: 'submit_nomination',
+          awardCategory: 'New Business of the Year',
+          nominationReason: 'A promising new electrical contracting business.',
+          nominatorName: 'Jane Customer',
+          nominatorEmail: 'jane@example.co.uk',
+          nominatorPhone: '01234567890',
+          supportingInfo: '',
+          businessName: 'Test Nominee Ltd',
+          businessOwner: 'John Nominee',
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    test("industry-leader.js's person-branch payload shape is accepted", async () => {
+      pushSuccessfulNominationChain();
+
+      // Exact shape of industry-leader.js's submitNomination() for a
+      // normal category (includes county_city/london_borough, which
+      // nominate.js's shape omits).
+      const req = createReq({
+        body: {
+          action: 'submit_nomination',
+          awardCategory: 'Lifetime Achievement',
+          county_city: 'Kent',
+          london_borough: '',
+          nominationReason: 'A career of dedication and excellence in the trade.',
+          nominatorName: 'Bob Jones',
+          nominatorEmail: 'bob@test.com',
+          nominatorPhone: '01234567890',
+          supportingInfo: 'Company phone: 07000000000',
+          nomineeName: 'John Nominee',
+          nomineeCompany: 'Test Nominee Ltd',
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    test("industry-leader.js's New Business branch payload shape is accepted", async () => {
+      pushSuccessfulNominationChain();
+
+      const req = createReq({
+        body: {
+          action: 'submit_nomination',
+          awardCategory: 'New Business of the Year',
+          county_city: 'Kent',
+          london_borough: '',
+          nominationReason: 'A promising new electrical contracting business.',
+          nominatorName: 'Bob Jones',
+          nominatorEmail: 'bob@test.com',
+          nominatorPhone: '01234567890',
+          supportingInfo: '',
+          businessName: 'Test Nominee Ltd',
+          businessOwner: 'John Nominee',
+          businessWebsite: 'https://example.co.uk',
+          businessDescription: 'Rewired a three-bedroom house.',
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('rejects a payload matching the OLD, broken nominate.js shape with a 400 (confirms the handler contract itself is unchanged)', async () => {
+      // No chain pushed -- the request must be rejected before any Supabase
+      // call, confirming this isn't a regression in the OTHER direction
+      // (the handler silently accepting anything).
+      const req = createReq({
+        body: {
+          action: 'submit_nomination',
+          nomineeName: 'Smith & Sons Electrical Ltd',
+          nomineeWebsite: 'https://smithandsons.co.uk',
+          nomineePhone: '01234567890',
+          nomineeWorkDesc: 'Full rewire of a three-bedroom house.',
+          nominationReason: 'They went above and beyond on every job this year.',
+          nominatorName: 'Jane Customer',
+          nominatorEmail: 'jane@example.co.uk',
+          nominatorPhone: '',
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(400);
     });
   });
 });

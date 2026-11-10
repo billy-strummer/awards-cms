@@ -411,16 +411,24 @@ describe('GDPR Module - _renderPaginationControls', () => {
 describe('GDPR Module - processRequest', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // BTA-076: processRequest now re-checks the request's current status
+    // before processing (guards against reprocessing a request that isn't
+    // pending any more). Default to 'pending' so tests that aren't
+    // exercising that guard specifically proceed exactly as before;
+    // individual tests override this where the guard itself is under test.
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ status: 'pending' }] });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
+  const ORG_ID = '11111111-1111-1111-1111-111111111111';
+
   test('does nothing when user cancels', async () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(false);
     apiClient.update = jest.fn();
-    await gdprModule.processRequest('r1', 'export', 'entity-1');
+    await gdprModule.processRequest('r1', 'export', ORG_ID, 'organisation');
     expect(apiClient.update).not.toHaveBeenCalled();
   });
 
@@ -431,8 +439,8 @@ describe('GDPR Module - processRequest', () => {
     const _loadSpy = jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
     const toastSpy = jest.spyOn(utils, 'showToast');
 
-    await gdprModule.processRequest('r1', 'export', 'entity-1');
-    expect(exportSpy).toHaveBeenCalledWith('entity-1');
+    await gdprModule.processRequest('r1', 'export', ORG_ID, 'organisation');
+    expect(exportSpy).toHaveBeenCalledWith(ORG_ID);
     expect(apiClient.update).toHaveBeenCalledWith(
       'gdpr_requests',
       'r1',
@@ -447,18 +455,42 @@ describe('GDPR Module - processRequest', () => {
     const delSpy = jest.spyOn(gdprModule, '_deleteEntityData').mockResolvedValue();
     jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
 
-    await gdprModule.processRequest('r1', 'delete', 'entity-1');
-    expect(delSpy).toHaveBeenCalledWith('entity-1');
+    await gdprModule.processRequest('r1', 'delete', ORG_ID, 'organisation');
+    expect(delSpy).toHaveBeenCalledWith(ORG_ID);
   });
 
-  test('processes anonymize request via RPC', async () => {
+  test('processes anonymize request via the anonymize handler (BTA-077)', async () => {
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
     apiClient.update = jest.fn().mockResolvedValue({});
-    apiClient.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
+    const anonSpy = jest.spyOn(gdprModule, '_anonymizeEntityData').mockResolvedValue();
     jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
 
-    await gdprModule.processRequest('r1', 'anonymize', 'entity-1');
-    expect(apiClient.rpc).toHaveBeenCalledWith('anonymize_organisation', { p_org_id: 'entity-1' });
+    await gdprModule.processRequest('r1', 'anonymize', ORG_ID, 'organisation');
+    expect(anonSpy).toHaveBeenCalledWith(ORG_ID);
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'completed' })
+    );
+  });
+
+  test('an anonymize request is reverted to pending, not marked completed, when the organisation cannot be found (BTA-077)', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest.fn().mockResolvedValue({});
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: 'not_found', error: null });
+    jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+
+    await gdprModule.processRequest('r1', 'anonymize', ORG_ID, 'organisation');
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'pending' })
+    );
+    expect(apiClient.update).not.toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'completed' })
+    );
   });
 
   test('shows error on process failure', async () => {
@@ -466,8 +498,144 @@ describe('GDPR Module - processRequest', () => {
     apiClient.update = jest.fn().mockRejectedValue(new Error('Update failed'));
     const toastSpy = jest.spyOn(utils, 'showToast');
 
-    await gdprModule.processRequest('r1', 'export', 'entity-1');
+    await gdprModule.processRequest('r1', 'export', ORG_ID, 'organisation');
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to process'), 'error');
+  });
+
+  test('reverts status to pending (not stuck at processing) when the RPC/handler fails (BTA-074)', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest
+      .fn()
+      .mockResolvedValueOnce({}) // the initial "mark as processing" update succeeds
+      .mockResolvedValueOnce({}); // the revert-to-pending update in the catch block
+    jest.spyOn(gdprModule, '_deleteEntityData').mockRejectedValue(new Error('RPC failed'));
+    jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+
+    await gdprModule.processRequest('r1', 'delete', ORG_ID, 'organisation');
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'pending' })
+    );
+  });
+
+  test('rejects a non-organisation request (e.g. a contact request) instead of silently processing it (BTA-074)', async () => {
+    utils.confirmDialog = jest.fn();
+    apiClient.update = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.processRequest('r1', 'delete', '22222222-2222-2222-2222-222222222222', 'contact');
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('not yet supported'), 'error');
+    expect(utils.confirmDialog).not.toHaveBeenCalled();
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('rejects a request whose entity id is not a valid UUID (BTA-074)', async () => {
+    utils.confirmDialog = jest.fn();
+    apiClient.update = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.processRequest('r1', 'delete', 'not-a-uuid', 'organisation');
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('not a valid identifier'), 'error');
+    expect(utils.confirmDialog).not.toHaveBeenCalled();
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('refuses to reprocess a request that is already completed (BTA-076)', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ status: 'completed' }] });
+    utils.confirmDialog = jest.fn();
+    apiClient.update = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.processRequest('r1', 'delete', ORG_ID, 'organisation');
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('already "completed"'), 'error');
+    expect(utils.confirmDialog).not.toHaveBeenCalled();
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('refuses to reprocess a request that has already been rejected', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ status: 'rejected' }] });
+    utils.confirmDialog = jest.fn();
+    apiClient.update = jest.fn();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.processRequest('r1', 'delete', ORG_ID, 'organisation');
+
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('already "rejected"'), 'error');
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+
+  test('allows processing when the request is confirmed pending', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ status: 'pending' }] });
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest.fn().mockResolvedValue({});
+    jest.spyOn(gdprModule, '_exportEntityData').mockResolvedValue();
+    jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+
+    await gdprModule.processRequest('r1', 'export', ORG_ID, 'organisation');
+
+    expect(utils.confirmDialog).toHaveBeenCalled();
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'completed' })
+    );
+  });
+
+  test('a delete request is reverted to pending, not marked completed, when the RPC reports the organisation was not found (BTA-076)', async () => {
+    // End-to-end: the RPC's structured 'not_found' result (rather than a
+    // thrown SQL exception) must still result in the request being
+    // reported as failed, not completed.
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest.fn().mockResolvedValue({});
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: 'not_found' });
+    jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await gdprModule.processRequest('r1', 'delete', ORG_ID, 'organisation');
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'pending' })
+    );
+    expect(apiClient.update).not.toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'completed' })
+    );
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to process'), 'error');
+  });
+
+  test('an export request is reverted to pending, not marked completed, when the organisation cannot be found (BTA-076)', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.update = jest.fn().mockImplementation((table, id, data) => {
+      // Simulate the real sequence: the first call (status 'pending' from
+      // this describe's default select mock, then 'processing') succeeds;
+      // only the status transitions matter for this assertion.
+      return Promise.resolve({ data });
+    });
+    jest
+      .spyOn(gdprModule, '_exportEntityData')
+      .mockRejectedValue(new Error('Organisation not found -- nothing to export.'));
+    jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
+
+    await gdprModule.processRequest('r1', 'export', ORG_ID, 'organisation');
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'pending', notes: expect.stringContaining('Organisation not found') })
+    );
+    expect(apiClient.update).not.toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'completed' })
+    );
   });
 });
 
@@ -491,36 +659,132 @@ describe('GDPR Module - _exportEntityData', () => {
     document.createElement.mockRestore();
   });
 
-  test('shows error on export failure', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
-    const toastSpy = jest.spyOn(utils, 'showToast');
+  test('queries the canonical CRM table names, not the non-existent crm_-prefixed ones (BTA-076)', async () => {
+    // crm_communications/crm_deals/crm_meetings do not exist anywhere in
+    // this project's schema -- the canonical names, confirmed against
+    // database-crm-setup.sql and every real read/write in crm.js and
+    // api/data-proxy.js's table allow-lists, are communications/deals/
+    // meeting_notes. Every export request failed at this exact point
+    // before this fix.
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ id: 'org1', company_name: 'Test Co' }] });
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    jest.spyOn(document, 'createElement').mockImplementation(() => ({ click: jest.fn() }));
+
     await gdprModule._exportEntityData('org1');
-    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Data export failed'), 'error');
-    consoleSpy.mockRestore();
-    toastSpy.mockRestore();
+
+    const tablesQueried = apiClient.selectAll.mock.calls.map(([table]) => table);
+    expect(tablesQueried).toContain('communications');
+    expect(tablesQueried).toContain('deals');
+    expect(tablesQueried).toContain('meeting_notes');
+    expect(tablesQueried).not.toContain('crm_communications');
+    expect(tablesQueried).not.toContain('crm_deals');
+    expect(tablesQueried).not.toContain('crm_meetings');
+    document.createElement.mockRestore();
+  });
+
+  test('scopes every related-record query to the requested organisation id only, never mixing in another organisation', async () => {
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ id: 'org-abc', company_name: 'Test Co' }] });
+    apiClient.selectAll = jest.fn().mockResolvedValue([]);
+    jest.spyOn(document, 'createElement').mockImplementation(() => ({ click: jest.fn() }));
+
+    await gdprModule._exportEntityData('org-abc');
+
+    expect(apiClient.select).toHaveBeenCalledWith(
+      'organisations',
+      expect.objectContaining({ filters: { id: 'org-abc' } })
+    );
+    apiClient.selectAll.mock.calls.forEach(([, options]) => {
+      expect(options.filters).toEqual({ organisation_id: 'org-abc' });
+    });
+    document.createElement.mockRestore();
+  });
+
+  test('propagates a query failure to the caller instead of swallowing it (BTA-076)', async () => {
+    // Previously this function caught its own errors and showed its own
+    // toast, which meant processRequest (its only real caller) never saw
+    // the failure and always marked the request "completed" regardless.
+    // The error must now propagate so processRequest's own catch block
+    // can revert the request's status and report it accurately.
+    apiClient.select = jest.fn().mockRejectedValue(new Error('DB error'));
+    await expect(gdprModule._exportEntityData('org1')).rejects.toThrow('DB error');
   });
 });
 
-describe('GDPR Module - _deleteEntityData', () => {
-  test('deletes data from all related tables', async () => {
-    apiClient.deleteByFilters = jest.fn().mockResolvedValue({});
+describe('GDPR Module - _deleteEntityData (BTA-064: atomic RPC, not a client-side per-table loop)', () => {
+  test('erases the entity via a single atomic RPC call, not 13 separate unguarded deletes', async () => {
+    const rpcSpy = jest.fn().mockResolvedValue({ data: 'erased' });
+    apiClient.rpc = rpcSpy;
+    apiClient.deleteByFilters = jest.fn();
+
     await gdprModule._deleteEntityData('org1');
-    // 13 tables: email_logs, event_guests, public_votes, organisation_contacts, award_assignments,
-    // entries, organisation_images, crm_communications, crm_deals, crm_meetings,
-    // organisation_notes, organisation_follow_ups, organisations
-    expect(apiClient.deleteByFilters).toHaveBeenCalledTimes(13);
-    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('email_logs', { organisation_id: 'org1' });
-    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('event_guests', { organisation_id: 'org1' });
-    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('organisation_contacts', { organisation_id: 'org1' });
-    expect(apiClient.deleteByFilters).toHaveBeenCalledWith('organisations', { id: 'org1' });
+
+    expect(rpcSpy).toHaveBeenCalledTimes(1);
+    expect(rpcSpy).toHaveBeenCalledWith('erase_organisation_gdpr', { p_org_id: 'org1' });
+    // The old per-table client-side loop must not run at all anymore --
+    // the whole cascade now lives inside the RPC's own transaction.
+    expect(apiClient.deleteByFilters).not.toHaveBeenCalled();
   });
 
-  test('throws on failure and aborts', async () => {
-    // First table in new order is email_logs, second is event_guests (which fails)
-    apiClient.deleteByFilters = jest.fn().mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('FK violation'));
+  test('propagates an RPC failure (e.g. the migration not yet applied, or a real mid-cascade error) without masking it', async () => {
+    apiClient.rpc = jest.fn().mockRejectedValue(new Error('function erase_organisation_gdpr(uuid) does not exist'));
 
-    await expect(gdprModule._deleteEntityData('org1')).rejects.toThrow('Failed to delete from event_guests');
+    await expect(gdprModule._deleteEntityData('org1')).rejects.toThrow('does not exist');
+  });
+
+  test('treats a "not_found" result as a failure rather than a successful no-op (BTA-076)', async () => {
+    // Migration 089's erase_organisation_gdpr previously RETURNED VOID --
+    // a syntactically valid but non-existent (or already-erased)
+    // organisation id would "succeed" identically to a real erasure, with
+    // no way for the caller to tell the difference. The RPC now returns
+    // 'erased' or 'not_found', and only 'erased' may be treated as success.
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: 'not_found' });
+
+    await expect(gdprModule._deleteEntityData('11111111-1111-1111-1111-111111111111')).rejects.toThrow(
+      'not found or already erased'
+    );
+  });
+
+  test('treats a missing/unexpected RPC return value as a failure, not a success', async () => {
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: null });
+
+    await expect(gdprModule._deleteEntityData('org1')).rejects.toThrow('not found or already erased');
+  });
+});
+
+describe('GDPR Module - _anonymizeEntityData (BTA-077: anonymize_organisation return contract)', () => {
+  test('anonymises the entity via RPC and resolves when the RPC reports success', async () => {
+    const rpcSpy = jest.fn().mockResolvedValue({ data: 'anonymized' });
+    apiClient.rpc = rpcSpy;
+
+    await gdprModule._anonymizeEntityData('org1');
+
+    expect(rpcSpy).toHaveBeenCalledTimes(1);
+    expect(rpcSpy).toHaveBeenCalledWith('anonymize_organisation', { p_org_id: 'org1' });
+  });
+
+  test('propagates an RPC failure without masking it', async () => {
+    apiClient.rpc = jest.fn().mockRejectedValue(new Error('function anonymize_organisation(uuid) does not exist'));
+
+    await expect(gdprModule._anonymizeEntityData('org1')).rejects.toThrow('does not exist');
+  });
+
+  test('treats a "not_found" result as a failure rather than a successful no-op (BTA-077)', async () => {
+    // anonymize_organisation previously RETURNED VOID with no existence
+    // check -- a non-existent or already-anonymised organisation id would
+    // "succeed" identically to a real anonymisation. The RPC now returns
+    // 'anonymized' or 'not_found', and only 'anonymized' may be treated as
+    // success.
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: 'not_found' });
+
+    await expect(gdprModule._anonymizeEntityData('11111111-1111-1111-1111-111111111111')).rejects.toThrow(
+      'not found or already anonymised'
+    );
+  });
+
+  test('treats a missing/unexpected RPC return value as a failure, not a success', async () => {
+    apiClient.rpc = jest.fn().mockResolvedValue({ data: null });
+
+    await expect(gdprModule._anonymizeEntityData('org1')).rejects.toThrow('not found or already anonymised');
   });
 });
 
@@ -778,7 +1042,7 @@ describe('GDPR Module - _renderRequests action click handlers', () => {
     expect(processBtn).not.toBeNull();
     processBtn.click();
 
-    expect(processSpy).toHaveBeenCalledWith('r1', 'export', 'org-123456');
+    expect(processSpy).toHaveBeenCalledWith('r1', 'export', 'org-123456', 'organisation');
     processSpy.mockRestore();
   });
 
@@ -1111,21 +1375,15 @@ describe('GDPR Module - _renderPaginationControls disabled buttons at last page'
 });
 
 describe('GDPR Module - _exportEntityData null fallbacks', () => {
-  test('handles null org result', async () => {
+  test('throws when the organisation cannot be found, rather than exporting a null/empty record (BTA-076)', async () => {
+    // Previously this resolved successfully with `organisation: null` in
+    // the exported file -- indistinguishable from a real export in the
+    // admin UI, which would still see "GDPR request processed". A missing
+    // organisation must now be a reported failure, not a silent no-op.
     apiClient.select = jest.fn().mockResolvedValue({ data: [] });
     apiClient.selectAll = jest.fn().mockResolvedValue(null);
 
-    const clickSpy = jest.fn();
-    const originalCreateElement = document.createElement.bind(document);
-    jest.spyOn(document, 'createElement').mockImplementation((tag) => {
-      const el = originalCreateElement(tag);
-      if (tag === 'a') el.click = clickSpy;
-      return el;
-    });
-
-    await gdprModule._exportEntityData('org-none');
-    expect(clickSpy).toHaveBeenCalled();
-    document.createElement.mockRestore();
+    await expect(gdprModule._exportEntityData('org-none')).rejects.toThrow('Organisation not found');
   });
 
   test('handles undefined data from selectAll', async () => {
@@ -1307,20 +1565,31 @@ describe('GDPR Module - _renderPaginationControls click on non-button', () => {
 });
 
 describe('GDPR Module - processRequest with unknown type', () => {
-  test('processes request with unknown type (no special handler)', async () => {
+  test('rejects an unrecognised request type instead of silently marking it completed (BTA-077)', async () => {
+    // gdpr_requests.request_type has a DB-level CHECK constraint limiting
+    // it to export/delete/anonymize, so this is normally unreachable --
+    // but if it ever were reached, falling through with no handler must
+    // not be mistaken for success, same principle as the missing-
+    // organisation fixes above.
     utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ status: 'pending' }] });
     apiClient.update = jest.fn().mockResolvedValue({});
     jest.spyOn(gdprModule, 'loadPendingRequests').mockResolvedValue();
     const toastSpy = jest.spyOn(utils, 'showToast');
 
-    await gdprModule.processRequest('r1', 'unknown_type', 'entity-1');
-    // Should still complete the request successfully, just without calling any specific handler
+    await gdprModule.processRequest('r1', 'unknown_type', '11111111-1111-1111-1111-111111111111', 'organisation');
+
     expect(apiClient.update).toHaveBeenCalledWith(
+      'gdpr_requests',
+      'r1',
+      expect.objectContaining({ status: 'pending', notes: expect.stringContaining('Unsupported GDPR request type') })
+    );
+    expect(apiClient.update).not.toHaveBeenCalledWith(
       'gdpr_requests',
       'r1',
       expect.objectContaining({ status: 'completed' })
     );
-    expect(toastSpy).toHaveBeenCalledWith('GDPR request processed', 'success');
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to process'), 'error');
     toastSpy.mockRestore();
     gdprModule.loadPendingRequests.mockRestore();
   });

@@ -373,7 +373,12 @@ async function build() {
     }
   });
 
-  // Copy any JS files referenced by public pages that aren't in the bundle
+  // Copy any JS files referenced by public pages that aren't in the bundle.
+  // BTA-073: this list and PUBLIC_PAGES/PUBLIC_ASSETS above are maintained
+  // separately (this one for standalone JS, that one for HTML+its own
+  // same-named JS); adding a new public page's script here is easy to
+  // forget (this exact mistake previously broke public-winners.html in
+  // production) -- when adding a public page, check both lists.
   const publicJsFiles = [
     'public-voting.js',
     'nominee-voting.js',
@@ -392,6 +397,8 @@ async function build() {
     'global-actions.js',
     'home.js',
     'home-data.js',
+    'public-site-settings.js',
+    'become-a-sponsor-packages.js',
   ];
 
   publicJsFiles.forEach((file) => {

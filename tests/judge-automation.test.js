@@ -1088,7 +1088,11 @@ describe('Judge Automation Module', () => {
       consoleErrorSpy.mockRestore();
 
       expect(res.statusCode).toBe(500);
-      expect(res.body).toEqual({ success: false, error: 'automation failed' });
+      // BTA-077: the endpoint no longer echoes the raw error message back
+      // to the client (it previously did, inconsistent with every sibling
+      // endpoint in this file, which all return a generic message and log
+      // the real error server-side instead).
+      expect(res.body).toEqual({ success: false, error: 'An internal error occurred' });
     });
   });
 

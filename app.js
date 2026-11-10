@@ -1447,17 +1447,18 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    // Ctrl+Shift+D — toggle developer Test Mode button visibility
+    // Ctrl+Shift+D — re-check Test Mode button visibility (BTA-098).
+    // This can only ever HIDE the dropdown immediately and then re-run
+    // the real server-side super_admin + non-production check
+    // (authModule.refreshTestModeVisibility) — it can no longer reveal
+    // the dropdown by itself. Showing it is decided solely by that
+    // server round-trip, never by a local toggle.
     if (e.ctrlKey && e.shiftKey && e.key === 'D') {
       e.preventDefault();
       const tm = document.getElementById('testModeDropdown');
-      if (tm) {
-        const hidden = tm.classList.toggle('d-none');
-        utils.showToast(
-          hidden ? 'Test Mode hidden' : 'Test Mode enabled — developer only',
-          hidden ? 'info' : 'warning',
-          3000
-        );
+      if (tm) tm.classList.add('d-none');
+      if (typeof authModule !== 'undefined' && authModule.refreshTestModeVisibility) {
+        authModule.refreshTestModeVisibility();
       }
     }
 

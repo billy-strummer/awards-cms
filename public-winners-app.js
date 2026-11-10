@@ -7,7 +7,9 @@
   const API_BASE = window.location.origin;
 
   function placementLabel(placement) {
-    if (!placement) return 'Winner';
+    // BTA-074: a blank/unset placement must never be displayed as "Winner"
+    // -- it falls through to the same "Finalist" default as any other
+    // unrecognised value below.
     const p = String(placement).toLowerCase().trim();
     if (p === '1' || p === 'winner' || p === 'gold') return 'Winner';
     if (p === '2' || p === 'runner-up' || p === 'runner_up' || p === 'silver') return 'Top 3';

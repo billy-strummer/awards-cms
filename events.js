@@ -830,7 +830,14 @@ const eventsModule = {
    */
   async saveAttendees(eventId, attendees) {
     try {
-      // Delete existing and re-insert (simple upsert pattern)
+      // Delete existing and re-insert (simple upsert pattern). Only safe
+      // for a genuine full-list replace -- every individual add/update/
+      // delete/check-in action in this module uses insertAttendees()/
+      // updateAttendeeRecord()/apiClient.delete() instead (BTA-064), since
+      // this pattern discards and regenerates every attendee's database
+      // id on every call, orphaning any event_tickets.attendee_id already
+      // issued against the old id and racing with any other concurrent
+      // write to the same event's attendee list.
       await apiClient.deleteByFilters('event_attendees', { event_id: eventId });
       if (attendees.length > 0) {
         // Map JS property names to DB column names
@@ -855,6 +862,65 @@ const eventsModule = {
       // Fallback to localStorage
       localStorage.setItem(`event_attendees_${eventId}`, JSON.stringify(attendees));
     }
+  },
+
+  /**
+   * Insert one or more brand-new attendees without touching any existing
+   * attendee row (BTA-064 — replaces the previous delete-all-and-reinsert
+   * pattern for every call site that only ever adds rows).
+   * @param {string} eventId
+   * @param {Array<Object>} attendees - JS-shape attendee objects; the
+   *   database assigns each a fresh id, so any client-side placeholder id
+   *   on these objects is ignored.
+   * @returns {Promise<void>}
+   */
+  async insertAttendees(eventId, attendees) {
+    if (!attendees || attendees.length === 0) return;
+    const rows = attendees.map((a) => ({
+      event_id: eventId,
+      attendee_name: a.name || '',
+      attendee_email: a.email || '',
+      rsvp_status: a.status || 'attending',
+      meal_preference: a.dietary || '',
+      guest_type: a.guestType || 'guest',
+      plus_ones: a.plusOnes || 0,
+      notes: a.notes || '',
+      checked_in: a.checkedIn || false,
+      check_in_time: a.checkInTime || null,
+      organisation_id: a.organisation_id || null,
+      table_number: a.table_number || null,
+    }));
+    await apiClient.insert('event_attendees', rows);
+  },
+
+  /**
+   * Update exactly one existing attendee by its stable database id,
+   * without touching any other attendee's row (BTA-064).
+   * @param {string} attendeeId - The attendee's real database id (from a
+   *   previous getAttendees() read — never a client-side placeholder).
+   * @param {Object} patch - JS-shape fields to change (same property
+   *   names getAttendees()/saveAttendees() use).
+   * @returns {Promise<void>}
+   */
+  async updateAttendeeRecord(attendeeId, patch) {
+    const fieldMap = {
+      name: 'attendee_name',
+      email: 'attendee_email',
+      status: 'rsvp_status',
+      dietary: 'meal_preference',
+      guestType: 'guest_type',
+      plusOnes: 'plus_ones',
+      notes: 'notes',
+      checkedIn: 'checked_in',
+      checkInTime: 'check_in_time',
+      organisation_id: 'organisation_id',
+      table_number: 'table_number',
+    };
+    const dbPatch = {};
+    for (const [jsKey, dbKey] of Object.entries(fieldMap)) {
+      if (jsKey in patch) dbPatch[dbKey] = patch[jsKey];
+    }
+    await apiClient.update('event_attendees', attendeeId, dbPatch);
   },
 
   /**
@@ -1270,21 +1336,20 @@ const eventsModule = {
       }
     }
 
-    attendees.push({
-      id: `attendee_${Date.now()}`,
-      name,
-      email,
-      status,
-      guestType,
-      plusOnes,
-      dietary,
-      notes,
-      organisation_id: organisationId,
-      checkedIn: false,
-      checkInTime: null,
-      addedAt: new Date().toISOString(),
-    });
-    this.saveAttendees(eventId, attendees);
+    await this.insertAttendees(eventId, [
+      {
+        name,
+        email,
+        status,
+        guestType,
+        plusOnes,
+        dietary,
+        notes,
+        organisation_id: organisationId,
+        checkedIn: false,
+        checkInTime: null,
+      },
+    ]);
 
     document.getElementById('attendeeName').value = '';
     document.getElementById('attendeeEmail').value = '';
@@ -1311,8 +1376,7 @@ const eventsModule = {
     const attendees = await this.getAttendees(eventId);
     const attendee = attendees.find((a) => a.id === attendeeId);
     if (attendee) {
-      attendee.status = newStatus;
-      this.saveAttendees(eventId, attendees);
+      await this.updateAttendeeRecord(attendeeId, { status: newStatus });
       this.renderAttendees(eventId);
       this.renderCheckInTab(eventId);
       utils.showToast('Status updated', 'success');
@@ -1397,7 +1461,6 @@ const eventsModule = {
           const name = nameList[i] || `Guest ${existingAttendees.length + newAttendees.length + 1}`;
           const ref = `GRP-${Date.now()}-${i}`;
           newAttendees.push({
-            id: ref,
             name,
             email: '',
             status: 'attending',
@@ -1408,13 +1471,11 @@ const eventsModule = {
             organisation_id: orgId,
             checkedIn: false,
             checkInTime: null,
-            addedAt: new Date().toISOString(),
             table_number: null,
           });
         }
 
-        const combined = existingAttendees.concat(newAttendees);
-        await this.saveAttendees(resolvedEventId, combined);
+        await this.insertAttendees(resolvedEventId, newAttendees);
         this.renderAttendees(resolvedEventId);
         this.renderCheckInTab(resolvedEventId);
         utils.showToast(`${seats} booking(s) created`, 'success');
@@ -1437,9 +1498,7 @@ const eventsModule = {
     )
       return;
     const eventId = document.getElementById('attendeesEventId').value;
-    let attendees = await this.getAttendees(eventId);
-    attendees = attendees.filter((a) => a.id !== attendeeId);
-    this.saveAttendees(eventId, attendees);
+    await apiClient.delete('event_attendees', attendeeId);
     this.renderAttendees(eventId);
     this.renderCheckInTab(eventId);
     utils.showToast('Attendee removed', 'success');
@@ -1532,14 +1591,14 @@ const eventsModule = {
     const attendees = await this.getAttendees(eventId);
     const attendee = attendees.find((a) => a.id === attendeeId);
     if (attendee) {
-      attendee.checkedIn = !attendee.checkedIn;
-      attendee.checkInTime = attendee.checkedIn ? new Date().toISOString() : null;
-      this.saveAttendees(eventId, attendees);
+      const checkedIn = !attendee.checkedIn;
+      const checkInTime = checkedIn ? new Date().toISOString() : null;
+      await this.updateAttendeeRecord(attendeeId, { checkedIn, checkInTime });
       this.renderCheckInTab(eventId);
       this.renderAttendees(eventId);
       utils.showToast(
-        attendee.checkedIn ? `${attendee.name} checked in` : `${attendee.name} check-in undone`,
-        attendee.checkedIn ? 'success' : 'info'
+        checkedIn ? `${attendee.name} checked in` : `${attendee.name} check-in undone`,
+        checkedIn ? 'success' : 'info'
       );
     }
   },
@@ -1566,11 +1625,11 @@ const eventsModule = {
     )
       return;
     const now = new Date().toISOString();
-    unchecked.forEach((a) => {
-      a.checkedIn = true;
-      a.checkInTime = now;
-    });
-    this.saveAttendees(eventId, attendees);
+    await apiClient.updateByFilters(
+      'event_attendees',
+      { id: { in: unchecked.map((a) => a.id) } },
+      { checked_in: true, check_in_time: now }
+    );
     this.renderCheckInTab(eventId);
     this.renderAttendees(eventId);
     utils.showToast(`${unchecked.length} guest(s) checked in`, 'success');
@@ -2594,21 +2653,19 @@ const eventsModule = {
     if (!person) return;
 
     // Add as attendee
-    const attendees = await this.getAttendees(eventId);
-    attendees.push({
-      id: Date.now().toString(),
-      name: person.name,
-      email: person.email,
-      status: 'attending',
-      guestType: 'guest',
-      plusOnes: 0,
-      dietary: '',
-      notes: `Promoted from waitlist on ${new Date().toLocaleDateString('en-GB')}`,
-      checkedIn: false,
-      checkInTime: null,
-      addedAt: new Date().toISOString(),
-    });
-    this.saveAttendees(eventId, attendees);
+    await this.insertAttendees(eventId, [
+      {
+        name: person.name,
+        email: person.email,
+        status: 'attending',
+        guestType: 'guest',
+        plusOnes: 0,
+        dietary: '',
+        notes: `Promoted from waitlist on ${new Date().toLocaleDateString('en-GB')}`,
+        checkedIn: false,
+        checkInTime: null,
+      },
+    ]);
 
     // Mark promoted on waitlist
     person.promoted = true;
@@ -13967,6 +14024,7 @@ const eventsModule = {
 
     let imported = 0;
     let skipped = 0;
+    const toInsert = [];
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
@@ -13984,8 +14042,7 @@ const eventsModule = {
         }
       }
 
-      existing.push({
-        id: 'attendee_' + Date.now() + '_' + i,
+      toInsert.push({
         name: r.name,
         email: r.email,
         status: r.status,
@@ -13995,12 +14052,11 @@ const eventsModule = {
         phone: r.phone,
         company: r.company,
         notes: r.notes,
-        addedAt: new Date().toISOString(),
       });
       imported++;
     }
 
-    this.saveAttendees(eventId, existing);
+    await this.insertAttendees(eventId, toInsert);
     bootstrap.Modal.getInstance(document.getElementById('importAttendeesModal'))?.hide();
 
     let msg = `Imported ${imported} attendee(s)`;

@@ -306,6 +306,49 @@ describe('Email Automation - sendEntryConfirmation', () => {
     const result = await sendEntryConfirmation('nonexistent');
     expect(result).toBe(false);
   });
+
+  test('supplies every placeholder the DB-backed Entry Confirmation template uses, leaving none unsubstituted', async () => {
+    mockTableResponses['entries'] = chainable({
+      data: {
+        id: 'e-1',
+        contact_name: 'John',
+        contact_email: 'john@test.com',
+        entry_number: 'BTA-001',
+        entry_title: 'Best Plumber Entry',
+        sector: 'Plumbing',
+        county_city: 'Bristol',
+        organisations: { company_name: 'Acme Plumbing' },
+        awards: {
+          award_name: 'Best Plumber 2026',
+          entry_close_date: '2026-12-31',
+          winners_announcement_date: '2027-02-15',
+        },
+      },
+      error: null,
+    });
+    mockTableResponses['tenant_branding'] = chainable({ data: {}, error: null });
+    // Mirrors the real DB default "Entry Confirmation" template's placeholders
+    // (email-templates.js's _defaultTemplates) that previously had no matching
+    // variable supplied.
+    mockTableResponses['email_templates'] = chainable({
+      data: {
+        subject: 'Entry {ENTRY_NUMBER} Confirmed',
+        body: '{SECTOR} / {REGION} <a href="{UPLOAD_LINK}">Upload</a> {DEADLINE_DATE} {ANNOUNCEMENT_DATE} {CONTACT_EMAIL}',
+      },
+      error: null,
+    });
+    mockTableResponses['email_log'] = chainable({ data: null, error: null });
+
+    const result = await sendEntryConfirmation('e-1');
+    expect(result).toBe(true);
+    const sendArgs = mockEmailsSend.mock.calls[0][0];
+    expect(sendArgs.html).not.toMatch(
+      /\{SECTOR\}|\{REGION\}|\{UPLOAD_LINK\}|\{DEADLINE_DATE\}|\{ANNOUNCEMENT_DATE\}|\{CONTACT_EMAIL\}/
+    );
+    expect(sendArgs.html).toContain('Plumbing');
+    expect(sendArgs.html).toContain('Bristol');
+    expect(sendArgs.html).toContain('entry=BTA-001');
+  });
 });
 
 describe('Email Automation - sendWinnerAnnouncements', () => {
@@ -373,7 +416,10 @@ describe('Email Automation - sendShortlistNotifications', () => {
       data: [{ event_date: '2026-06-15', venue: 'The Grand Hall' }],
       error: null,
     });
-    mockTableResponses['award_years'] = chainable({ data: [{ winner_announcement_date: '2026-05-01' }], error: null });
+    mockTableResponses['award_years'] = chainable({
+      data: [{ winners_announcement_date: '2026-05-01' }],
+      error: null,
+    });
     mockTableResponses['entries'] = chainable({
       data: [
         {
@@ -391,6 +437,13 @@ describe('Email Automation - sendShortlistNotifications', () => {
 
     const count = await sendShortlistNotifications();
     expect(count).toBe(1);
+    // BTA-061: the real column is award_years.winners_announcement_date
+    // (plural) -- the code previously read the singular
+    // winner_announcement_date, which doesn't exist, so this date always
+    // rendered as the "TBC" fallback regardless of what was actually set.
+    const sendArgs = mockEmailsSend.mock.calls[0][0];
+    expect(sendArgs.html).toContain('1 May 2026');
+    expect(sendArgs.html).not.toContain('TBC');
   });
 
   test('returns 0 on error', async () => {

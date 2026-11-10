@@ -149,72 +149,62 @@
       </div>
     </div>
   </footer>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module">
-    import './config.js';
+  <script>
     (async function() {
-      // Wait for config to be available
-      let retries = 0;
-      while (!window.SUPABASE_CONFIG && retries < 20) {
-        await new Promise(r => setTimeout(r, 100));
-        retries++;
-      }
-
       const params = new URLSearchParams(window.location.search);
       const entryId = params.get('entry');
       const sessionId = params.get('session_id');
       const card = document.querySelector('.success-card');
       const infoEl = document.getElementById('entryInfo');
 
-      // Verify payment actually occurred via Stripe session or DB record
-      if ((sessionId || entryId) && window.SUPABASE_CONFIG) {
+      function showEntryReferenceFallback() {
+        if (!entryId) return;
+        const safeRef = document.createTextNode(entryId.substring(0, 8));
+        const p = document.createElement('p');
+        p.className = 'small text-muted';
+        p.innerHTML = 'Entry reference: <strong></strong>';
+        p.querySelector('strong').appendChild(safeRef);
+        infoEl.appendChild(p);
+      }
+
+      // Verify payment via the server-side public confirmation lookup
+      // (BTA-100) — never a direct database query from the browser. This
+      // call is authorised solely by possession of the genuine Stripe
+      // Checkout Session ID Stripe itself put in the URL on redirect; no
+      // entry ID is ever sent as a lookup key.
+      if (sessionId) {
         try {
-          const supabase = window.supabase.createClient(
-            window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.anonKey
-          );
-          // Check if a payment record exists for this entry
-          if (entryId) {
-            const { data: payment } = await supabase
-              .from('payments')
-              .select('id, payment_reference, amount')
-              .eq('entry_id', entryId)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
-            if (payment) {
-              const safeRef = document.createTextNode(payment.payment_reference || (entryId ? entryId.substring(0, 8) : ''));
-              const p = document.createElement('p');
-              p.className = 'small text-muted';
-              p.innerHTML = 'Payment reference: <strong></strong>';
-              p.querySelector('strong').appendChild(safeRef);
-              infoEl.appendChild(p);
-              const nextSteps = document.createElement('div');
-              nextSteps.innerHTML = `<p class="mt-3" style="font-size:0.85rem; color:rgba(0,0,0,0.5);">A confirmation email has been sent with your entry details and receipt.</p><p style="font-size:0.85rem; color:rgba(0,0,0,0.5);">Our team will review your entry and contact you with next steps.</p>`;
-              infoEl.appendChild(nextSteps);
-              // Update heading to confirmed success state
-              const liveRegion = card.querySelector('[aria-live]');
-              liveRegion.querySelector('h1').textContent = 'Payment Successful';
-              liveRegion.querySelector('p').textContent = 'Thank you! Your payment has been processed successfully.';
-            } else {
-              // No verified payment found - show warning
-              card.querySelector('.success-icon').innerHTML = '<i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>';
-              card.querySelector('.success-icon').style.color = '#ffc107';
-              const liveRegion = card.querySelector('[aria-live]');
-              liveRegion.querySelector('h1').textContent = 'Payment Pending';
-              liveRegion.querySelector('p').textContent = 'Your payment is being processed. If you are not redirected, please contact support.';
-            }
-          }
-        } catch (e) {
-          // Graceful fallback
-          if (entryId) {
-            const safeRef = document.createTextNode(entryId ? entryId.substring(0, 8) : '');
+          const res = await fetch('/api/stripe-payment?action=public-payment-confirmation&session_id=' + encodeURIComponent(sessionId));
+          const result = await res.json();
+
+          if (res.ok && result.status === 'paid' && result.paymentReference) {
+            const safeRef = document.createTextNode(result.paymentReference);
             const p = document.createElement('p');
             p.className = 'small text-muted';
-            p.innerHTML = 'Entry reference: <strong></strong>';
+            p.innerHTML = 'Payment reference: <strong></strong>';
             p.querySelector('strong').appendChild(safeRef);
             infoEl.appendChild(p);
+            const nextSteps = document.createElement('div');
+            nextSteps.innerHTML = `<p class="mt-3" style="font-size:0.85rem; color:rgba(0,0,0,0.5);">A confirmation email has been sent with your entry details and receipt.</p><p style="font-size:0.85rem; color:rgba(0,0,0,0.5);">Our team will review your entry and contact you with next steps.</p>`;
+            infoEl.appendChild(nextSteps);
+            const liveRegion = card.querySelector('[aria-live]');
+            liveRegion.querySelector('h1').textContent = 'Payment Successful';
+            liveRegion.querySelector('p').textContent = 'Thank you! Your payment has been processed successfully.';
+          } else if (res.ok && result.status === 'pending') {
+            card.querySelector('.success-icon').innerHTML = '<i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>';
+            card.querySelector('.success-icon').style.color = '#ffc107';
+            const liveRegion = card.querySelector('[aria-live]');
+            liveRegion.querySelector('h1').textContent = 'Payment Pending';
+            liveRegion.querySelector('p').textContent = 'Your payment is being processed. If you are not redirected, please contact support.';
+          } else {
+            showEntryReferenceFallback();
           }
+        } catch (e) {
+          // Network/parse failure — graceful fallback, never a raw error.
+          showEntryReferenceFallback();
         }
+      } else {
+        showEntryReferenceFallback();
       }
     })();
   </script>
@@ -227,5 +217,6 @@
   if(btn&&mob){btn.addEventListener('click',function(){var open=mob.classList.contains('open');mob.classList.toggle('open');mob.setAttribute('aria-hidden',open?'true':'false');btn.setAttribute('aria-expanded',open?'false':'true');});mob.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mob.classList.remove('open');mob.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');});});}
 })();
 </script>
+<script src="public-site-settings.js"></script>
 </body>
 </html>

@@ -341,12 +341,55 @@
           <div class="section-divider">Nominate a Company or Tradesperson</div>
 
           <div class="mb-4">
-            <label class="form-label" for="nomineeName">
-              Name of Company or Tradesperson <span class="required-star">*</span>
+            <label class="form-label" for="nomineeCategory">
+              Award Category <span class="required-star">*</span>
             </label>
-            <input type="text" class="form-control form-control-lg" id="nomineeName"
-              placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
-            <div class="invalid-feedback" id="nomineeNameErr"></div>
+            <select class="form-control form-control-lg" id="nomineeCategory" required>
+              <option value="">Select a category&hellip;</option>
+              <!-- Options populated by JS -->
+            </select>
+            <div class="invalid-feedback" id="nomineeCategoryErr"></div>
+          </div>
+
+          <div id="personFields">
+            <div class="mb-4">
+              <label class="form-label" for="nomineeName">
+                Nominee's Name <span class="required-star">*</span>
+              </label>
+              <input type="text" class="form-control form-control-lg" id="nomineeName"
+                placeholder="e.g. Jane Smith" required autocomplete="off">
+              <div class="invalid-feedback" id="nomineeNameErr"></div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label" for="nomineeCompany">
+                Nominee's Company <span class="required-star">*</span>
+              </label>
+              <input type="text" class="form-control form-control-lg" id="nomineeCompany"
+                placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
+              <div class="field-hint">The company the nominee works for or owns &mdash; not your own employer.</div>
+              <div class="invalid-feedback" id="nomineeCompanyErr"></div>
+            </div>
+          </div>
+
+          <div id="businessFields" style="display:none;">
+            <div class="mb-4">
+              <label class="form-label" for="businessName">
+                Business Name <span class="required-star">*</span>
+              </label>
+              <input type="text" class="form-control form-control-lg" id="businessName"
+                placeholder="e.g. Smith & Sons Electrical Ltd" autocomplete="off">
+              <div class="invalid-feedback" id="businessNameErr"></div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label" for="businessOwner">
+                Business Owner's Name <span class="required-star">*</span>
+              </label>
+              <input type="text" class="form-control form-control-lg" id="businessOwner"
+                placeholder="e.g. Jane Smith" autocomplete="off">
+              <div class="invalid-feedback" id="businessOwnerErr"></div>
+            </div>
           </div>
 
           <div class="mb-4">
@@ -456,7 +499,7 @@
   <div id="nomToast" role="alert" aria-live="polite"></div>
 
   <!-- Scripts -->
-  <script src="config.js"></script>
+  <script type="module" src="config.js"></script>
   <script src="nominate.js"></script>
 </body>
 </html>

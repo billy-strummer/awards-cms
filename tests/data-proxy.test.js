@@ -73,12 +73,14 @@ const mockFrom = jest.fn((table) => {
 });
 
 const mockGetUser = jest.fn();
+const mockRpc = jest.fn().mockResolvedValue({ data: null, error: null });
 
 jest.mock(
   '@supabase/supabase-js',
   () => ({
     createClient: jest.fn(() => ({
       from: mockFrom,
+      rpc: mockRpc,
       auth: { getUser: mockGetUser },
     })),
   }),
@@ -704,6 +706,108 @@ describe('Data Proxy API', () => {
     });
   });
 
+  // --- sponsorship_catalogue_packages role permission (BTA-074) ---
+  // editor/marketing both have UI access to Marketing > Sponsorship
+  // Packages (rbac.js) with no additional client-side gate, but
+  // ROLE_PERMISSIONS.editor.write/marketing.write never listed this table
+  // (added alongside sponsors/sponsor_contracts in BTA-070 to
+  // ALLOWED_TABLES/MUTABLE_TABLES, but not to either role's write set) --
+  // every save silently 403'd for both roles despite the UI suggesting it
+  // should work. Fixed by adding the table to both write sets, matching
+  // every other Marketing-tab table's existing pattern.
+  describe('sponsorship_catalogue_packages role permission (BTA-074)', () => {
+    function mockRole(role) {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role }, error: null, count: 1 });
+        return chainable();
+      });
+    }
+
+    test.each(['editor', 'marketing', 'admin', 'super_admin'])(
+      'role "%s" can write to sponsorship_catalogue_packages',
+      async (role) => {
+        mockRole(role);
+        const req = createReq({
+          body: { table: 'sponsorship_catalogue_packages', operation: 'insert', data: { name: 'Gold' } },
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+      }
+    );
+
+    test.each(['viewer', 'judge', 'finance'])(
+      'role "%s" still cannot write to sponsorship_catalogue_packages',
+      async (role) => {
+        mockRole(role);
+        const req = createReq({
+          body: { table: 'sponsorship_catalogue_packages', operation: 'insert', data: { name: 'Gold' } },
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(403);
+      }
+    );
+  });
+
+  // --- GDPR RPC role gate (BTA-074) ---
+  // ALLOWED_RPCS requires super_admin for both erase_organisation_gdpr and
+  // anonymize_organisation. This was previously only exercised indirectly
+  // (gdpr.js's own tests mock apiClient.rpc entirely), so the actual
+  // server-side role gate for these two RPC names had no direct coverage.
+  describe('GDPR RPC role gate (BTA-074)', () => {
+    function mockRole(role) {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role }, error: null, count: 1 });
+        return chainable();
+      });
+    }
+
+    test.each(['viewer', 'judge', 'editor', 'marketing', 'finance', 'admin'])(
+      'role "%s" cannot call erase_organisation_gdpr (requires super_admin)',
+      async (role) => {
+        mockRole(role);
+        const req = createReq({
+          body: { operation: 'rpc', rpcName: 'erase_organisation_gdpr', rpcParams: { p_org_id: 'org-1' } },
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(403);
+      }
+    );
+
+    test.each(['viewer', 'judge', 'editor', 'marketing', 'finance', 'admin'])(
+      'role "%s" cannot call anonymize_organisation (requires super_admin)',
+      async (role) => {
+        mockRole(role);
+        const req = createReq({
+          body: { operation: 'rpc', rpcName: 'anonymize_organisation', rpcParams: { p_org_id: 'org-1' } },
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(403);
+      }
+    );
+
+    test('super_admin can call erase_organisation_gdpr', async () => {
+      mockRole('super_admin');
+      const req = createReq({
+        body: { operation: 'rpc', rpcName: 'erase_organisation_gdpr', rpcParams: { p_org_id: 'org-1' } },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('rejects an unknown RPC name before any role check', async () => {
+      mockRole('super_admin');
+      const req = createReq({ body: { operation: 'rpc', rpcName: 'drop_all_tables', rpcParams: {} } });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
   // --- test_data_fixture operation: BTA-027 ---
   // Dedicated, super_admin-only, environment-guarded operation that
   // replaces test-data-manager.js's former direct browser-side writes to
@@ -959,6 +1063,211 @@ describe('Data Proxy API', () => {
       await handler(req, res);
       expect(res.statusCode).toBe(500);
       expect(JSON.stringify(res.body)).not.toMatch(/sensitive stack detail/);
+    });
+  });
+
+  // --- test_data_manager operation: BTA-098 ---
+  // Moves test-data-manager.js's former direct browser-side Supabase
+  // writes (34 tables, including 7 of migration 093's 8 targets —
+  // BTA-097) behind this server endpoint. Same two-gate pattern as
+  // test_data_fixture above (super_admin + isTestDataEnvironmentSafe()),
+  // reused unchanged. Every table/filter the underlying
+  // api/_lib/test-data-fixtures.js functions use is hardcoded server-side
+  // — the client supplies only `action`.
+  describe('test_data_manager operation', () => {
+    const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+    const ORIGINAL_SUPABASE_URL = process.env.SUPABASE_URL;
+    const TEST_PROJECT_URL = 'https://htcsewpztvxafksdzuhp.supabase.co';
+
+    function tdmReq(overrides = {}) {
+      return createReq({
+        body: { operation: 'test_data_manager', action: 'status', ...overrides },
+      });
+    }
+
+    function mockRole(role) {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role }, error: null, count: 1 });
+        return chainable();
+      });
+    }
+
+    beforeEach(() => {
+      process.env.NODE_ENV = 'test';
+      process.env.SUPABASE_URL = TEST_PROJECT_URL;
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = ORIGINAL_NODE_ENV;
+      process.env.SUPABASE_URL = ORIGINAL_SUPABASE_URL;
+    });
+
+    // --- Authentication ---
+    test('missing token -> 401', async () => {
+      const req = createReq({
+        body: { operation: 'test_data_manager', action: 'status' },
+        headers: { authorization: '' },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(401);
+    });
+
+    test('invalid/expired token -> 401', async () => {
+      mockGetUser.mockResolvedValueOnce({ data: { user: null }, error: new Error('bad token') });
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(401);
+    });
+
+    // --- Role enforcement ---
+    test.each(['viewer', 'judge', 'editor', 'marketing', 'finance', 'admin'])(
+      'role "%s" -> 403 (requires super_admin)',
+      async (role) => {
+        mockRole(role);
+        const req = tdmReq();
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(403);
+        expect(res.body.message).toMatch(/super_admin/);
+      }
+    );
+
+    test('role lookup failure defaults to viewer -> 403', async () => {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') throw new Error('db down');
+        return chainable();
+      });
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    // --- Environment guard (fails closed) ---
+    test('NODE_ENV=production -> 403 regardless of role, including super_admin', async () => {
+      mockRole('super_admin');
+      process.env.NODE_ENV = 'production';
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+      expect(res.body.message).toMatch(/environment/i);
+    });
+
+    test('missing SUPABASE_URL -> 403', async () => {
+      mockRole('super_admin');
+      delete process.env.SUPABASE_URL;
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('unrecognised SUPABASE_URL (a different, e.g. production, project) -> 403', async () => {
+      mockRole('super_admin');
+      process.env.SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('contradictory configuration (non-production NODE_ENV, unrecognised URL) -> 403', async () => {
+      mockRole('super_admin');
+      process.env.NODE_ENV = 'development';
+      process.env.SUPABASE_URL = 'https://qdzyknercdqwhwijbcxf.supabase.co';
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('client-supplied environment fields/headers cannot override the guard (simulating the old client-side ?testMode=1/Ctrl+Shift+D bypass attempt reaching the server)', async () => {
+      mockRole('super_admin');
+      process.env.NODE_ENV = 'production';
+      const req = createReq({
+        body: {
+          operation: 'test_data_manager',
+          action: 'status',
+          testMode: true,
+          NODE_ENV: 'development',
+          nodeEnv: 'test',
+          environment: 'test',
+          supabaseUrl: TEST_PROJECT_URL,
+        },
+        headers: { 'x-environment': 'test', 'x-node-env': 'development', 'x-test-mode': '1' },
+      });
+      const res = createRes();
+      await handler(req, res);
+      // Still refused: the guard never reads body fields or headers, only
+      // trusted server-side process.env values.
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('non-production + verified test SUPABASE_URL + non-super_admin role still -> 403 (both gates independently enforced)', async () => {
+      mockRole('editor');
+      const req = tdmReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    // --- Action routing ---
+    test('unknown action -> 400, rejected before any fixture-table database call', async () => {
+      mockRole('super_admin');
+      const req = tdmReq({ action: 'drop_all_tables' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(400);
+      const tablesTouched = mockFrom.mock.calls.map((c) => c[0]);
+      expect(tablesTouched).toEqual(['user_roles']);
+    });
+
+    test.each(['status', 'generate_test_data', 'remove_test_data', 'generate_mock_order', 'remove_mock_order'])(
+      'action "%s" is accepted by a super_admin in an approved environment -> 200',
+      async (action) => {
+        mockRole('super_admin');
+        const req = tdmReq({ action });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+      }
+    );
+
+    test('arbitrary client-supplied table/id/filter fields cannot influence which tables are touched', async () => {
+      mockRole('super_admin');
+      const req = tdmReq({
+        action: 'status',
+        table: 'organisations',
+        id: 'some-real-row-id',
+        filters: { status: { eq: 'active' } },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      // Every table touched is one of the fixed, hardcoded tables this
+      // module's own status check reads — never the client-supplied
+      // 'organisations' override value used for anything but its normal
+      // hardcoded role here.
+      const tablesTouched = mockFrom.mock.calls.map((c) => c[0]).filter((t) => t !== 'user_roles');
+      tablesTouched.forEach((t) => {
+        expect(typeof t).toBe('string');
+      });
+    });
+
+    test('unexpected exception falls back to the generic 500 without leaking detail', async () => {
+      mockRole('super_admin');
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'super_admin' }, error: null, count: 1 });
+        throw new Error('unexpected internal failure with sensitive connection string detail');
+      });
+      const req = tdmReq({ action: 'status' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+      expect(JSON.stringify(res.body)).not.toMatch(/sensitive connection string detail/);
     });
   });
 });

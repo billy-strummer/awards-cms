@@ -220,11 +220,85 @@
       this.updateProgressIndicator(0);
       this._checkDraftRestore();
       this._applyUrlParams();
+      this.applyFormContent();
 
       // Wire step 0 self-nominate button
       document.getElementById('selfNominateBtn')?.addEventListener('click', () => {
         this.goToStep(1);
       });
+    },
+
+    // BTA-072: apply CMS-editable step headings/subtitles and confirmation
+    // copy. Runs once at load, before any sector is picked -- step3's
+    // subtitle is later overwritten dynamically with a live category count
+    // once a sector/area is selected (see updateCategoryStep3Subtitle-style
+    // calls below), which is expected and not fought here. Every field
+    // falls back to the page's existing hardcoded text when unset/malformed.
+    async applyFormContent() {
+      try {
+        const data = await entryApi({ action: 'get_public_data' });
+        const content = data?.site_settings?.form_content?.submit_entry;
+        if (!content || typeof content !== 'object') return;
+
+        const steps = content.steps || {};
+        Object.keys(steps).forEach((stepId) => {
+          const stepEl = document.getElementById(stepId);
+          if (!stepEl) return;
+          const entry = steps[stepId] || {};
+          if (entry.title) {
+            const titleEl = stepEl.querySelector('.step-question');
+            if (titleEl) titleEl.textContent = entry.title;
+          }
+          if (entry.subtitle) {
+            const subtitleEl = stepEl.querySelector('.step-subtitle');
+            if (subtitleEl) subtitleEl.textContent = entry.subtitle;
+          }
+        });
+
+        const successEl = document.getElementById('stepSuccess');
+        if (successEl) {
+          if (content.confirmationTitle) {
+            const h2 = successEl.querySelector('h2');
+            if (h2) h2.textContent = content.confirmationTitle;
+          }
+          if (content.confirmationMessage) {
+            const p = successEl.querySelector('p.text-muted');
+            if (p) p.textContent = content.confirmationMessage;
+          }
+        }
+
+        // BTA-073: this page has no <footer> and isn't covered by
+        // public-site-settings.js's page_seo/og:title sync, so its own
+        // title/description/social-preview metadata is applied here,
+        // reusing the exact same admin-configured values as the step copy.
+        this._applyPageMeta(content);
+      } catch (_e) {
+        // Network/parse failure -- keep the existing hardcoded text.
+      }
+    },
+
+    _applyPageMeta(content) {
+      if (content.pageTitle) {
+        document.title = content.pageTitle;
+        this._setMetaContent('property', 'og:title', content.pageTitle);
+      }
+      if (content.metaDescription) {
+        this._setMetaContent('name', 'description', content.metaDescription);
+        this._setMetaContent('property', 'og:description', content.metaDescription);
+      }
+    },
+
+    _setMetaContent(attr, value, content) {
+      const selector = 'meta[' + attr + '="' + value + '"]';
+      const existing = document.querySelector(selector);
+      if (existing) {
+        existing.setAttribute('content', content);
+      } else {
+        const meta = document.createElement('meta');
+        meta.setAttribute(attr, value);
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+      }
     },
 
     // Pre-populate form from URL params (deep links from home.html chips/category cards)

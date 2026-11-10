@@ -1730,11 +1730,17 @@ describe('Winners Module - generateShieldSVG()', () => {
     expect(svg).toContain('Winner');
   });
 
-  test('labels placement 1 (and missing placement) "WINNER"', () => {
+  test('labels placement 1 "WINNER"', () => {
     const svg1 = winnersModule.generateShieldSVG({ ...testWinner, placement: 1 }, '#000', '#fff');
     expect(svg1).toContain('WINNER');
+  });
+
+  test('labels a missing placement "FINALIST", not "WINNER" (BTA-074)', () => {
+    // A blank/unset placement must never be displayed as the top placement --
+    // it falls through to the same default as any other unrecognised value.
     const svgMissing = winnersModule.generateShieldSVG(testWinner, '#000', '#fff');
-    expect(svgMissing).toContain('WINNER');
+    expect(svgMissing).toContain('FINALIST');
+    expect(svgMissing).not.toContain('WINNER');
   });
 
   test('labels placement 2 and 3 "TOP 3", not "WINNER"', () => {
@@ -1775,8 +1781,8 @@ describe('Winners Module - generateEmailBannerSVG()', () => {
     expect(svg).toContain('Test Company');
   });
 
-  test('shows "AWARD WINNER" for placement 1 / missing placement, "TOP 3"/"FINALIST" otherwise', () => {
-    const winnerSvg = winnersModule.generateEmailBannerSVG(testWinner, '#000', '#fff');
+  test('shows "AWARD WINNER" for placement 1, "TOP 3"/"FINALIST" otherwise, and "FINALIST" (not "AWARD WINNER") for a missing placement (BTA-074)', () => {
+    const winnerSvg = winnersModule.generateEmailBannerSVG({ ...testWinner, placement: 1 }, '#000', '#fff');
     expect(winnerSvg).toContain('AWARD WINNER');
 
     const top3Svg = winnersModule.generateEmailBannerSVG({ ...testWinner, placement: 2 }, '#000', '#fff');
@@ -1786,6 +1792,11 @@ describe('Winners Module - generateEmailBannerSVG()', () => {
     const finalistSvg = winnersModule.generateEmailBannerSVG({ ...testWinner, placement: 5 }, '#000', '#fff');
     expect(finalistSvg).toContain('FINALIST');
     expect(finalistSvg).not.toContain('AWARD WINNER');
+
+    // A blank/unset placement must never be displayed as the top placement.
+    const missingSvg = winnersModule.generateEmailBannerSVG(testWinner, '#000', '#fff');
+    expect(missingSvg).toContain('FINALIST');
+    expect(missingSvg).not.toContain('AWARD WINNER');
   });
 });
 
@@ -1802,7 +1813,7 @@ describe('Winners Module - generateWebBannerSVG()', () => {
   });
 
   test('includes AWARD WINNER text', () => {
-    const svg = winnersModule.generateWebBannerSVG(testWinner, '#000', '#fff');
+    const svg = winnersModule.generateWebBannerSVG({ ...testWinner, placement: 1 }, '#000', '#fff');
     expect(svg).toContain('AWARD WINNER');
   });
 
@@ -1811,8 +1822,8 @@ describe('Winners Module - generateWebBannerSVG()', () => {
     expect(svg).toContain('2025');
   });
 
-  test('shows "AWARD WINNER" for placement 1 / missing placement, "TOP 3"/"FINALIST" otherwise', () => {
-    const winnerSvg = winnersModule.generateWebBannerSVG(testWinner, '#000', '#fff');
+  test('shows "AWARD WINNER" for placement 1, "TOP 3"/"FINALIST" otherwise, and "FINALIST" (not "AWARD WINNER") for a missing placement (BTA-074)', () => {
+    const winnerSvg = winnersModule.generateWebBannerSVG({ ...testWinner, placement: 1 }, '#000', '#fff');
     expect(winnerSvg).toContain('AWARD WINNER');
 
     const top3Svg = winnersModule.generateWebBannerSVG({ ...testWinner, placement: 3 }, '#000', '#fff');
@@ -1822,6 +1833,11 @@ describe('Winners Module - generateWebBannerSVG()', () => {
     const finalistSvg = winnersModule.generateWebBannerSVG({ ...testWinner, placement: 'nominee' }, '#000', '#fff');
     expect(finalistSvg).toContain('FINALIST');
     expect(finalistSvg).not.toContain('AWARD WINNER');
+
+    // A blank/unset placement must never be displayed as the top placement.
+    const missingSvg = winnersModule.generateWebBannerSVG(testWinner, '#000', '#fff');
+    expect(missingSvg).toContain('FINALIST');
+    expect(missingSvg).not.toContain('AWARD WINNER');
   });
 });
 

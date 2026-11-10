@@ -858,6 +858,93 @@ async function verifyPayment(req, res) {
   }
 }
 
+// Simple rate limiting for the public payment-confirmation lookup
+// (read-only, but still worth bounding against enumeration attempts).
+const publicConfirmationLimits = new Map();
+function checkPublicConfirmationRate(ip) {
+  const now = Date.now();
+  const entry = publicConfirmationLimits.get(ip);
+  if (!entry || now - entry.start > 60000) {
+    publicConfirmationLimits.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= 20; // Max 20 lookups per minute per IP
+}
+
+/**
+ * Public, unauthenticated payment-confirmation lookup for
+ * payment-success.html (BTA-100). Replaces that page's former direct
+ * anon-key Supabase read of the `payments` table — which never worked in
+ * the first place, since `payments` has no `entry_id` column anywhere in
+ * this schema and nothing ever wrote a `payments` row for this checkout
+ * flow; the real, canonical payment reference for a public entry-fee
+ * payment is `entries.payment_reference`, set by
+ * handleCheckoutSessionCompleted() above.
+ *
+ * Authorisation is the possession of a genuine Stripe Checkout Session ID
+ * (`session_id`, the value Stripe itself substitutes into the
+ * `success_url` on redirect — never client-chosen, never guessable). The
+ * caller never supplies or controls an entry ID or filter: the only
+ * database lookup this performs is scoped to the `entry_id` found in that
+ * session's own server-recorded `metadata`, which Stripe returns
+ * verbatim and which cannot be forged by presenting someone else's
+ * session_id without actually possessing it.
+ *
+ * GET ?action=public-payment-confirmation&session_id=cs_...
+ * @param {Object} req - Request with query.session_id (or params.sessionId for direct calls).
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function getPublicPaymentConfirmation(req, res) {
+  try {
+    const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const ip = rawIp.split(',')[0].trim();
+    if (!checkPublicConfirmationRate(ip)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+
+    const sessionId = req.params?.sessionId || req.query?.session_id;
+
+    if (!sessionId || typeof sessionId !== 'string' || !/^cs_[a-zA-Z0-9_]+$/.test(sessionId)) {
+      return res.status(400).json({ error: 'A valid session_id is required' });
+    }
+
+    let session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId);
+    } catch (_stripeError) {
+      // Covers both "no such session" and any malformed-but-regex-passing
+      // value — never leak Stripe's own error text to the caller.
+      return res.status(404).json({ error: 'Payment confirmation not found' });
+    }
+
+    if (session.payment_status !== 'paid') {
+      return res.status(200).json({ status: 'pending' });
+    }
+
+    const entryId = session.metadata?.entry_id;
+    if (!entryId) {
+      // Paid, but not one of our entry-fee checkouts (e.g. an event-ticket
+      // session) — nothing to look up, but still a safe, generic response.
+      return res.status(200).json({ status: 'paid', paymentReference: session.payment_intent || null });
+    }
+
+    // Defense-in-depth cross-check against the CMS's own canonical record,
+    // scoped only by the entry_id Stripe itself recorded in this verified
+    // session's metadata — never by anything the caller supplied.
+    const { data: entry } = await supabase.from('entries').select('payment_reference').eq('id', entryId).single();
+
+    return res.status(200).json({
+      status: 'paid',
+      paymentReference: entry?.payment_reference || session.payment_intent || null,
+    });
+  } catch (error) {
+    console.error('Error looking up public payment confirmation:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
+  }
+}
+
 /**
  * Create a public Stripe Checkout Session for entry fee payment.
  * No auth required — validates entry exists by ID and is unpaid.
@@ -1108,7 +1195,7 @@ async function processRefund(req, res) {
     res.json({ success: true, refundId: refund.id, status: refund.status });
   } catch (error) {
     console.error('Error processing refund:', error);
-    res.status(500).json({ error: error.message || 'Refund failed' });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -1121,6 +1208,7 @@ async function processRefund(req, res) {
  * POST ?action=webhook                 → handleStripeWebhook
  * GET  ?action=payment-status&entryId=... → getPaymentStatus
  * GET  ?action=verify-payment&sessionId=... → verifyPayment
+ * GET  ?action=public-payment-confirmation&session_id=... → getPublicPaymentConfirmation (no auth)
  */
 module.exports = async function handler(req, res) {
   // CORS headers for public-facing actions (public-checkout, webhook)
@@ -1166,6 +1254,10 @@ module.exports = async function handler(req, res) {
     return verifyPayment(req, res);
   }
 
+  if (req.method === 'GET' && action === 'public-payment-confirmation') {
+    return getPublicPaymentConfirmation(req, res);
+  }
+
   res.status(400).json({ error: 'Invalid action or method' });
 };
 
@@ -1177,6 +1269,7 @@ module.exports.processRefund = processRefund;
 module.exports.handleStripeWebhook = handleStripeWebhook;
 module.exports.getPaymentStatus = getPaymentStatus;
 module.exports.verifyPayment = verifyPayment;
+module.exports.getPublicPaymentConfirmation = getPublicPaymentConfirmation;
 
 /**
  * Example Express.js setup:

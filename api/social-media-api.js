@@ -522,11 +522,9 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error('Social media API error:', error);
     if (error.message && error.message.includes('not configured')) {
-      return res
-        .status(503)
-        .json({ error: 'Social media credentials not configured on this server', details: error.message });
+      return res.status(503).json({ error: 'Social media credentials not configured on this server' });
     }
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'An internal error occurred' });
   }
 };
 

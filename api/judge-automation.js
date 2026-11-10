@@ -547,7 +547,8 @@ async function assignJudgesEndpoint(req, res) {
     const result = await assignJudgesToEntries(awardId);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error assigning judges:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -567,7 +568,8 @@ async function generateShortlistEndpoint(req, res) {
     const shortlist = await generateShortlist(awardId, clampedTopN);
     res.json({ success: true, shortlist });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating shortlist:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -585,7 +587,8 @@ async function generateAllShortlistsEndpoint(req, res) {
     const results = await generateAllShortlists(clampedTopN);
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating all shortlists:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -605,7 +608,8 @@ async function getJudgingStatsEndpoint(req, res) {
     const stats = await getJudgingStatistics(awardId);
     res.json(stats);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error getting judging statistics:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -642,7 +646,7 @@ async function cronTickEndpoint(req, res) {
     return res.status(200).json({ success: true, ...summary });
   } catch (error) {
     console.error('[cron-tick] automation run failed:', error);
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'An internal error occurred' });
   }
 }
 

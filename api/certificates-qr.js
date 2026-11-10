@@ -644,7 +644,8 @@ async function generateCertificateEndpoint(req, res) {
     const result = await generateWinnerCertificate(winnerId, templateId, format);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating certificate:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -664,7 +665,8 @@ async function generateBulkCertificatesEndpoint(req, res) {
     const results = await generateBulkCertificates(winnerIds, templateId, format);
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating bulk certificates:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -681,7 +683,8 @@ async function previewCertificateEndpoint(req, res) {
     const base64Pdf = await previewCertificate(templateId, sampleData);
     res.json({ success: true, pdfBase64: base64Pdf });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error previewing certificate:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -700,7 +703,8 @@ async function generateQRTicketEndpoint(req, res) {
     const result = await generateEventTicketQR(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating QR ticket:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -719,7 +723,8 @@ async function generateBadgeEndpoint(req, res) {
     const result = await generateEventBadge(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating badge:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -740,7 +745,8 @@ async function generateAllBadgesEndpoint(req, res) {
     const results = await generateAllEventBadges(eventId);
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating all badges:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -757,7 +763,8 @@ async function verifyQREndpoint(req, res) {
     const result = await verifyQRCode(qrData);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error verifying QR code:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 

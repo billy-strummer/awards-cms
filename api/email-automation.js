@@ -285,6 +285,7 @@ async function sendEntryConfirmation(entryId) {
     const formatDate = (d) =>
       d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
 
+    const appUrl = process.env.APP_URL || 'https://admin.britishtradeawards.com';
     const variables = {
       contact_name: entry.contact_name,
       entry_number: entry.entry_number,
@@ -294,7 +295,19 @@ async function sendEntryConfirmation(entryId) {
       judging_start: formatDate(awardSeason.judging_start_date),
       judging_end: formatDate(awardSeason.judging_end_date),
       shortlist_date: formatDate(awardSeason.shortlist_date),
-      winner_date: formatDate(awardSeason.winner_announcement_date),
+      winner_date: formatDate(awardSeason.winners_announcement_date),
+      // The DB-backed "Entry Confirmation" template (email-templates.js's
+      // _defaultTemplates) also uses {SECTOR}/{REGION}/{UPLOAD_LINK}/
+      // {DEADLINE_DATE}/{ANNOUNCEMENT_DATE}/{CONTACT_EMAIL} - without these,
+      // real entrants received the literal unsubstituted placeholder text
+      // and a dead upload-document link once any DB row existed for this
+      // template type.
+      sector: entry.sector || '',
+      region: entry.county_city || '',
+      upload_link: `${appUrl}/upload-documents.html?entry=${entry.entry_number}`,
+      deadline_date: formatDate(awardSeason.entry_close_date),
+      announcement_date: formatDate(awardSeason.winners_announcement_date),
+      contact_email: process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || '',
     };
 
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
@@ -706,9 +719,9 @@ async function sendShortlistNotifications(awardId = null) {
     // Get winner announcement date from the active award season
     const { data: activeSeason } = await supabase
       .from('award_years')
-      .select('winner_announcement_date')
+      .select('winners_announcement_date')
       .eq('is_active', true)
-      .not('winner_announcement_date', 'is', null)
+      .not('winners_announcement_date', 'is', null)
       .limit(1);
 
     for (const entry of shortlisted || []) {
@@ -716,7 +729,7 @@ async function sendShortlistNotifications(awardId = null) {
         contact_name: entry.contact_name,
         company_name: entry.organisations?.company_name || '',
         award_name: entry.awards?.award_name || 'British Trade Awards',
-        winner_date: formatDate(activeSeason?.[0]?.winner_announcement_date),
+        winner_date: formatDate(activeSeason?.[0]?.winners_announcement_date),
         ceremony_date: formatDate(ceremony?.event_date),
         ceremony_venue: ceremony?.venue || 'TBC',
         ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/tickets`,
@@ -791,7 +804,8 @@ async function sendEmailEndpoint(req, res) {
     const result = await sendTemplateEmail(templateKey, toEmail, variables);
     res.json({ success: result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error sending templated email:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -801,7 +815,8 @@ async function sendDeadlineRemindersEndpoint(req, res) {
     const result = await sendDeadlineReminders();
     res.json({ success: result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error sending deadline reminders:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -812,7 +827,8 @@ async function sendWinnerAnnouncementsEndpoint(req, res) {
     const count = await sendWinnerAnnouncements(awardId);
     res.json({ success: true, sent: count });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error sending winner announcements:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 

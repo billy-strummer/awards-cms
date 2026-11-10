@@ -559,30 +559,168 @@ async function handleDataExport(req, res) {
 }
 
 async function handleGetPublicData(_req, res) {
-  const [sectorsResult, catsResult, configResult, seasonsResult] = await Promise.all([
+  const [sectorsResult, catsResult, configResult, seasonsResult, packagesResult] = await Promise.all([
     supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
     supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
-    supabase.from('cms_config').select('key, value').in('key', ['sponsors_visible']),
-    supabase.from('award_seasons').select('entry_open_date').eq('is_default', true),
+    supabase
+      .from('cms_config')
+      .select('key, value')
+      .in('key', [
+        'sponsors_visible',
+        'company_name',
+        'company_registration_number',
+        'company_address',
+        'contact_email',
+        'contact_phone',
+        'social_links',
+        'footer_contact_url',
+        'footer_sitemap_url',
+        'nav_labels',
+        'page_seo',
+        'form_content',
+      ]),
+    supabase
+      .from('award_seasons')
+      .select(
+        'entry_open_date, entry_close_date, nominees_announcement_date, voting_open_date, voting_close_date, winners_announcement_date'
+      )
+      .eq('is_default', true),
+    // BTA-070 Priority 5: public sponsorship catalogue. The table may not
+    // exist yet (migration 091 is authored but not applied) -- Supabase
+    // returns { data: null, error } rather than throwing, so this is
+    // handled the same way as every other optional field below, never
+    // failing the whole public_data response for every visitor.
+    supabase
+      .from('sponsorship_catalogue_packages')
+      .select(
+        'id, name, short_description, full_description, price, benefits, image_url, is_featured, enquiry_button_label, enquiry_destination, availability_note'
+      )
+      .eq('is_published', true)
+      .order('display_order', { ascending: true }),
   ]);
   const config = {};
   for (const row of configResult.data || []) config[row.key] = row.value;
 
-  // Homepage entry countdown (BTA-001B): only expose a date when exactly one
-  // default season exists and it has a real entry_open_date. Never fall back
-  // to another season, and never leak how many seasons exist or whether the
-  // default is ambiguous — this is informational only, not an entry/voting gate.
-  let entryOpenDate = null;
+  // Homepage season dates (BTA-001B, extended BTA-064): only expose a date
+  // when exactly one default season exists. Never fall back to another
+  // season, and never leak how many seasons exist or whether the default is
+  // ambiguous — this is informational only, not an entry/voting gate. Each
+  // field is surfaced independently (rather than all-or-nothing) so the
+  // homepage can update the dates it has while leaving its existing
+  // hardcoded fallback text for any date not yet set by an admin.
+  const seasonDateFields = [
+    'entry_open_date',
+    'entry_close_date',
+    'nominees_announcement_date',
+    'voting_open_date',
+    'voting_close_date',
+    'winners_announcement_date',
+  ];
+  const seasonDates = Object.fromEntries(seasonDateFields.map((f) => [f, null]));
   const defaultSeasons = seasonsResult.data || [];
-  if (!seasonsResult.error && defaultSeasons.length === 1 && defaultSeasons[0].entry_open_date) {
-    entryOpenDate = defaultSeasons[0].entry_open_date;
+  if (!seasonsResult.error && defaultSeasons.length === 1) {
+    for (const field of seasonDateFields) {
+      seasonDates[field] = defaultSeasons[0][field] || null;
+    }
+  }
+
+  // Central website settings (BTA-069 Priority A): a handful of cms_config
+  // keys an admin can set in Settings -> Website Settings. Each is optional
+  // -- when unset, the public page's own fallback/placeholder-removal logic
+  // decides what to show rather than this endpoint inventing a value.
+  let socialLinks = [];
+  if (config['social_links']) {
+    try {
+      const parsed = JSON.parse(config['social_links']);
+      if (Array.isArray(parsed)) socialLinks = parsed;
+    } catch (_e) {
+      // Malformed JSON in cms_config -- treat as "not configured" rather
+      // than failing the whole public_data response for every visitor.
+      socialLinks = [];
+    }
+  }
+
+  // BTA-071: main navigation label text (home.html's header nav + mobile
+  // menu). Destinations are deliberately NOT configurable here -- 3 of the
+  // 5 items are in-page anchors (#categories/#regions/#find-a-trade) whose
+  // targets only exist on home.html itself, so a mistyped destination could
+  // silently break the page's own scroll navigation. Only the label text is
+  // exposed, each key optional and null when not set by an admin.
+  let navLabels = {};
+  if (config['nav_labels']) {
+    try {
+      const parsed = JSON.parse(config['nav_labels']);
+      if (parsed && typeof parsed === 'object') navLabels = parsed;
+    } catch (_e) {
+      navLabels = {};
+    }
+  }
+
+  // BTA-071: per-page SEO title/meta-description overrides, keyed by the
+  // page's own HTML filename without the extension (e.g. "home", "about").
+  // Every page's existing hardcoded <title>/<meta description> remains the
+  // fallback when a page has no entry here, or the entry has an empty
+  // title/description -- this never forces a page to go blank.
+  let pageSeo = {};
+  if (config['page_seo']) {
+    try {
+      const parsed = JSON.parse(config['page_seo']);
+      if (parsed && typeof parsed === 'object') pageSeo = parsed;
+    } catch (_e) {
+      pageSeo = {};
+    }
+  }
+
+  // BTA-072: step headings/subtitles and confirmation copy for the 3 public
+  // entry/nomination forms (submit-entry.html, industry-leader.html,
+  // nominate.html). None of these 3 pages have a <footer> or include
+  // public-site-settings.js, so this travels through the same
+  // get_public_data response they already fetch rather than a new endpoint.
+  // Keyed per-form, each field optional -- every page keeps its existing
+  // hardcoded text as the fallback when a key is absent or malformed.
+  let formContent = {};
+  if (config['form_content']) {
+    try {
+      const parsed = JSON.parse(config['form_content']);
+      if (parsed && typeof parsed === 'object') formContent = parsed;
+    } catch (_e) {
+      formContent = {};
+    }
   }
 
   return res.status(200).json({
     custom_sectors: sectorsResult.data || [],
     custom_categories: catsResult.data || [],
     sponsors_visible: config['sponsors_visible'] === 'true',
-    entry_open_date: entryOpenDate,
+    sponsorship_packages: packagesResult.data || [],
+    ...seasonDates,
+    site_settings: {
+      company_name: config['company_name'] || null,
+      company_registration_number: config['company_registration_number'] || null,
+      company_address: config['company_address'] || null,
+      contact_email: config['contact_email'] || null,
+      contact_phone: config['contact_phone'] || null,
+      social_links: socialLinks,
+      footer_contact_url: config['footer_contact_url'] || null,
+      footer_sitemap_url: config['footer_sitemap_url'] || null,
+      nav_labels: {
+        categories: navLabels.categories || null,
+        regions: navLabels.regions || null,
+        findATrade: navLabels.findATrade || null,
+        about: navLabels.about || null,
+        enterNow: navLabels.enterNow || null,
+      },
+      page_seo: pageSeo,
+      form_content: {
+        submit_entry:
+          formContent.submit_entry && typeof formContent.submit_entry === 'object' ? formContent.submit_entry : {},
+        industry_leader:
+          formContent.industry_leader && typeof formContent.industry_leader === 'object'
+            ? formContent.industry_leader
+            : {},
+        nominate: formContent.nominate && typeof formContent.nominate === 'object' ? formContent.nominate : {},
+      },
+    },
   });
 }
 
@@ -652,29 +790,45 @@ async function handleSubmitEntry(req, res) {
     contactPosition: sanitizeString(contactPosition || '', 200) || null,
   };
 
-  // 1. Find matching award first -- its area_id scopes the organisation
+  // 1. Resolve the submitted county/city to an area_id. The admin "Add
+  // Award" form only ever sets area_id, never the legacy free-text
+  // `county` column (confirmed via awards.js's saveAward()), so matching
+  // the award below on `county` would miss every award created through
+  // the normal admin UI. Mirrors the resolution already used by
+  // handleSubmitNomination (this file) and executeAwardAreaImport
+  // (api/data-proxy.js) for the identical reason.
+  const { data: matchingEntryAreas } = await supabase
+    .from('areas')
+    .select('id')
+    .eq('display_name', safe.countyCity)
+    .limit(1);
+  const countyCityAreaId = matchingEntryAreas && matchingEntryAreas[0] ? matchingEntryAreas[0].id : null;
+
+  // 2. Find matching award first -- its area_id scopes the organisation
   // lookup below, so an organisation is never matched across unrelated
   // areas just because a company name happens to coincide.
   let awardId = null;
   let awardAreaId = null;
   let awardEntryFee = 0;
-  const { data: matchingAwards } = await supabase
-    .from('awards')
-    .select('id, entry_fee, area_id')
-    .eq('award_name', safe.awardCategory)
-    .eq('sector', safe.sector)
-    .eq('county', safe.countyCity)
-    .eq('status', 'Active')
-    .order('year', { ascending: false })
-    .limit(1);
+  if (countyCityAreaId) {
+    const { data: matchingAwards } = await supabase
+      .from('awards')
+      .select('id, entry_fee, area_id')
+      .eq('award_name', safe.awardCategory)
+      .eq('sector', safe.sector)
+      .eq('area_id', countyCityAreaId)
+      .eq('status', 'Active')
+      .order('year', { ascending: false })
+      .limit(1);
 
-  if (matchingAwards && matchingAwards.length > 0) {
-    awardId = matchingAwards[0].id;
-    awardAreaId = matchingAwards[0].area_id;
-    awardEntryFee = Number(matchingAwards[0].entry_fee) || 0;
+    if (matchingAwards && matchingAwards.length > 0) {
+      awardId = matchingAwards[0].id;
+      awardAreaId = matchingAwards[0].area_id;
+      awardEntryFee = Number(matchingAwards[0].entry_fee) || 0;
+    }
   }
 
-  // 2. Find or create organisation, scoped to the resolved award's area.
+  // 3. Find or create organisation, scoped to the resolved award's area.
   // If the area couldn't be resolved (awardAreaId is null), a new
   // organisation is always created rather than matched -- see
   // findMatchingOrganisation's contract in _lib/organisation-matching.js.
@@ -703,10 +857,10 @@ async function handleSubmitEntry(req, res) {
     organisationId = newOrg.id;
   }
 
-  // 3. Generate entry number
+  // 4. Generate entry number
   const entryNumber = await generateEntryNumber();
 
-  // 4. Build supporting info
+  // 5. Build supporting info
   const supportParts = [];
   if (safe.supportingInfo) supportParts.push(safe.supportingInfo);
   if (safe.tradeBodies) supportParts.push('Trade Bodies: ' + safe.tradeBodies);
@@ -715,7 +869,7 @@ async function handleSubmitEntry(req, res) {
   if (safe.employeeCount) supportParts.push('Employees: ' + safe.employeeCount);
   const supportingInformation = supportParts.join('\n\n') || null;
 
-  // 5. Create entry
+  // 6. Create entry
   const currentYear = new Date().getFullYear();
   const submittedAt = new Date().toISOString();
   const submitterIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || null;
@@ -1050,6 +1204,10 @@ async function handleSubmitNomination(req, res) {
       award_name: safe.awardCategory,
       entry_number: baseEntry.entry_number,
       county_city: safe.countyCity || '',
+      // The DB-backed "Nomination Confirmation" template also uses
+      // {CONTACT_EMAIL} - without it, real nominators received the literal
+      // unsubstituted placeholder text.
+      contact_email: process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || '',
     }).catch(() => {});
 
     return res.status(200).json({
@@ -1066,6 +1224,7 @@ async function handleSubmitNomination(req, res) {
     award_name: safe.awardCategory,
     entry_number: entry.entry_number,
     county_city: safe.countyCity || '',
+    contact_email: process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || '',
   }).catch(() => {});
 
   return res.status(200).json({

@@ -24,6 +24,7 @@ const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
 const { resolveCategory } = require('./_lib/award-categories');
 const { findMatchingOrganisation } = require('./_lib/organisation-matching');
+const { createTestDataFixtures } = require('./_lib/test-data-fixtures');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
@@ -90,6 +91,7 @@ function rejectUntrustedTenantId(tenantId) {
 /** RPC functions that can be called via the proxy, mapped to required minimum role */
 const ALLOWED_RPCS = {
   anonymize_organisation: 'super_admin',
+  erase_organisation_gdpr: 'super_admin',
   send_test_email: 'admin',
   check_email_config: 'admin',
   send_campaign_emails: 'admin',
@@ -242,6 +244,7 @@ const ALLOWED_TABLES = new Set([
   'nominee_upload_rows',
   'custom_sectors',
   'custom_categories',
+  'sponsorship_catalogue_packages',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -361,6 +364,7 @@ const MUTABLE_TABLES = new Set([
   'custom_categories',
   'areas',
   'regions',
+  'sponsorship_catalogue_packages',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -435,6 +439,7 @@ const ROLE_PERMISSIONS = {
       'user_preferences',
       'sponsors',
       'sponsor_contracts',
+      'sponsorship_catalogue_packages',
       'communications',
       'deals',
       'meeting_notes',
@@ -503,6 +508,7 @@ const ROLE_PERMISSIONS = {
       'sponsors',
       'sponsor_contracts',
       'sponsor_impressions',
+      'sponsorship_catalogue_packages',
       'social_media_posts',
       'social_media_templates',
       'banners',
@@ -2236,6 +2242,68 @@ module.exports = async function handler(req, res) {
       }
       const fixtureResult = await executeTestDataFixture(fixtureAction);
       return res.status(200).json(fixtureResult);
+    }
+
+    // 7a3. Admin Test Data Manager (BTA-098) — generate/remove comprehensive
+    // test fixtures and mock orders across every admin tab. Moved here
+    // from a direct browser-side Supabase client (test-data-manager.js)
+    // because migration 093 would otherwise have been incompatible with
+    // that tool's direct table access (BTA-097). Same two-gate pattern as
+    // test_data_fixture above: super_admin only, and refused outright
+    // unless the server can confirm this is a non-production deployment
+    // pointed at the known test Supabase project. Every table/filter used
+    // is hardcoded server-side in api/_lib/test-data-fixtures.js — no
+    // table name, column, filter, or deletion criterion is ever accepted
+    // from the request body.
+    if (body.operation === 'test_data_manager') {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Test Data Manager operations require super_admin role' });
+      }
+      if (!isTestDataEnvironmentSafe()) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Test Data Manager operations are disabled in this environment',
+        });
+      }
+      const tdmAction = body.action;
+      const allowedTdmActions = [
+        'status',
+        'generate_test_data',
+        'remove_test_data',
+        'generate_mock_order',
+        'remove_mock_order',
+      ];
+      if (!allowedTdmActions.includes(tdmAction)) {
+        return res.status(400).json({ error: `Unknown test_data_manager action: "${tdmAction}"` });
+      }
+
+      const fixtures = createTestDataFixtures(supabase, {
+        emailFixtures: {
+          generate: () => executeTestDataFixture('generate_email_fixtures'),
+          clear: () => executeTestDataFixture('clear_email_fixtures'),
+        },
+      });
+
+      try {
+        let tdmResult;
+        if (tdmAction === 'status') {
+          tdmResult = await fixtures.getStatus();
+        } else if (tdmAction === 'generate_test_data') {
+          tdmResult = await fixtures.generateTestData();
+        } else if (tdmAction === 'remove_test_data') {
+          tdmResult = await fixtures.removeTestData();
+        } else if (tdmAction === 'generate_mock_order') {
+          tdmResult = await fixtures.generateMockOrder();
+        } else {
+          tdmResult = await fixtures.removeMockOrders();
+        }
+        return res.status(200).json(tdmResult);
+      } catch (tdmError) {
+        console.error(`[data-proxy] test_data_manager(${tdmAction}) failed:`, tdmError.message);
+        return res.status(500).json({ error: 'Test Data Manager operation failed' });
+      }
     }
 
     // 7b. Award Areas CSV import — validates and/or imports nominees into a

@@ -306,6 +306,49 @@ describe('Email Automation - sendEntryConfirmation', () => {
     const result = await sendEntryConfirmation('nonexistent');
     expect(result).toBe(false);
   });
+
+  test('supplies every placeholder the DB-backed Entry Confirmation template uses, leaving none unsubstituted', async () => {
+    mockTableResponses['entries'] = chainable({
+      data: {
+        id: 'e-1',
+        contact_name: 'John',
+        contact_email: 'john@test.com',
+        entry_number: 'BTA-001',
+        entry_title: 'Best Plumber Entry',
+        sector: 'Plumbing',
+        county_city: 'Bristol',
+        organisations: { company_name: 'Acme Plumbing' },
+        awards: {
+          award_name: 'Best Plumber 2026',
+          entry_close_date: '2026-12-31',
+          winners_announcement_date: '2027-02-15',
+        },
+      },
+      error: null,
+    });
+    mockTableResponses['tenant_branding'] = chainable({ data: {}, error: null });
+    // Mirrors the real DB default "Entry Confirmation" template's placeholders
+    // (email-templates.js's _defaultTemplates) that previously had no matching
+    // variable supplied.
+    mockTableResponses['email_templates'] = chainable({
+      data: {
+        subject: 'Entry {ENTRY_NUMBER} Confirmed',
+        body: '{SECTOR} / {REGION} <a href="{UPLOAD_LINK}">Upload</a> {DEADLINE_DATE} {ANNOUNCEMENT_DATE} {CONTACT_EMAIL}',
+      },
+      error: null,
+    });
+    mockTableResponses['email_log'] = chainable({ data: null, error: null });
+
+    const result = await sendEntryConfirmation('e-1');
+    expect(result).toBe(true);
+    const sendArgs = mockEmailsSend.mock.calls[0][0];
+    expect(sendArgs.html).not.toMatch(
+      /\{SECTOR\}|\{REGION\}|\{UPLOAD_LINK\}|\{DEADLINE_DATE\}|\{ANNOUNCEMENT_DATE\}|\{CONTACT_EMAIL\}/
+    );
+    expect(sendArgs.html).toContain('Plumbing');
+    expect(sendArgs.html).toContain('Bristol');
+    expect(sendArgs.html).toContain('entry=BTA-001');
+  });
 });
 
 describe('Email Automation - sendWinnerAnnouncements', () => {
@@ -373,7 +416,10 @@ describe('Email Automation - sendShortlistNotifications', () => {
       data: [{ event_date: '2026-06-15', venue: 'The Grand Hall' }],
       error: null,
     });
-    mockTableResponses['award_years'] = chainable({ data: [{ winner_announcement_date: '2026-05-01' }], error: null });
+    mockTableResponses['award_years'] = chainable({
+      data: [{ winners_announcement_date: '2026-05-01' }],
+      error: null,
+    });
     mockTableResponses['entries'] = chainable({
       data: [
         {
@@ -391,6 +437,13 @@ describe('Email Automation - sendShortlistNotifications', () => {
 
     const count = await sendShortlistNotifications();
     expect(count).toBe(1);
+    // BTA-061: the real column is award_years.winners_announcement_date
+    // (plural) -- the code previously read the singular
+    // winner_announcement_date, which doesn't exist, so this date always
+    // rendered as the "TBC" fallback regardless of what was actually set.
+    const sendArgs = mockEmailsSend.mock.calls[0][0];
+    expect(sendArgs.html).toContain('1 May 2026');
+    expect(sendArgs.html).not.toContain('TBC');
   });
 
   test('returns 0 on error', async () => {
@@ -593,5 +646,126 @@ describe('Email Automation - sendWinnerAnnouncementsEndpoint', () => {
     const res = createRes();
     await sendWinnerAnnouncementsEndpoint(req, res);
     expect(res.body.success).toBe(true);
+  });
+});
+
+describe('Email Automation - handler role gate on mass-send actions (BTA-043)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTableResponses = {};
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-123', email: 'someone@test.com' } },
+      error: null,
+    });
+  });
+
+  test.each(['send-deadline-reminders', 'send-winner-announcements'])(
+    'rejects "%s" for an authenticated viewer with 403 (requires admin, matching send-campaign\'s existing floor)',
+    async (action) => {
+      mockTableResponses['user_roles'] = chainable({ data: { role: 'viewer' }, error: null });
+
+      const req = createReq({ body: { action } });
+      const res = createRes();
+      await emailAutomationHandler(req, res);
+      expect(res.statusCode).toBe(403);
+    }
+  );
+
+  test('rejects "send-winner-announcements" for an authenticated editor with 403', async () => {
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'editor' }, error: null });
+
+    const req = createReq({ body: { action: 'send-winner-announcements' } });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test('does not 403 an admin-role user on "send-deadline-reminders"', async () => {
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'admin' }, error: null });
+    mockTableResponses['entries'] = chainable({ data: [], error: null });
+
+    const req = createReq({ body: { action: 'send-deadline-reminders' } });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).not.toBe(403);
+  });
+
+  test('"send-template" (used internally by certificates-qr.js and broadly elsewhere) is unaffected by the new gate', async () => {
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'viewer' }, error: null });
+    setupDefaultMocks();
+
+    const req = createReq({
+      body: { action: 'send-template', templateKey: 'ENTRY_CONFIRMATION', toEmail: 'user@test.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).not.toBe(403);
+  });
+});
+
+describe('Email Automation - Resend webhook signature verification', () => {
+  const crypto = require('crypto');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTableResponses = {};
+    delete process.env.RESEND_WEBHOOK_SECRET;
+  });
+
+  test('refuses the webhook when RESEND_WEBHOOK_SECRET is not configured', async () => {
+    const req = createReq({
+      headers: {},
+      query: { action: 'resend-bounce' },
+      body: { action: 'resend-bounce', email: 'attacker@example.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(mockFrom).not.toHaveBeenCalledWith('email_suppressions');
+  });
+
+  test('rejects a request with an invalid signature when the secret is configured', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = 'test-webhook-secret';
+    const req = createReq({
+      headers: { 'x-resend-signature': 'not-the-right-signature' },
+      query: { action: 'resend-bounce' },
+      body: { action: 'resend-bounce', email: 'attacker@example.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(401);
+    expect(mockFrom).not.toHaveBeenCalledWith('email_suppressions');
+  });
+
+  test('rejects a request with no signature header at all (no crash)', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = 'test-webhook-secret';
+    const req = createReq({
+      headers: {},
+      query: { action: 'resend-bounce' },
+      body: { action: 'resend-bounce', email: 'attacker@example.com' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('accepts and processes a request with a valid signature', async () => {
+    process.env.RESEND_WEBHOOK_SECRET = 'test-webhook-secret';
+    const suppressionsChain = chainable({ data: null, error: null });
+    suppressionsChain.upsert = jest.fn(() => Promise.resolve({ data: null, error: null }));
+    mockTableResponses['email_suppressions'] = suppressionsChain;
+
+    const body = { action: 'resend-bounce', email: 'bounced@example.com', reason: 'hard_bounce' };
+    const signature = crypto.createHmac('sha256', 'test-webhook-secret').update(JSON.stringify(body)).digest('hex');
+
+    const req = createReq({
+      headers: { 'x-resend-signature': signature },
+      query: { action: 'resend-bounce' },
+      body,
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.suppressed).toBe('bounced@example.com');
   });
 });

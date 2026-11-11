@@ -28,7 +28,7 @@
               <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
               <div>
                 <div class="fw-semibold small">Import or Add Organisations</div>
-                <div class="text-muted" style="font-size:.75rem;">Use CSV Import for bulk upload or add organisations individually. Include sector, region, and contact details.</div>
+                <div class="text-muted" style="font-size:.75rem;">Use "Add Contacts in Bulk" for a bulk upload of contacts (not nominees — see Award Areas for that) or add organisations individually. Include sector, region, and contact details.</div>
               </div>
             </div>
           </div>
@@ -88,7 +88,7 @@
                 <h6 class="mb-0">
                   <i class="bi bi-geo-alt-fill text-danger me-2"></i>Counties, Cities & Regions Reference
                 </h6>
-                <small class="text-muted">Coverage: <span id="countyCoverageStats" class="fw-semibold">Loading...</span></small>
+                <small class="text-muted">Quick reference only — coverage below may not match Award Areas' live count. Coverage: <span id="countyCoverageStats" class="fw-semibold">Loading...</span> &middot; <a href="#" data-action="app.switchTab" data-id="award-areas">See the full, authoritative area list in Award Areas</a></small>
               </div>
               <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#countiesRefBody" aria-expanded="false">
                 <i class="bi bi-chevron-down me-1"></i>Show / Hide
@@ -565,8 +565,8 @@
           <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNewOrgModal">
             <i class="bi bi-plus-lg me-1"></i>Add Organisation
           </button>
-          <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal">
-            <i class="bi bi-upload me-1"></i>Import
+          <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#csvImportModal" title="Bulk-add companies to your contact list — not for award nominees">
+            <i class="bi bi-upload me-1"></i>Add Contacts in Bulk
           </button>
           <div class="btn-group btn-group-sm">
             <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -628,7 +628,7 @@
             <i class="bi bi-list-ul me-2"></i>Organisations List
           </h6>
           <span class="badge bg-success text-white px-3 py-2">
-            <span id="orgsCount">0</span> organisations
+            <span id="orgsCount">0</span> <span id="orgsCountLabel">organisations</span>
           </span>
         </div>
       </div>
@@ -802,11 +802,18 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="csvImportModalLabel">
-              <i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Organisations from CSV
+              <i class="bi bi-file-earmark-spreadsheet me-2"></i>Add Contacts in Bulk
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
+              <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+              <div>
+                <strong>This adds companies to your contact list only.</strong> It does not enter them into an award, category, or make them a nominee.
+                To import nominees for an award category, use <a href="#" data-action="app.switchTab" data-id="award-areas" data-bs-dismiss="modal" class="alert-link">Award Areas</a> instead — that's the one place a CSV import creates real, publishable nominees.
+              </div>
+            </div>
             <!-- Step 1: File Upload -->
             <div id="csvStep1">
               <!-- Area Selector (Required) -->
@@ -822,54 +829,8 @@
                     <div class="col-md-8">
                       <select class="form-select" id="csvCountySelect" required>
                         <option value="">-- Select Area --</option>
-                        <optgroup label="England Counties">
-                          <option>Bedfordshire</option><option>Berkshire</option><option>Buckinghamshire</option>
-                          <option>Cambridgeshire</option><option>Cheshire</option><option>Cornwall</option>
-                          <option>County Durham</option><option>Cumbria</option><option>Derbyshire</option>
-                          <option>Devon</option><option>Dorset</option><option>East Sussex</option>
-                          <option>East Yorkshire</option><option>Essex</option><option>Gloucestershire</option>
-                          <option>Hampshire</option><option>Herefordshire</option><option>Hertfordshire</option>
-                          <option>Isle of Wight</option><option>Kent</option><option>Lancashire</option>
-                          <option>Leicestershire</option><option>Lincolnshire</option><option>Norfolk</option>
-                          <option>Northamptonshire</option><option>North Yorkshire</option><option>Northumberland</option>
-                          <option>Nottinghamshire</option><option>Oxfordshire</option><option>Rutland</option>
-                          <option>Shropshire</option><option>Somerset</option><option>South Yorkshire</option>
-                          <option>Staffordshire</option><option>Suffolk</option><option>Surrey</option>
-                          <option>Tyne &amp; Wear</option><option>Warwickshire</option><option>West Sussex</option>
-                          <option>West Yorkshire</option><option>Wiltshire</option><option>Worcestershire</option>
-                        </optgroup>
-                        <optgroup label="London Boroughs">
-                          <option>Bromley</option><option>Camden</option><option>Croydon</option>
-                          <option>Greenwich</option><option>Hackney</option><option>Hammersmith &amp; Fulham</option>
-                          <option>Islington</option><option>Kensington &amp; Chelsea</option>
-                          <option>Kingston &amp; Richmond</option><option>Lambeth</option><option>Lewisham</option>
-                          <option>Middlesex</option><option>Southwark</option><option>Wandsworth</option>
-                          <option>Westminster</option>
-                        </optgroup>
-                        <optgroup label="Scotland">
-                          <option>Argyll &amp; Bute</option><option>Ayrshire</option><option>Central Scotland</option>
-                          <option>Dumfries &amp; Galloway</option><option>Dunbartonshire</option><option>Fife</option>
-                          <option>Grampian</option><option>Highlands</option><option>Lanarkshire</option>
-                          <option>Lothian</option><option>Renfrewshire</option><option>Scottish Borders</option>
-                          <option>Scottish Islands</option><option>Tayside</option>
-                        </optgroup>
-                        <optgroup label="Wales">
-                          <option>Carmarthenshire</option><option>Ceredigion</option>
-                          <option>Conwy &amp; Denbighshire</option><option>Flintshire</option>
-                          <option>Glamorgan</option><option>Gwent</option>
-                          <option>Gwynedd &amp; Anglesey</option><option>Pembrokeshire</option>
-                          <option>Powys</option><option>Wrexham</option>
-                        </optgroup>
-                        <optgroup label="Cities">
-                          <option>Birmingham</option><option>Bournemouth</option>
-                          <option>Brighton &amp; Hove</option><option>Bristol</option><option>Cardiff</option>
-                          <option>Coventry</option><option>Edinburgh</option><option>Glasgow</option>
-                          <option>Leeds</option><option>Leicester</option><option>Liverpool</option>
-                          <option>Manchester</option><option>Middlesbrough</option><option>Newcastle</option>
-                          <option>Nottingham</option><option>Reading</option><option>Sheffield</option><option>Southampton</option>
-                          <option>Swansea</option>
-                        </optgroup>
                       </select>
+                      <small class="text-muted d-block mt-1">Populated from Settings &gt; Manage Areas — the same master area list used across the CMS.</small>
                     </div>
                   </div>
                 </div>

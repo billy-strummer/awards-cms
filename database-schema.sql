@@ -18,16 +18,8 @@ BEGIN
   END IF;
 END $$;
 
--- Fix awards table
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
-    WHERE conname = 'awards_pkey' AND conrelid = 'awards'::regclass
-  ) THEN
-    ALTER TABLE awards ADD PRIMARY KEY (id);
-  END IF;
-END $$;
+-- Note: 'awards' is an updatable view over award_years (see migrations/000-complete-database-setup.sql),
+-- so it cannot take a PRIMARY KEY here — award_years already has one from its CREATE TABLE.
 
 -- Fix winners table
 DO $$ 
@@ -67,21 +59,18 @@ ALTER TABLE organisations ADD COLUMN IF NOT EXISTS region VARCHAR(100);
 ALTER TABLE organisations ADD COLUMN IF NOT EXISTS address TEXT;
 ALTER TABLE organisations ADD COLUMN IF NOT EXISTS catchment_area TEXT;
 
--- Enhanced awards table
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS criteria TEXT;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS prize_details TEXT;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS sponsor_logo_url TEXT;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS sponsor_name VARCHAR(255);
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS parent_category_id UUID;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS show_on_website BOOLEAN DEFAULT TRUE;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS entry_open_date DATE;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS entry_close_date DATE;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS judging_deadline DATE;
-ALTER TABLE awards ADD COLUMN IF NOT EXISTS announcement_date DATE;
+-- Enhanced awards table (awards is a view over award_years — ALTER the base table;
+-- new columns appear in the view automatically since it's SELECT *)
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS criteria TEXT;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS prize_details TEXT;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS sponsor_logo_url TEXT;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS sponsor_name VARCHAR(255);
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS parent_category_id UUID;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS show_on_website BOOLEAN DEFAULT TRUE;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS judging_deadline DATE;
+ALTER TABLE award_years ADD COLUMN IF NOT EXISTS announcement_date DATE;
 
 -- Enhanced winners table
 ALTER TABLE winners ADD COLUMN IF NOT EXISTS organisation_id UUID;
@@ -151,6 +140,15 @@ CREATE TABLE IF NOT EXISTS award_assignments (
   UNIQUE(award_id, organisation_id)
 );
 
+-- migrations/000-complete-database-setup.sql already created a minimal award_assignments
+-- table; backfill any columns missing from that stub version.
+ALTER TABLE award_assignments ADD COLUMN IF NOT EXISTS assigned_date TIMESTAMP DEFAULT NOW();
+ALTER TABLE award_assignments ADD COLUMN IF NOT EXISTS judge_score DECIMAL(3,1);
+ALTER TABLE award_assignments ADD COLUMN IF NOT EXISTS judge_comments TEXT;
+ALTER TABLE award_assignments ADD COLUMN IF NOT EXISTS announcement_date DATE;
+ALTER TABLE award_assignments ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE award_assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_award_assignments_award ON award_assignments(award_id);
 CREATE INDEX IF NOT EXISTS idx_award_assignments_org ON award_assignments(organisation_id);
 CREATE INDEX IF NOT EXISTS idx_award_assignments_status ON award_assignments(status);
@@ -176,6 +174,17 @@ CREATE TABLE IF NOT EXISTS organisation_contacts (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- migrations/000-complete-database-setup.sql may have already created a minimal
+-- organisation_contacts table; backfill any columns missing from that stub version.
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS job_title VARCHAR(255);
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS mobile VARCHAR(50);
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS linkedin_url TEXT;
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE;
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS receive_emails BOOLEAN DEFAULT TRUE;
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE organisation_contacts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_contacts_org ON organisation_contacts(organisation_id);
 CREATE INDEX IF NOT EXISTS idx_contacts_primary ON organisation_contacts(is_primary);
 
@@ -196,6 +205,10 @@ CREATE TABLE IF NOT EXISTS email_templates (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- migrations/000-complete-database-setup.sql already created a minimal email_templates
+-- table; backfill any columns missing from that stub version.
+ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS category VARCHAR(100);
 
 CREATE INDEX IF NOT EXISTS idx_templates_category ON email_templates(category);
 
@@ -363,6 +376,23 @@ CREATE TABLE IF NOT EXISTS event_guests (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
+-- migrations/000-complete-database-setup.sql already created a minimal event_guests
+-- table; backfill any columns missing from that stub version.
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS guest_name VARCHAR(255);
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS guest_email VARCHAR(255);
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS organisation_id UUID;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS contact_id UUID;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS guest_type VARCHAR(50);
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS rsvp_date TIMESTAMP;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS plus_ones INTEGER DEFAULT 0;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS table_number INTEGER;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS seat_number INTEGER;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS dietary_requirements TEXT;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS checked_in BOOLEAN DEFAULT FALSE;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS check_in_time TIMESTAMP;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE event_guests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_event_guests_event ON event_guests(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_guests_org ON event_guests(organisation_id);
 CREATE INDEX IF NOT EXISTS idx_event_guests_rsvp ON event_guests(rsvp_status);
@@ -437,6 +467,16 @@ CREATE TABLE IF NOT EXISTS user_roles (
   UNIQUE(user_id)
 );
 
+-- migrations/000-complete-database-setup.sql already created a minimal user_roles
+-- table; backfill any columns missing from that stub version.
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS permissions TEXT;
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS restricted_to_awards UUID[];
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS restricted_to_orgs UUID[];
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+ALTER TABLE user_roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_user_roles_email ON user_roles(email);
 CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role);
 
@@ -459,6 +499,15 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- migrations/000-complete-database-setup.sql already created a minimal activity_logs
+-- table; backfill any columns missing from that stub version.
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS changes_json TEXT;
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(50);
+ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs(entity_type, entity_id);
@@ -500,6 +549,26 @@ CREATE TABLE IF NOT EXISTS media_gallery (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- migrations/000-complete-database-setup.sql already created a minimal media_gallery
+-- table; backfill any columns missing from that stub version.
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS thumbnail_url TEXT;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS file_size INTEGER;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS winner_id UUID;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS caption TEXT;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS alt_text VARCHAR(255);
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS tags TEXT[];
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS media_category VARCHAR(50);
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS event_date DATE;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS photographer VARCHAR(255);
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT TRUE;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS show_in_gallery BOOLEAN DEFAULT TRUE;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS show_on_winner_page BOOLEAN DEFAULT TRUE;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS show_on_company_page BOOLEAN DEFAULT TRUE;
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS uploaded_by VARCHAR(255);
+ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_media_gallery_award ON media_gallery(award_id);
 CREATE INDEX IF NOT EXISTS idx_media_gallery_org ON media_gallery(organisation_id);
@@ -680,7 +749,7 @@ SELECT
   COUNT(DISTINCT CASE WHEN aa.status = 'winner' THEN aa.id END) as winner_count,
   COUNT(DISTINCT CASE WHEN aa.status = 'shortlisted' THEN aa.id END) as shortlist_count,
   COUNT(DISTINCT CASE WHEN aa.status = 'nominated' THEN aa.id END) as nominee_count
-FROM awards a
+FROM award_years a
 LEFT JOIN award_assignments aa ON a.id = aa.award_id
 GROUP BY a.id;
 
@@ -703,7 +772,7 @@ SELECT
   a.award_name,
   a.year as award_year,
   o.company_name,
-  COALESCE(w.winner_name, w.winner, o.company_name) as winner_display_name
+  COALESCE(w.winner_name, o.company_name) as winner_display_name
 FROM media_gallery mg
 LEFT JOIN awards a ON mg.award_id = a.id
 LEFT JOIN organisations o ON mg.organisation_id = o.id

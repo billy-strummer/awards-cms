@@ -242,27 +242,32 @@ describe('Assignments Module - getWinnerPositionBadge()', () => {
     expect(badge).toBe('');
   });
 
-  test('returns gold badge for position 1', () => {
+  test('returns gold "Winner" badge for position 1', () => {
     const badge = assignmentsModule.getWinnerPositionBadge({ winner_position: 1 });
     expect(badge).toContain('#ffd700');
-    expect(badge).toContain('#1 Recommended');
+    expect(badge).toContain('Winner');
+    expect(badge).not.toContain('Recommended');
   });
 
-  test('returns silver badge for position 2', () => {
+  test('returns silver "Top 3" badge for position 2', () => {
     const badge = assignmentsModule.getWinnerPositionBadge({ winner_position: 2 });
     expect(badge).toContain('#c0c0c0');
-    expect(badge).toContain('#2 Recommended');
+    expect(badge).toContain('Top 3');
+    expect(badge).not.toContain('Recommended');
   });
 
-  test('returns bronze badge for position 3', () => {
+  test('returns bronze "Top 3" badge for position 3', () => {
     const badge = assignmentsModule.getWinnerPositionBadge({ winner_position: 3 });
     expect(badge).toContain('#cd7f32');
-    expect(badge).toContain('#3 Recommended');
+    expect(badge).toContain('Top 3');
+    expect(badge).not.toContain('Recommended');
   });
 
-  test('returns empty string for position 4 or higher', () => {
+  test('returns "Finalist" badge for position 4 or higher', () => {
     const badge = assignmentsModule.getWinnerPositionBadge({ winner_position: 4 });
-    expect(badge).toBe('');
+    expect(badge).toContain('Finalist');
+    expect(badge).not.toBe('');
+    expect(badge).not.toContain('Recommended');
   });
 });
 
@@ -599,6 +604,18 @@ describe('Assignments Module - setWinnerPosition()', () => {
     const toastSpy = jest.spyOn(utils, 'showToast');
     await assignmentsModule.setWinnerPosition('a1', 2);
     expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to set winner position'), 'error');
+    toastSpy.mockRestore();
+  });
+
+  test.each([
+    [1, 'Winner'],
+    [2, 'Top 3'],
+    [3, 'Top 3'],
+  ])('confirms position %i as "%s" (not a legacy ordinal label)', async (position, expectedLabel) => {
+    apiClient.update = jest.fn().mockResolvedValue({});
+    const toastSpy = jest.spyOn(utils, 'showToast');
+    await assignmentsModule.setWinnerPosition('a1', position);
+    expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining(`Set as ${expectedLabel}!`), 'success');
     toastSpy.mockRestore();
   });
 });

@@ -3957,20 +3957,25 @@ describe('Events Module - Attendee Management', () => {
     selectSpy.mockRestore();
   });
 
-  test('addAttendee pushes attendee and calls saveAttendees', async () => {
+  test('addAttendee inserts the new attendee only, without deleting or re-inserting existing rows (BTA-064)', async () => {
     document.getElementById('attendeeName').value = 'New Guest';
     document.getElementById('attendeeEmail').value = 'new@test.com';
     document.getElementById('attendeeType').value = 'vip';
 
-    // getAttendees returns existing list (now uses paginated select)
+    // getAttendees returns existing list (now uses paginated select), used
+    // only for the duplicate-email check.
     const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({ data: [], totalPages: 1 });
-    // saveAttendees calls deleteByFilters then insert
-    const deleteByFiltersSpy = jest.spyOn(apiClient, 'deleteByFilters').mockResolvedValue({});
+    const deleteByFiltersSpy = jest.spyOn(apiClient, 'deleteByFilters');
     const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({ data: [] });
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await eventsModule.addAttendee();
 
+    expect(deleteByFiltersSpy).not.toHaveBeenCalled();
+    expect(insertSpy).toHaveBeenCalledWith(
+      'event_attendees',
+      expect.arrayContaining([expect.objectContaining({ attendee_name: 'New Guest', attendee_email: 'new@test.com' })])
+    );
     expect(toastSpy).toHaveBeenCalledWith('Attendee added', 'success');
     // Name field should be cleared after adding
     expect(document.getElementById('attendeeName').value).toBe('');
@@ -4010,41 +4015,32 @@ describe('Events Module - deleteAttendee', () => {
     ensureDOMElement('checkedInBadge', 'span');
   });
 
-  test('deleteAttendee removes attendee after confirmation', async () => {
+  test('deleteAttendee removes attendee after confirmation, by id, without touching any other attendee (BTA-064)', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
-    // getAttendees
-    const selectAllSpy = jest.spyOn(apiClient, 'selectAll').mockResolvedValue([
-      { id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending' },
-      { id: 'a2', attendee_name: 'Bob', rsvp_status: 'attending' },
-    ]);
-    // saveAttendees
-    const deleteByFiltersSpy = jest.spyOn(apiClient, 'deleteByFilters').mockResolvedValue({});
-    const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({ data: [] });
+    const deleteSpy = jest.spyOn(apiClient, 'delete').mockResolvedValue({});
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await eventsModule.deleteAttendee('a1');
 
     expect(confirmSpy).toHaveBeenCalled();
+    expect(deleteSpy).toHaveBeenCalledWith('event_attendees', 'a1');
     expect(toastSpy).toHaveBeenCalledWith('Attendee removed', 'success');
 
     confirmSpy.mockRestore();
-    selectAllSpy.mockRestore();
-    deleteByFiltersSpy.mockRestore();
-    insertSpy.mockRestore();
+    deleteSpy.mockRestore();
     toastSpy.mockRestore();
   });
 
   test('deleteAttendee does nothing when user cancels', async () => {
     const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
-    const selectAllSpy = jest.spyOn(apiClient, 'selectAll');
+    const deleteSpy = jest.spyOn(apiClient, 'delete');
 
     await eventsModule.deleteAttendee('a1');
 
-    // selectAll should not be called because we return early
-    expect(selectAllSpy).not.toHaveBeenCalled();
+    expect(deleteSpy).not.toHaveBeenCalled();
 
     confirmSpy.mockRestore();
-    selectAllSpy.mockRestore();
+    deleteSpy.mockRestore();
   });
 });
 
@@ -4065,23 +4061,21 @@ describe('Events Module - updateAttendeeStatus', () => {
     ensureDOMElement('checkedInBadge', 'span');
   });
 
-  test('updateAttendeeStatus modifies attendee and calls saveAttendees', async () => {
-    // getAttendees mock (now uses paginated select)
+  test('updateAttendeeStatus updates only the one attendee by id, without touching any other row (BTA-064)', async () => {
+    // getAttendees mock (paginated select)
     const selectSpy = jest
       .spyOn(apiClient, 'select')
       .mockResolvedValue({ data: [{ id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending' }], totalPages: 1 });
-    // saveAttendees mock
-    const deleteByFiltersSpy = jest.spyOn(apiClient, 'deleteByFilters').mockResolvedValue({});
-    const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({ data: [] });
+    const updateSpy = jest.spyOn(apiClient, 'update').mockResolvedValue({ data: [] });
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await eventsModule.updateAttendeeStatus('a1', 'not_attending');
 
+    expect(updateSpy).toHaveBeenCalledWith('event_attendees', 'a1', { rsvp_status: 'not_attending' });
     expect(toastSpy).toHaveBeenCalledWith('Status updated', 'success');
 
     selectSpy.mockRestore();
-    deleteByFiltersSpy.mockRestore();
-    insertSpy.mockRestore();
+    updateSpy.mockRestore();
     toastSpy.mockRestore();
   });
 
@@ -4089,15 +4083,170 @@ describe('Events Module - updateAttendeeStatus', () => {
     const selectSpy = jest
       .spyOn(apiClient, 'select')
       .mockResolvedValue({ data: [{ id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending' }], totalPages: 1 });
+    const updateSpy = jest.spyOn(apiClient, 'update');
     const toastSpy = jest.spyOn(utils, 'showToast');
 
     await eventsModule.updateAttendeeStatus('nonexistent', 'attending');
 
+    expect(updateSpy).not.toHaveBeenCalled();
     // Should not show 'Status updated' toast
     expect(toastSpy).not.toHaveBeenCalledWith('Status updated', 'success');
 
     selectSpy.mockRestore();
+    updateSpy.mockRestore();
     toastSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toggleCheckIn / checkInAll (BTA-064 — replaced the previous delete-all-
+// and-reinsert pattern, which regenerated every attendee's database id on
+// every single check-in and raced between concurrent check-in stations)
+// ---------------------------------------------------------------------------
+describe('Events Module - toggleCheckIn / checkInAll', () => {
+  beforeEach(() => {
+    ensureDOMElement('attendeesEventId', 'input', { value: 'evt-1' });
+    ensureDOMElement('attendeesTableBody', 'tbody');
+    ensureDOMElement('attendingCount', 'span');
+    ensureDOMElement('notAttendingCount', 'span');
+    ensureDOMElement('maybeCount', 'span');
+    ensureDOMElement('totalAttendeesCount', 'span');
+    ensureDOMElement('checkInCheckedCount', 'span');
+    ensureDOMElement('checkInPendingCount', 'span');
+    ensureDOMElement('checkInProgressBar', 'div');
+    ensureDOMElement('checkedInBadge', 'span');
+  });
+
+  test('toggleCheckIn updates only the toggled attendee by id, leaving every other attendee row untouched', async () => {
+    const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [
+        { id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending', checked_in: false },
+        { id: 'a2', attendee_name: 'Bob', rsvp_status: 'attending', checked_in: false },
+      ],
+      totalPages: 1,
+    });
+    const updateSpy = jest.spyOn(apiClient, 'update').mockResolvedValue({ data: [] });
+    const deleteByFiltersSpy = jest.spyOn(apiClient, 'deleteByFilters');
+    const insertSpy = jest.spyOn(apiClient, 'insert');
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await eventsModule.toggleCheckIn('a1');
+
+    expect(deleteByFiltersSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    const [table, id, patch] = updateSpy.mock.calls[0];
+    expect(table).toBe('event_attendees');
+    expect(id).toBe('a1');
+    expect(patch.checked_in).toBe(true);
+    expect(typeof patch.check_in_time).toBe('string');
+    expect(toastSpy).toHaveBeenCalledWith('Alice checked in', 'success');
+
+    selectSpy.mockRestore();
+    updateSpy.mockRestore();
+    deleteByFiltersSpy.mockRestore();
+    insertSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('toggleCheckIn undoes an existing check-in (repeated/idempotent toggling)', async () => {
+    const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [{ id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending', checked_in: true }],
+      totalPages: 1,
+    });
+    const updateSpy = jest.spyOn(apiClient, 'update').mockResolvedValue({ data: [] });
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await eventsModule.toggleCheckIn('a1');
+
+    expect(updateSpy).toHaveBeenCalledWith('event_attendees', 'a1', { checked_in: false, check_in_time: null });
+    expect(toastSpy).toHaveBeenCalledWith('Alice check-in undone', 'info');
+
+    selectSpy.mockRestore();
+    updateSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('toggleCheckIn does nothing for an unknown attendee id and does not call update', async () => {
+    const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({ data: [], totalPages: 1 });
+    const updateSpy = jest.spyOn(apiClient, 'update');
+
+    await eventsModule.toggleCheckIn('nonexistent');
+
+    expect(updateSpy).not.toHaveBeenCalled();
+
+    selectSpy.mockRestore();
+    updateSpy.mockRestore();
+  });
+
+  test('checkInAll updates only the unchecked attending guests in one bulk call, by id, without a delete-all-reinsert', async () => {
+    const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [
+        { id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending', checked_in: false },
+        { id: 'a2', attendee_name: 'Bob', rsvp_status: 'attending', checked_in: true },
+        { id: 'a3', attendee_name: 'Cara', rsvp_status: 'attending', checked_in: false },
+        { id: 'a4', attendee_name: 'Dan', rsvp_status: 'not_attending', checked_in: false },
+      ],
+      totalPages: 1,
+    });
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    const updateByFiltersSpy = jest.spyOn(apiClient, 'updateByFilters').mockResolvedValue({ data: [] });
+    const deleteByFiltersSpy = jest.spyOn(apiClient, 'deleteByFilters');
+    const insertSpy = jest.spyOn(apiClient, 'insert');
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await eventsModule.checkInAll();
+
+    expect(deleteByFiltersSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
+    expect(updateByFiltersSpy).toHaveBeenCalledTimes(1);
+    const [table, filters, patch] = updateByFiltersSpy.mock.calls[0];
+    expect(table).toBe('event_attendees');
+    expect(filters).toEqual({ id: { in: ['a1', 'a3'] } }); // only the unchecked attending guests -- not Bob (already in) or Dan (not attending)
+    expect(patch.checked_in).toBe(true);
+    expect(toastSpy).toHaveBeenCalledWith('2 guest(s) checked in', 'success');
+
+    selectSpy.mockRestore();
+    confirmSpy.mockRestore();
+    updateByFiltersSpy.mockRestore();
+    deleteByFiltersSpy.mockRestore();
+    insertSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('checkInAll does nothing and shows an info toast when everyone attending is already checked in', async () => {
+    const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [{ id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending', checked_in: true }],
+      totalPages: 1,
+    });
+    const updateByFiltersSpy = jest.spyOn(apiClient, 'updateByFilters');
+    const toastSpy = jest.spyOn(utils, 'showToast');
+
+    await eventsModule.checkInAll();
+
+    expect(updateByFiltersSpy).not.toHaveBeenCalled();
+    expect(toastSpy).toHaveBeenCalledWith('All attending guests are already checked in', 'info');
+
+    selectSpy.mockRestore();
+    updateByFiltersSpy.mockRestore();
+    toastSpy.mockRestore();
+  });
+
+  test('checkInAll does nothing when the user cancels the confirmation dialog', async () => {
+    const selectSpy = jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [{ id: 'a1', attendee_name: 'Alice', rsvp_status: 'attending', checked_in: false }],
+      totalPages: 1,
+    });
+    const confirmSpy = jest.spyOn(utils, 'confirmDialog').mockResolvedValue(false);
+    const updateByFiltersSpy = jest.spyOn(apiClient, 'updateByFilters');
+
+    await eventsModule.checkInAll();
+
+    expect(updateByFiltersSpy).not.toHaveBeenCalled();
+
+    selectSpy.mockRestore();
+    confirmSpy.mockRestore();
+    updateByFiltersSpy.mockRestore();
   });
 });
 

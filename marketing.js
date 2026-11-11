@@ -401,6 +401,260 @@ const marketingModule = {
   },
 
   /* ==================================================== */
+  /* SPONSORSHIP PACKAGES — public catalogue (BTA-070 Priority 5)       */
+  /* Separate from the "sponsors" registry below and from each         */
+  /* sponsor's own per-organisation sponsorship_packages CRM record     */
+  /* under Organisations — this manages the public price/benefits      */
+  /* catalogue shown on become-a-sponsor.html.                         */
+  /* ==================================================== */
+
+  /** @type {Array} Currently-loaded sponsorship catalogue packages */
+  currentSponsorshipPackages: [],
+
+  /**
+   * Load all sponsorship catalogue packages (admin view — published and
+   * unpublished).
+   * @returns {Promise<void>}
+   */
+  async loadSponsorshipPackages() {
+    const container = document.getElementById('sponsorshipPackagesContainer');
+    if (!container) return;
+    try {
+      const result = await apiClient.selectAll('sponsorship_catalogue_packages', {
+        sort: { column: 'display_order', ascending: true },
+      });
+      this.currentSponsorshipPackages = result || [];
+      this.renderSponsorshipPackages();
+    } catch (error) {
+      console.error('Error loading sponsorship packages:', error);
+      container.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          Could not load sponsorship packages: ${utils.escapeHtml(error.message)}.
+          This is expected until migration 091 (sponsorship_catalogue_packages) has been applied.
+        </div>
+      `;
+    }
+  },
+
+  /**
+   * Render the sponsorship packages admin list.
+   * @returns {void}
+   */
+  renderSponsorshipPackages() {
+    const container = document.getElementById('sponsorshipPackagesContainer');
+    if (!container) return;
+
+    if (this.currentSponsorshipPackages.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-award display-4 d-block mb-2 opacity-25"></i>
+          No sponsorship packages yet. Click "Add Package" once pricing and benefits have been agreed.
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th>Featured</th>
+              <th class="text-center">Order</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.currentSponsorshipPackages
+              .map(
+                (p) => `
+              <tr>
+                <td class="fw-semibold">${utils.escapeHtml(p.name)}</td>
+                <td>${p.price != null ? '£' + Number(p.price).toLocaleString() : '<span class="text-muted">Enquire</span>'}</td>
+                <td>${
+                  p.is_published
+                    ? '<span class="badge bg-success">Published</span>'
+                    : '<span class="badge bg-secondary">Draft</span>'
+                }</td>
+                <td>${p.is_featured ? '<span class="badge bg-warning text-dark">Featured</span>' : ''}</td>
+                <td class="text-center">${p.display_order ?? 0}</td>
+                <td class="text-center">
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" data-action="marketingModule.openEditSponsorshipPackageModal" data-id="${p.id}" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-${p.is_published ? 'secondary' : 'success'}" data-action="marketingModule.toggleSponsorshipPackagePublished" data-id="${p.id}" title="${p.is_published ? 'Unpublish' : 'Publish'}">
+                      <i class="bi bi-${p.is_published ? 'eye-slash' : 'eye'}"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" data-action="marketingModule.deleteSponsorshipPackage" data-id="${p.id}" data-name="${utils.escapeHtml(p.name)}" title="Delete">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>`
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>`;
+  },
+
+  /**
+   * Open the modal in "add" mode.
+   */
+  openAddSponsorshipPackageModal() {
+    document.getElementById('spkgId').value = '';
+    document.getElementById('spkgName').value = '';
+    document.getElementById('spkgPrice').value = '';
+    document.getElementById('spkgShortDesc').value = '';
+    document.getElementById('spkgFullDesc').value = '';
+    document.getElementById('spkgBenefits').value = '';
+    document.getElementById('spkgImageUrl').value = '';
+    document.getElementById('spkgOrder').value = String(this.currentSponsorshipPackages.length);
+    document.getElementById('spkgEnquiryLabel').value = 'Enquire Now';
+    document.getElementById('spkgEnquiryDestination').value = '';
+    document.getElementById('spkgAvailability').value = '';
+    document.getElementById('spkgFeatured').checked = false;
+    document.getElementById('spkgPublished').checked = false;
+    document.getElementById('sponsorshipPackageModalTitle').textContent = 'Add Sponsorship Package';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('sponsorshipPackageModal')).show();
+  },
+
+  /**
+   * Open the modal pre-filled for editing an existing package.
+   * @param {string} id
+   */
+  openEditSponsorshipPackageModal(id) {
+    const pkg = this.currentSponsorshipPackages.find((p) => p.id === id);
+    if (!pkg) {
+      utils.showToast('Package not found — try refreshing', 'error');
+      return;
+    }
+    document.getElementById('spkgId').value = pkg.id;
+    document.getElementById('spkgName').value = pkg.name || '';
+    document.getElementById('spkgPrice').value = pkg.price ?? '';
+    document.getElementById('spkgShortDesc').value = pkg.short_description || '';
+    document.getElementById('spkgFullDesc').value = pkg.full_description || '';
+    document.getElementById('spkgBenefits').value = Array.isArray(pkg.benefits) ? pkg.benefits.join('\n') : '';
+    document.getElementById('spkgImageUrl').value = pkg.image_url || '';
+    document.getElementById('spkgOrder').value = pkg.display_order ?? 0;
+    document.getElementById('spkgEnquiryLabel').value = pkg.enquiry_button_label || 'Enquire Now';
+    document.getElementById('spkgEnquiryDestination').value = pkg.enquiry_destination || '';
+    document.getElementById('spkgAvailability').value = pkg.availability_note || '';
+    document.getElementById('spkgFeatured').checked = !!pkg.is_featured;
+    document.getElementById('spkgPublished').checked = !!pkg.is_published;
+    document.getElementById('sponsorshipPackageModalTitle').textContent = 'Edit Sponsorship Package';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('sponsorshipPackageModal')).show();
+  },
+
+  /**
+   * Validate an optional URL field: empty is fine, otherwise must be http(s).
+   * @param {string} value
+   * @returns {boolean}
+   */
+  _isValidOptionalPackageUrl(value) {
+    if (!value) return true;
+    return /^https?:\/\//i.test(value.trim());
+  },
+
+  /**
+   * Save the add/edit sponsorship package modal (insert or update).
+   */
+  async saveSponsorshipPackage() {
+    const id = document.getElementById('spkgId').value;
+    const name = document.getElementById('spkgName').value.trim();
+    if (!name) {
+      utils.showToast('Package name is required', 'error');
+      return;
+    }
+
+    const imageUrl = document.getElementById('spkgImageUrl').value.trim();
+    if (!this._isValidOptionalPackageUrl(imageUrl)) {
+      utils.showToast('Image URL must start with http:// or https:// (or be left blank)', 'error');
+      return;
+    }
+    const enquiryDestination = document.getElementById('spkgEnquiryDestination').value.trim();
+
+    const priceRaw = document.getElementById('spkgPrice').value;
+    const benefits = document
+      .getElementById('spkgBenefits')
+      .value.split('\n')
+      .map((b) => b.trim())
+      .filter(Boolean);
+
+    const payload = {
+      name,
+      price: priceRaw === '' ? null : parseFloat(priceRaw),
+      short_description: document.getElementById('spkgShortDesc').value.trim() || null,
+      full_description: document.getElementById('spkgFullDesc').value.trim() || null,
+      benefits,
+      image_url: imageUrl || null,
+      display_order: parseInt(document.getElementById('spkgOrder').value, 10) || 0,
+      enquiry_button_label: document.getElementById('spkgEnquiryLabel').value.trim() || 'Enquire Now',
+      enquiry_destination: enquiryDestination || null,
+      availability_note: document.getElementById('spkgAvailability').value.trim() || null,
+      is_featured: document.getElementById('spkgFeatured').checked,
+      is_published: document.getElementById('spkgPublished').checked,
+    };
+
+    try {
+      if (id) {
+        await apiClient.update('sponsorship_catalogue_packages', id, payload);
+      } else {
+        await apiClient.insert('sponsorship_catalogue_packages', payload);
+      }
+      bootstrap.Modal.getInstance(document.getElementById('sponsorshipPackageModal'))?.hide();
+      utils.showToast(id ? 'Package updated' : 'Package added', 'success');
+      await this.loadSponsorshipPackages();
+    } catch (error) {
+      utils.showToast(`Failed to ${id ? 'update' : 'add'} package: ` + error.message, 'error');
+    }
+  },
+
+  /**
+   * Toggle a package's published state.
+   * @param {string} id
+   */
+  async toggleSponsorshipPackagePublished(id) {
+    const pkg = this.currentSponsorshipPackages.find((p) => p.id === id);
+    if (!pkg) return;
+    try {
+      await apiClient.update('sponsorship_catalogue_packages', id, { is_published: !pkg.is_published });
+      utils.showToast(pkg.is_published ? 'Package unpublished' : 'Package published', 'success');
+      await this.loadSponsorshipPackages();
+    } catch (error) {
+      utils.showToast('Failed to update package: ' + error.message, 'error');
+    }
+  },
+
+  /**
+   * Delete a sponsorship package after confirmation.
+   * @param {string} id
+   * @param {string} name
+   */
+  async deleteSponsorshipPackage(id, name) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Delete Sponsorship Package',
+        message: `Delete the "${name}" package? This removes it from the public website immediately if it was published.`,
+        confirmText: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
+    try {
+      await apiClient.delete('sponsorship_catalogue_packages', id);
+      utils.showToast('Package deleted', 'success');
+      await this.loadSponsorshipPackages();
+    } catch (error) {
+      utils.showToast('Failed to delete package: ' + error.message, 'error');
+    }
+  },
+
+  /* ==================================================== */
   /* SPONSORS MANAGEMENT */
   /* ==================================================== */
 

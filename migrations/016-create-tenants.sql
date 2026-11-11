@@ -21,9 +21,11 @@ ON CONFLICT (slug) DO NOTHING;
 -- RLS
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants are readable by authenticated users" ON tenants;
 CREATE POLICY "Tenants are readable by authenticated users"
   ON tenants FOR SELECT TO authenticated USING (true);
 
+DROP POLICY IF EXISTS "Tenants are manageable by admins" ON tenants;
 CREATE POLICY "Tenants are manageable by admins"
   ON tenants FOR ALL TO authenticated
   USING (
@@ -35,6 +37,7 @@ CREATE POLICY "Tenants are manageable by admins"
   );
 
 -- Updated at trigger
+DROP TRIGGER IF EXISTS set_tenants_updated_at ON tenants;
 CREATE TRIGGER set_tenants_updated_at
   BEFORE UPDATE ON tenants
   FOR EACH ROW

@@ -20,9 +20,23 @@ END $$;
 -- 2. MEDIA_GALLERY — rename visibility columns to match JS code
 --    Migration 014 created: show_on_winner, show_on_company, show_on_gallery
 --    JS uses: show_on_winner_page, show_on_company_page, show_in_gallery
-ALTER TABLE media_gallery RENAME COLUMN show_on_winner TO show_on_winner_page;
-ALTER TABLE media_gallery RENAME COLUMN show_on_company TO show_on_company_page;
-ALTER TABLE media_gallery RENAME COLUMN show_on_gallery TO show_in_gallery;
+--    (database-schema.sql may have already created the target names directly,
+--    so only rename when the source exists and the target doesn't.)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'media_gallery' AND column_name = 'show_on_winner')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'media_gallery' AND column_name = 'show_on_winner_page') THEN
+    ALTER TABLE media_gallery RENAME COLUMN show_on_winner TO show_on_winner_page;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'media_gallery' AND column_name = 'show_on_company')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'media_gallery' AND column_name = 'show_on_company_page') THEN
+    ALTER TABLE media_gallery RENAME COLUMN show_on_company TO show_on_company_page;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'media_gallery' AND column_name = 'show_on_gallery')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'media_gallery' AND column_name = 'show_in_gallery') THEN
+    ALTER TABLE media_gallery RENAME COLUMN show_on_gallery TO show_in_gallery;
+  END IF;
+END $$;
 
 -- 3. MEDIA_GALLERY — add alt_text column
 ALTER TABLE media_gallery ADD COLUMN IF NOT EXISTS alt_text TEXT;
@@ -49,9 +63,19 @@ ALTER TABLE social_media_posts ADD COLUMN IF NOT EXISTS publish_errors JSONB;
 ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
 
 -- 8. DEALS — add FK for contact_id → organisation_contacts join
-ALTER TABLE deals
-  ADD CONSTRAINT deals_contact_id_fkey
-  FOREIGN KEY (contact_id) REFERENCES organisation_contacts(id) ON DELETE SET NULL;
+-- (database-crm-setup.sql's inline "contact_id UUID REFERENCES organisation_contacts(id)"
+-- already auto-created this constraint under the same conventional name.)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints
+    WHERE constraint_name = 'deals_contact_id_fkey' AND table_name = 'deals'
+  ) THEN
+    ALTER TABLE deals
+      ADD CONSTRAINT deals_contact_id_fkey
+      FOREIGN KEY (contact_id) REFERENCES organisation_contacts(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- 9. JUDGE_SCORES — add judge_id FK for contacts→judge_scores join
 ALTER TABLE judge_scores ADD COLUMN IF NOT EXISTS judge_id UUID;

@@ -295,7 +295,15 @@ const reportsAnalytics = {
     el('reportsTotal', fAwards.length);
     el('reportsTotalOrgs', fOrgs.length);
     el('reportsTotalWinners', fWinners.length);
-    el('reportsTotalEntries', fEntries.length);
+    // Entries aren't eagerly loaded into STATE.allEntries (unlike awards/orgs/
+    // winners) to avoid fetching potentially thousands of rows on every
+    // dashboard visit. If it's still empty, use the accurate server-side count
+    // dashboardModule already fetched rather than showing a misleading 0.
+    const entriesTotal =
+      year === 'all' && entries.length === 0 && typeof STATE._reportsEntriesCount === 'number'
+        ? STATE._reportsEntriesCount
+        : fEntries.length;
+    el('reportsTotalEntries', entriesTotal);
 
     this.renderPipelineChart(fOrgs);
     this.renderSectorChart(fOrgs);
@@ -1068,6 +1076,14 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
+  // --- Forgot Password Form ---
+  const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+  if (forgotPasswordForm)
+    forgotPasswordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      authModule.handleForgotPassword();
+    });
+
   // --- Logout ---
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn)
@@ -1431,17 +1447,18 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    // Ctrl+Shift+D — toggle developer Test Mode button visibility
+    // Ctrl+Shift+D — re-check Test Mode button visibility (BTA-098).
+    // This can only ever HIDE the dropdown immediately and then re-run
+    // the real server-side super_admin + non-production check
+    // (authModule.refreshTestModeVisibility) — it can no longer reveal
+    // the dropdown by itself. Showing it is decided solely by that
+    // server round-trip, never by a local toggle.
     if (e.ctrlKey && e.shiftKey && e.key === 'D') {
       e.preventDefault();
       const tm = document.getElementById('testModeDropdown');
-      if (tm) {
-        const hidden = tm.classList.toggle('d-none');
-        utils.showToast(
-          hidden ? 'Test Mode hidden' : 'Test Mode enabled — developer only',
-          hidden ? 'info' : 'warning',
-          3000
-        );
+      if (tm) tm.classList.add('d-none');
+      if (typeof authModule !== 'undefined' && authModule.refreshTestModeVisibility) {
+        authModule.refreshTestModeVisibility();
       }
     }
 
@@ -1533,9 +1550,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // STEP 7: Error Handling + Sentry Monitoring
   // ==========================================
   // Initialize Sentry if available (loaded via CDN in index.html)
-  if (typeof Sentry !== 'undefined' && window.SENTRY_DSN) {
+  const sentryDsn = document.querySelector('meta[name="sentry-dsn"]')?.content || '';
+  if (typeof Sentry !== 'undefined' && sentryDsn) {
     Sentry.init({
-      dsn: window.SENTRY_DSN,
+      dsn: sentryDsn,
       environment: window.location.hostname === 'localhost' ? 'development' : 'production',
       release: 'awards-cms@2.1.0',
       integrations: [Sentry.browserTracingIntegration()],
@@ -2102,7 +2120,6 @@ document.addEventListener('DOMContentLoaded', function () {
           reports: 'Reports',
           marketing: 'Marketing',
           settings: 'Settings',
-          bitcoin: 'Markets',
         };
         document.title = tabTitles[tabName] ? `${tabTitles[tabName]} · BTA Admin` : 'British Trade Awards Admin';
       }
@@ -2359,6 +2376,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
 
+  // BTA-116 (M1): track unsaved edits within the Settings tab-pane (persists
+  // in the DOM for the life of the session, so this only needs wiring once).
+  if (typeof utils !== 'undefined' && utils.trackUnsavedChanges) {
+    utils.trackUnsavedChanges('settings', 'settings');
+  }
+
   console.debug('Application initialized successfully');
 });
 
@@ -2368,11 +2391,13 @@ document.addEventListener('DOMContentLoaded', function () {
 // Warn user if they try to close the page with unsaved changes
 // (You can customize this logic based on your needs)
 window.addEventListener('beforeunload', (e) => {
-  // Warn if there's a save in progress or email builder has unsaved changes
+  // Warn if there's a save in progress, email builder has unsaved changes, or
+  // Settings/CRM notes/Organisation edit has unsaved input (BTA-116, M1).
   const isSaving = document.querySelector('.btn:disabled .spinner-border');
   const emailUnsaved =
     typeof emailBuilder !== 'undefined' && emailBuilder.hasUnsavedChanges && emailBuilder.blocks?.length > 0;
-  if (STATE.currentUser && (isSaving || emailUnsaved)) {
+  const formsUnsaved = typeof utils !== 'undefined' && utils.hasUnsavedFormChanges && utils.hasUnsavedFormChanges();
+  if (STATE.currentUser && (isSaving || emailUnsaved || formsUnsaved)) {
     e.preventDefault();
     e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
   }

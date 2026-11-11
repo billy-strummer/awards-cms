@@ -39,7 +39,6 @@ const dom = new JSDOM(
     <li><a id="crm-tab">CRM</a></li>
     <li><a id="settings-tab">Settings</a></li>
     <li><a id="reports-tab">Reports</a></li>
-    <li><a id="bitcoin-tab">Bitcoin</a></li>
   </ul>
   <button data-rbac-action="create">Create</button>
   <button data-rbac-action="delete">Delete</button>
@@ -181,7 +180,6 @@ describe('RBAC Module - Role Definitions', () => {
     expect(sa.modules).toContain('settings');
     expect(sa.modules).toContain('payments');
     expect(sa.modules).toContain('crm');
-    expect(sa.modules).toContain('bitcoin');
     expect(sa.modules).toContain('reports');
   });
 
@@ -681,7 +679,7 @@ describe('RBAC Module - ensureAdminExists', () => {
 });
 
 describe('RBAC Module - Cross-Role Access Matrix', () => {
-  const sensitiveModules = ['settings', 'payments', 'crm', 'bitcoin'];
+  const sensitiveModules = ['settings', 'payments', 'crm'];
   const _destructiveActions = ['delete', 'manage_users', 'manage_roles', 'gdpr'];
 
   test('only super_admin and admin can access all core modules', () => {
@@ -771,7 +769,6 @@ describe('RBAC Module - Permission Boundary Tests', () => {
       'crm',
       'settings',
       'reports',
-      'bitcoin',
     ];
 
     allModules.forEach((mod) => {

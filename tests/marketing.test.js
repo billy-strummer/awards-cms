@@ -25,6 +25,16 @@ const dom = new JSDOM(
   <!-- Sponsors -->
   <div id="sponsorsGrid"></div>
 
+  <!-- Sponsorship packages (BTA-070) -->
+  <div id="sponsorshipPackagesContainer"></div>
+  <div id="sponsorshipPackageModal"><h5 id="sponsorshipPackageModalTitle"></h5></div>
+  <input type="hidden" id="spkgId">
+  <input id="spkgName"><input id="spkgPrice">
+  <textarea id="spkgShortDesc"></textarea><textarea id="spkgFullDesc"></textarea><textarea id="spkgBenefits"></textarea>
+  <input id="spkgImageUrl"><input id="spkgOrder">
+  <input id="spkgEnquiryLabel"><input id="spkgEnquiryDestination"><input id="spkgAvailability">
+  <input type="checkbox" id="spkgFeatured"><input type="checkbox" id="spkgPublished">
+
   <!-- Branding overview -->
   <div id="brandingOverviewPanel"></div>
 
@@ -68,6 +78,9 @@ global.bootstrap = {
     hide() {}
     static getInstance() {
       return { hide() {} };
+    }
+    static getOrCreateInstance() {
+      return { show() {}, hide() {} };
     }
   },
   Tooltip: class {},
@@ -1263,5 +1276,138 @@ describe('Marketing Module - XSS Prevention', () => {
     };
     const html = marketingModule.renderBannerCard(banner);
     expect(html).not.toContain('<script>alert(1)</script>');
+  });
+});
+
+describe('Marketing Module - Sponsorship Packages (BTA-070 Priority 5)', () => {
+  beforeEach(() => {
+    marketingModule.currentSponsorshipPackages = [];
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    marketingModule.openAddSponsorshipPackageModal();
+  });
+  afterEach(() => {
+    utils.showToast.mockRestore?.();
+    jest.restoreAllMocks();
+  });
+
+  test('renderSponsorshipPackages shows an empty state when there are none', () => {
+    marketingModule.currentSponsorshipPackages = [];
+    marketingModule.renderSponsorshipPackages();
+    expect(document.getElementById('sponsorshipPackagesContainer').textContent).toContain(
+      'No sponsorship packages yet'
+    );
+  });
+
+  test('renderSponsorshipPackages lists packages with price, status and featured badges', () => {
+    marketingModule.currentSponsorshipPackages = [
+      { id: 'p1', name: 'Bronze', price: null, is_published: false, is_featured: false, display_order: 0 },
+      { id: 'p2', name: 'Gold', price: 5000, is_published: true, is_featured: true, display_order: 1 },
+    ];
+    marketingModule.renderSponsorshipPackages();
+    const html = document.getElementById('sponsorshipPackagesContainer').innerHTML;
+    expect(html).toContain('Bronze');
+    expect(html).toContain('Enquire');
+    expect(html).toContain('Gold');
+    expect(html).toContain('£5,000');
+    expect(html).toContain('Published');
+    expect(html).toContain('Draft');
+    expect(html).toContain('Featured');
+  });
+
+  test('openAddSponsorshipPackageModal resets the form to add mode', () => {
+    document.getElementById('spkgId').value = 'stale';
+    document.getElementById('spkgPublished').checked = true;
+    marketingModule.openAddSponsorshipPackageModal();
+    expect(document.getElementById('spkgId').value).toBe('');
+    expect(document.getElementById('spkgPublished').checked).toBe(false);
+    expect(document.getElementById('sponsorshipPackageModalTitle').textContent).toBe('Add Sponsorship Package');
+  });
+
+  test('openEditSponsorshipPackageModal pre-fills benefits as newline-joined text', () => {
+    marketingModule.currentSponsorshipPackages = [
+      { id: 'p1', name: 'Gold', benefits: ['Logo on website', 'Category sponsorship'], price: 5000 },
+    ];
+    marketingModule.openEditSponsorshipPackageModal('p1');
+    expect(document.getElementById('spkgName').value).toBe('Gold');
+    expect(document.getElementById('spkgBenefits').value).toBe('Logo on website\nCategory sponsorship');
+    expect(document.getElementById('sponsorshipPackageModalTitle').textContent).toBe('Edit Sponsorship Package');
+  });
+
+  test('saveSponsorshipPackage rejects a missing name', async () => {
+    const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({});
+    document.getElementById('spkgName').value = '';
+    await marketingModule.saveSponsorshipPackage();
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  test('saveSponsorshipPackage rejects a non-http(s) image URL', async () => {
+    const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({});
+    document.getElementById('spkgName').value = 'Gold';
+    document.getElementById('spkgImageUrl').value = 'javascript:alert(1)';
+    await marketingModule.saveSponsorshipPackage();
+    expect(insertSpy).not.toHaveBeenCalled();
+  });
+
+  test('saveSponsorshipPackage inserts a new package, splitting benefits into an array', async () => {
+    const insertSpy = jest.spyOn(apiClient, 'insert').mockResolvedValue({});
+    jest.spyOn(marketingModule, 'loadSponsorshipPackages').mockResolvedValue();
+    document.getElementById('spkgId').value = '';
+    document.getElementById('spkgName').value = 'Gold';
+    document.getElementById('spkgPrice').value = '5000';
+    document.getElementById('spkgBenefits').value = 'Logo on website\nCategory sponsorship\n';
+    document.getElementById('spkgPublished').checked = true;
+
+    await marketingModule.saveSponsorshipPackage();
+
+    expect(insertSpy).toHaveBeenCalledWith(
+      'sponsorship_catalogue_packages',
+      expect.objectContaining({
+        name: 'Gold',
+        price: 5000,
+        benefits: ['Logo on website', 'Category sponsorship'],
+        is_published: true,
+      })
+    );
+  });
+
+  test('saveSponsorshipPackage updates an existing package when spkgId is set', async () => {
+    const updateSpy = jest.spyOn(apiClient, 'update').mockResolvedValue({});
+    jest.spyOn(marketingModule, 'loadSponsorshipPackages').mockResolvedValue();
+    document.getElementById('spkgId').value = 'p1';
+    document.getElementById('spkgName').value = 'Gold Renamed';
+    document.getElementById('spkgBenefits').value = '';
+
+    await marketingModule.saveSponsorshipPackage();
+
+    expect(updateSpy).toHaveBeenCalledWith(
+      'sponsorship_catalogue_packages',
+      'p1',
+      expect.objectContaining({ name: 'Gold Renamed' })
+    );
+  });
+
+  test('toggleSponsorshipPackagePublished flips is_published', async () => {
+    marketingModule.currentSponsorshipPackages = [{ id: 'p1', name: 'Gold', is_published: false }];
+    const updateSpy = jest.spyOn(apiClient, 'update').mockResolvedValue({});
+    jest.spyOn(marketingModule, 'loadSponsorshipPackages').mockResolvedValue();
+
+    await marketingModule.toggleSponsorshipPackagePublished('p1');
+
+    expect(updateSpy).toHaveBeenCalledWith('sponsorship_catalogue_packages', 'p1', { is_published: true });
+  });
+
+  test('deleteSponsorshipPackage does not delete when cancelled', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(false);
+    const deleteSpy = jest.spyOn(apiClient, 'delete').mockResolvedValue({});
+    await marketingModule.deleteSponsorshipPackage('p1', 'Gold');
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  test('deleteSponsorshipPackage deletes after confirmation', async () => {
+    utils.confirmDialog = jest.fn().mockResolvedValue(true);
+    const deleteSpy = jest.spyOn(apiClient, 'delete').mockResolvedValue({});
+    jest.spyOn(marketingModule, 'loadSponsorshipPackages').mockResolvedValue();
+    await marketingModule.deleteSponsorshipPackage('p1', 'Gold');
+    expect(deleteSpy).toHaveBeenCalledWith('sponsorship_catalogue_packages', 'p1');
   });
 });

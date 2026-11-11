@@ -975,7 +975,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION get_unassigned_guests(p_event_id UUID)
+-- Earlier files defined this with a different RETURNS TABLE shape; CREATE OR
+-- REPLACE can't change that, so drop first.
+DROP FUNCTION IF EXISTS get_unassigned_guests(UUID);
+CREATE FUNCTION get_unassigned_guests(p_event_id UUID)
 RETURNS TABLE (
   guest_id UUID,
   guest_name TEXT,

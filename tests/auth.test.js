@@ -554,7 +554,7 @@ describe('Auth - handleLogin error branches', () => {
     await authModule.handleLogin();
 
     const errorDiv = document.getElementById('loginError');
-    expect(errorDiv.textContent).toBe('Something weird happened');
+    expect(errorDiv.textContent).toBe('Something went wrong while signing in. Please try again in a moment.');
   });
 
   test('handleLogin restores button state after error', async () => {

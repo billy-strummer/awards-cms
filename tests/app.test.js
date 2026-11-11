@@ -1325,6 +1325,11 @@ describe('App Module - Dark Mode Toggle', () => {
     document.body.classList.remove('dark-mode');
     localStorage.clear();
     jest.clearAllMocks();
+    const icon = document.querySelector('#darkModeToggle i');
+    if (icon) {
+      icon.classList.add('bi-moon');
+      icon.classList.remove('bi-sun');
+    }
   });
 
   test('clicking dark mode toggle adds dark-mode class', () => {
@@ -1344,8 +1349,21 @@ describe('App Module - Dark Mode Toggle', () => {
     expect(localStorage.getItem('darkMode')).toBe('false');
   });
 
-  // Icon swap requires DOMContentLoaded event listener; covered by e2e tests
-  test.skip('dark mode toggle switches icon classes', () => {});
+  test('dark mode toggle switches icon classes', () => {
+    const toggle = document.getElementById('darkModeToggle');
+    const icon = toggle.querySelector('i');
+
+    expect(icon.classList.contains('bi-moon')).toBe(true);
+    expect(icon.classList.contains('bi-sun')).toBe(false);
+
+    toggle.click();
+    expect(icon.classList.contains('bi-sun')).toBe(true);
+    expect(icon.classList.contains('bi-moon')).toBe(false);
+
+    toggle.click();
+    expect(icon.classList.contains('bi-moon')).toBe(true);
+    expect(icon.classList.contains('bi-sun')).toBe(false);
+  });
 });
 
 describe('App Module - Login Button and Form', () => {
@@ -1665,9 +1683,29 @@ describe('App Module - beforeunload warning', () => {
     jest.clearAllMocks();
   });
 
-  // beforeunload listener is set up by DOMContentLoaded; covered by e2e tests
-  test.skip('beforeunload does not set returnValue when no unsaved changes', () => {});
-  test.skip('beforeunload does not warn when no currentUser', () => {});
+  test('beforeunload does not set returnValue when no unsaved changes', () => {
+    STATE.currentUser = { email: 'test@test.com' };
+    STATE.unsavedChanges = {};
+
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+
+    STATE.currentUser = null;
+  });
+
+  test('beforeunload does not warn when no currentUser', () => {
+    STATE.currentUser = null;
+    STATE.unsavedChanges = { settings: true };
+
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+
+    STATE.unsavedChanges = {};
+  });
 });
 
 describe('App Module - Breadcrumb Navigation', () => {

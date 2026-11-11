@@ -122,6 +122,16 @@ describe('Resend Email - sendEmail', () => {
     expect(mockFrom).toHaveBeenCalledWith('notification_queue');
   });
 
+  test('sends with the exact "Name <address>" From header built from FROM_NAME/FROM_EMAIL (CMS-AUDIT-TODO 10.1)', async () => {
+    mockEmailsSend.mockResolvedValue({ data: { id: 'resend-789' }, error: null });
+    mockFromResults.push(chainable({ data: null, error: null }));
+
+    await sendEmail({ to: 'user@test.com', subject: 'Test Subject', html: '<p>Hello</p>' });
+
+    const sendArgs = mockEmailsSend.mock.calls[0][0];
+    expect(sendArgs.from).toBe('Test Awards <awards@test.com>');
+  });
+
   test('sends email to array of recipients', async () => {
     mockEmailsSend.mockResolvedValue({ data: { id: 'resend-456' }, error: null });
     mockFromResults.push(chainable({ data: null, error: null }));

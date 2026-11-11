@@ -8,6 +8,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const { isUUID } = require('./_lib/validate');
+const { hasMinimumRole, getUserRole } = require('./_lib/auth');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 const supabaseAuth = createClient(
@@ -483,6 +484,19 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
+  // Posting (or bulk-processing) real, external social media content requires
+  // at least the 'marketing' role — the same role rbac.js already grants the
+  // 'marketing' module (which includes social media scheduling) to. Any
+  // authenticated viewer/judge account was previously able to trigger a real
+  // post via this endpoint directly.
+  const role = await getUserRole(user.email);
+  if (!hasMinimumRole(role, 'marketing')) {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: `Role "${role}" cannot manage social media posting (requires marketing)`,
+    });
+  }
+
   const { action } = req.body;
 
   try {
@@ -508,11 +522,9 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error('Social media API error:', error);
     if (error.message && error.message.includes('not configured')) {
-      return res
-        .status(503)
-        .json({ error: 'Social media credentials not configured on this server', details: error.message });
+      return res.status(503).json({ error: 'Social media credentials not configured on this server' });
     }
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'An internal error occurred' });
   }
 };
 

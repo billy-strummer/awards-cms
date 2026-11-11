@@ -4,6 +4,50 @@
 
 const utils = {
   /**
+   * Mark a named form/section as having unsaved changes (BTA-116, M1).
+   * @param {string} key - A short identifier, e.g. 'settings', 'orgEdit', 'crmNotes'.
+   */
+  markFormDirty(key) {
+    STATE.unsavedChanges = STATE.unsavedChanges || {};
+    STATE.unsavedChanges[key] = true;
+  },
+
+  /**
+   * Clear a named form/section's unsaved-changes flag (BTA-116, M1).
+   * @param {string} key
+   */
+  clearFormDirty(key) {
+    if (STATE.unsavedChanges) delete STATE.unsavedChanges[key];
+  },
+
+  /**
+   * Whether any tracked form/section currently has unsaved changes (BTA-116, M1).
+   * @returns {boolean}
+   */
+  hasUnsavedFormChanges() {
+    return !!(STATE.unsavedChanges && Object.keys(STATE.unsavedChanges).length > 0);
+  },
+
+  /**
+   * Attach a delegated input/change listener to a container so any edit inside
+   * it marks `key` dirty (BTA-116, M1 — same intent as email-builder.js's
+   * hasUnsavedChanges flag, generalised for Settings/CRM notes/Organisation edit).
+   * Idempotent per DOM element: safe to call every time a container is shown,
+   * including containers that are recreated fresh each time (e.g. a modal
+   * rebuilt via insertAdjacentHTML), since the guard lives on the element itself.
+   * @param {string} containerId
+   * @param {string} key
+   */
+  trackUnsavedChanges(containerId, key) {
+    const el = document.getElementById(containerId);
+    if (!el || el._unsavedTrackerKey === key) return;
+    el._unsavedTrackerKey = key;
+    const mark = () => utils.markFormDirty(key);
+    el.addEventListener('input', mark);
+    el.addEventListener('change', mark);
+  },
+
+  /**
    * Safely copy text to clipboard with fallback and error handling
    */
   copyToClipboard(text, successMsg = 'Copied to clipboard!') {
@@ -258,6 +302,17 @@ const utils = {
   toTitleCase(str) {
     if (!str) return '';
     return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  },
+
+  /**
+   * Pick singular or plural form based on count (regular "-s" plurals only).
+   * @param {number} count
+   * @param {string} singular - e.g. "award"
+   * @param {string} [plural] - Defaults to singular + "s"
+   * @returns {string}
+   */
+  pluralize(count, singular, plural) {
+    return count === 1 ? singular : plural || `${singular}s`;
   },
 
   // H7: Highlight search term matches within text
@@ -1778,18 +1833,21 @@ const utils = {
 
   /**
    * Render a consistent row count summary (LOW-1)
+   * @param {string} singular - Singular form for irregular plurals (e.g. "entry" for "entries")
    */
-  renderRowCount(containerId, shown, total, label, page, pageSize) {
+  renderRowCount(containerId, shown, total, label, page, pageSize, singular) {
     const el = document.getElementById(containerId);
     if (!el) return;
+    const word = label || 'records';
+    const noun = total === 1 ? singular || word.replace(/s$/, '') : word;
     if (shown < total && page && pageSize) {
       const from = (page - 1) * pageSize + 1;
       const to = Math.min(page * pageSize, total);
-      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">Showing ${from}–${to} of ${total} ${noun}</span>`;
     } else if (shown < total) {
-      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">Showing ${shown} of ${total} ${noun}</span>`;
     } else {
-      el.innerHTML = `<span class="text-muted small">${total} ${label || 'records'}</span>`;
+      el.innerHTML = `<span class="text-muted small">${total} ${noun}</span>`;
     }
   },
 
@@ -3377,7 +3435,10 @@ const apiClient = {
     try {
       json = await res.json();
     } catch (_parseErr) {
-      throw new Error(`API error ${res.status}: invalid response`);
+      // BTA-116 (M2): non-technical admins should never see a raw HTTP status —
+      // the server returning unparseable JSON is exactly the "something went
+      // wrong server-side" case this message is for.
+      throw new Error('Something went wrong on our end. Please try again in a moment.');
     }
 
     // Retry on 429 (rate-limited) or 5xx server errors
@@ -3388,8 +3449,23 @@ const apiClient = {
     }
 
     if (!res.ok) {
-      const errorMsg = json.message || json.error || (json.details && json.details[0]) || `API error ${res.status}`;
+      // BTA-116 (M2): prefer the server's own message/error; only fall back to
+      // a plain-English generic message, never a raw "API error <status>" string.
+      const errorMsg =
+        json.message ||
+        json.error ||
+        (json.details && json.details[0]) ||
+        'Something went wrong — please try again, or contact support if this continues.';
       throw new Error(errorMsg);
+    }
+    // BTA-116 (M1): a successful save while the Settings tab is open is treated
+    // as "saved" — clears the generic dirty flag without needing to patch each
+    // of settings.js's many individual save*() methods.
+    if (STATE.unsavedChanges && STATE.unsavedChanges.settings) {
+      const settingsTab = document.getElementById('settings');
+      if (settingsTab && settingsTab.classList.contains('active')) {
+        utils.clearFormDirty('settings');
+      }
     }
     return json;
   },
@@ -3520,6 +3596,18 @@ const apiClient = {
    */
   async rpc(rpcName, rpcParams = {}) {
     return this._call({ operation: 'rpc', rpcName, rpcParams });
+  },
+
+  /**
+   * Call a custom named operation on the server-side proxy (anything beyond
+   * the standard select/insert/update/upsert/delete/rpc verbs, e.g. batch
+   * import pipelines). Params are merged alongside `operation` in the body.
+   * @param {string} operation - The operation name the data-proxy handler switches on
+   * @param {Object} [params={}] - Operation-specific payload
+   * @returns {Promise<Object>}
+   */
+  async post(operation, params = {}) {
+    return this._call({ operation, ...params });
   },
 
   /**

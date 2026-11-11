@@ -2870,3 +2870,43 @@ Implemented the full BTA-115 resolution plan under explicit authorisation.
 ### HH.4 — Git/worktree state
 
 Branch `claude/supabase-cms-setup-test-e6oiza`. **HEAD before this task:** `a5d330e`. Committed and pushed as part of this same task, per its explicit instruction — see the commit referenced in this task's own completion report for the resulting HEAD.
+
+## II. Post-BTA-117 — `feature/safe-reconciliation` Main-Merge Branch (2026-11-11)
+
+**Important continuity note before anything else:** everything in this section happened on a **separate branch, `feature/safe-reconciliation`**, created off `origin/main`, not on `claude/supabase-cms-setup-test-e6oiza`. This work was not given a `BTA-NNN` number by the person directing it, so none is invented here — titled descriptively instead, per this log's standing rule against fabricating continuity that doesn't exist. **This branch (`claude/supabase-cms-setup-test-e6oiza`) is untouched by any of it** — still exactly at `5201479` (BTA-119's commit: 3 skipped tests fixed, `home.html` link fix on 4 public pages, `auth.js`'s raw-error fallback fixed), both locally and on `origin`.
+
+The detail record for everything below lives in `RECONCILIATION-OPEN-QUESTIONS.md` **on `feature/safe-reconciliation` only** — it does not exist on this branch or on `main`. A future session picking up this work needs to check out `feature/safe-reconciliation` to read it in full; this section is a summary, not a replacement.
+
+### II.1 — What happened, in sequence
+
+1. **Why:** separately from the BTA-NNN sequence, a decision was made to reconcile `claude/supabase-cms-setup-test-e6oiza` with `origin/main`, which had drifted 85 commits apart (a parallel public-voting-site workstream on `main`, merged with this branch's security/audit work) — `+26,622/−35,155` lines across 234 files.
+2. **`feature/safe-reconciliation` created**, the merge run, **24 real git conflicts resolved by hand** (home-link fixes, `nominate.js` payload fix, category-rename sync to match `main`'s migration-068 rename, dual script-tag merges, 3 public pages restored that `main` had kept building out as a live feature — `award-nominees.html`/`award_companies.html`/`company-profile.html` — while this branch had deleted them as orphaned). Verified clean build + 85/85 test suites after resolution.
+3. **`btc-module.js` (a TradingView crypto/FX ticker widget)** was restored per explicit instruction (to avoid silently dropping a `main` feature), then **empirically tested live** (Playwright, headless Chromium, driving the real `rbacModule.applyPermissions()` code path) — found to be unreachable by **any** role, including `super_admin`, because Bootstrap's `.d-none` (`display:none !important`) blocks the inline-style-only visibility toggle `main` itself ships. **Reverted** on that evidence. Fully recoverable from commit `bba140d` on that branch if ever wanted back — the bug would need fixing at the same time.
+4. **The 4 architecturally-diverged files** (`entries.js`, `nominee-uploads.js`, `test-data-manager.js`, `automation-scheduler.js`) — large, non-conflicting rewrites that git auto-resolved silently in this branch's favour, never flagged as conflicts — were given a dedicated decision-focused review and **explicitly approved to keep this branch's versions**, including locking `nominee-uploads.js` to its strict dropdown-first area-selection model over `main`'s free-text fuzzy-matching, specifically for the data-integrity reason (eliminates silent geographic mis-assignment of nominees).
+5. **The merged branch was split into 4 reviewable PR branches** rather than left as one 235-file diff, using `build.js`'s own `PUBLIC_PAGES`/`publicJsFiles` lists as the ground-truth split criterion for the public-vs-admin division:
+   - `pr1/security-infra-migrations` (21 files: migrations 091–094 + tests, new `api/_lib/` modules, the 4 decided files) — pushed to `origin`, verified standalone (72/72 suites, 6,461 tests).
+   - `pr2/documentation` (54 files, all docs) — pushed to `origin`, zero code risk.
+   - `pr3a/public-pages-ui` (38 files) — pushed to `origin`, verified **fully independent** standalone (75/75 suites, 6,588 tests).
+   - `pr3b/admin-app-drift` (122 files) — pushed to `origin`, builds clean but **3 suites fail standalone** (`tests/entry-proxy.test.js`, `tests/data-proxy-user-management.test.js`, `tests/data-proxy.test.js`) because `api/data-proxy.js`/`api/entry-proxy.js` here `require()` modules that only exist in PR1 — a confirmed, expected dependency, not a defect.
+   - An original unsplit `pr3/application-integration` (160 files, the union of 3a+3b) was created first as an intermediate step and still exists **locally only, not pushed** — not meant to become a PR itself.
+
+### II.2 — Current state (verify this yourself before trusting it — don't take a prior session's word for it)
+
+- `claude/supabase-cms-setup-test-e6oiza`: unaffected, at `5201479`, in sync with `origin`.
+- `origin/main`: unaffected — nothing from any of the above has merged into it.
+- `origin/feature/safe-reconciliation`: pushed, HEAD `d561b6d` (adds the final decisions + branch-split record to `RECONCILIATION-OPEN-QUESTIONS.md` on that branch).
+- `origin/pr1/security-infra-migrations`, `origin/pr2/documentation`, `origin/pr3a/public-pages-ui`, `origin/pr3b/admin-app-drift`: all pushed, no GitHub PRs opened yet for any of them.
+- `pr3/application-integration`: local only, not pushed, superseded by `pr3a`+`pr3b`.
+
+### II.3 — What's left to do
+
+1. **Open the 4 GitHub PRs** — branches are pushed and ready, but no PR has actually been opened for any of them yet.
+2. **Merge order: PR1 first, then PR2 and PR3a in parallel (no dependency), then PR3b last** (needs PR1's `api/_lib/` modules merged into `main` to build/test green — a testing-correctness constraint, not a merge-conflict one, since PR1 and PR3b touch disjoint files).
+3. **A 15-minute manual/browser pass was never done** — the admin SPA's live load (console-error-free) and the handful of touched public pages (`payment-success.html`, `payment-cancelled.html`, `home.html`, `nominate.html`, etc.) have only been verified via build + Jest, never clicked through in a real browser session with a live backend.
+4. **Open epistemic question, not yet answered:** whether this entire reconciliation detour was actually necessary, given BTA-119's own deliverable (the thing this branch needed) was already complete and pushed before the detour started. Worth confirming explicitly whether the standing intent is still to keep this branch caught up with `main`'s parallel site work.
+5. **Unrelated small ticket, noticed in passing, not fixed:** `api/_lib/award-categories.js` on `main` is stale against its own declared source of truth (`config.js`) — missing the migration-068 category renames. Doesn't block anything above.
+6. Once the 4 PRs are through review and merged (in order), decide whether `feature/safe-reconciliation` and the now-superseded `pr3/application-integration` local branch should be deleted, or kept a while as a reference.
+
+### II.4 — Git/worktree state
+
+This branch, `claude/supabase-cms-setup-test-e6oiza`: HEAD unchanged at `5201479` before this append. This section's own addition to `BTA-CMS-PROJECT-TASKS.md` is, as of writing, an **uncommitted** change on this branch's working tree — matching this log's established practice of leaving documentation-only appends uncommitted pending separate, explicit authorisation to commit (see HH's own note on this same convention), since appending a continuity-log entry was what was asked for here, not a commit or push.

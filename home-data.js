@@ -285,19 +285,12 @@
       ],
       Cities: ['Cardiff', 'Swansea'],
     },
-    'northern-ireland': {
-      Belfast: ['Belfast City Centre', 'North Belfast', 'South Belfast', 'East Belfast', 'West Belfast'],
-      'Antrim & Newtownabbey': ['Antrim', 'Newtownabbey', 'Ballyclare', 'Randalstown'],
-      'Ards & North Down': ['Bangor', 'Newtownards', 'Holywood', 'Comber', 'Donaghadee'],
-      'Armagh, Banbridge & Craigavon': ['Armagh', 'Banbridge', 'Craigavon', 'Lurgan', 'Portadown'],
-      'Causeway Coast & Glens': ['Coleraine', 'Ballycastle', 'Limavady', 'Ballymoney', 'Portrush'],
-      'Derry & Strabane': ['Derry / Londonderry', 'Strabane'],
-      'Fermanagh & Omagh': ['Enniskillen', 'Omagh', 'Irvinestown'],
-      'Lisburn & Castlereagh': ['Lisburn', 'Castlereagh', 'Dromore'],
-      'Mid & East Antrim': ['Ballymena', 'Carrickfergus', 'Larne'],
-      'Mid Ulster': ['Cookstown', 'Magherafelt', 'Dungannon', 'Maghera'],
-      'Newry, Mourne & Down': ['Newry', 'Newcastle', 'Downpatrick', 'Warrenpoint'],
-    },
+    // Northern Ireland is permanently excluded from British Trade Awards'
+    // geographic coverage (BTA-070 decision; see CLAUDE.md and
+    // BTA-CMS-PROJECT-TASKS.md Decision register item 23). No country
+    // picker button offers it (submit-entry.html/industry-leader.html only
+    // have england/scotland/wales buttons), so this branch was unreachable
+    // through the UI -- it has been removed rather than left as dead data.
   };
 
   /* ─────────────────────────────────────────────
@@ -495,48 +488,6 @@
     Pontypridd: 'BTA_Corporate_Horizontal-gold-white.png',
     Caerphilly: 'BTA_Corporate_Horizontal-gold-white.png',
     Bridgend: 'BTA_Corporate_Horizontal-gold-white.png',
-    // Northern Ireland → United Kingdom.png placeholder
-    'Belfast City Centre': 'BTA_Corporate_Horizontal-gold-white.png',
-    'North Belfast': 'BTA_Corporate_Horizontal-gold-white.png',
-    'South Belfast': 'BTA_Corporate_Horizontal-gold-white.png',
-    'East Belfast': 'BTA_Corporate_Horizontal-gold-white.png',
-    'West Belfast': 'BTA_Corporate_Horizontal-gold-white.png',
-    Antrim: 'BTA_Corporate_Horizontal-gold-white.png',
-    Newtownabbey: 'BTA_Corporate_Horizontal-gold-white.png',
-    Ballyclare: 'BTA_Corporate_Horizontal-gold-white.png',
-    Randalstown: 'BTA_Corporate_Horizontal-gold-white.png',
-    Newtownards: 'BTA_Corporate_Horizontal-gold-white.png',
-    Holywood: 'BTA_Corporate_Horizontal-gold-white.png',
-    Comber: 'BTA_Corporate_Horizontal-gold-white.png',
-    Donaghadee: 'BTA_Corporate_Horizontal-gold-white.png',
-    Armagh: 'BTA_Corporate_Horizontal-gold-white.png',
-    Banbridge: 'BTA_Corporate_Horizontal-gold-white.png',
-    Craigavon: 'BTA_Corporate_Horizontal-gold-white.png',
-    Lurgan: 'BTA_Corporate_Horizontal-gold-white.png',
-    Portadown: 'BTA_Corporate_Horizontal-gold-white.png',
-    Coleraine: 'BTA_Corporate_Horizontal-gold-white.png',
-    Ballycastle: 'BTA_Corporate_Horizontal-gold-white.png',
-    Limavady: 'BTA_Corporate_Horizontal-gold-white.png',
-    Ballymoney: 'BTA_Corporate_Horizontal-gold-white.png',
-    Portrush: 'BTA_Corporate_Horizontal-gold-white.png',
-    'Derry / Londonderry': 'BTA_Corporate_Horizontal-gold-white.png',
-    Strabane: 'BTA_Corporate_Horizontal-gold-white.png',
-    Enniskillen: 'BTA_Corporate_Horizontal-gold-white.png',
-    Omagh: 'BTA_Corporate_Horizontal-gold-white.png',
-    Irvinestown: 'BTA_Corporate_Horizontal-gold-white.png',
-    Lisburn: 'BTA_Corporate_Horizontal-gold-white.png',
-    Castlereagh: 'BTA_Corporate_Horizontal-gold-white.png',
-    Dromore: 'BTA_Corporate_Horizontal-gold-white.png',
-    Ballymena: 'BTA_Corporate_Horizontal-gold-white.png',
-    Carrickfergus: 'BTA_Corporate_Horizontal-gold-white.png',
-    Larne: 'BTA_Corporate_Horizontal-gold-white.png',
-    Cookstown: 'BTA_Corporate_Horizontal-gold-white.png',
-    Magherafelt: 'BTA_Corporate_Horizontal-gold-white.png',
-    Dungannon: 'BTA_Corporate_Horizontal-gold-white.png',
-    Maghera: 'BTA_Corporate_Horizontal-gold-white.png',
-    Newry: 'BTA_Corporate_Horizontal-gold-white.png',
-    Downpatrick: 'BTA_Corporate_Horizontal-gold-white.png',
-    Warrenpoint: 'BTA_Corporate_Horizontal-gold-white.png',
   };
 
   /* ─────────────────────────────────────────────

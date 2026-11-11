@@ -511,7 +511,12 @@ const votingSystem = {
     this._submittingVote = true;
 
     const submitBtn = document.querySelector('#verificationForm button[type="submit"]');
-    if (submitBtn) submitBtn.setAttribute('aria-busy', 'true');
+    // BTA-116 (m3): visibly disable the button too, not just aria-busy, so a
+    // double-click gets clear feedback instead of a silent no-op.
+    if (submitBtn) {
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.disabled = true;
+    }
 
     try {
       const voterName = sessionStorage.getItem('voterName') || '';
@@ -574,7 +579,10 @@ const votingSystem = {
       }
     } finally {
       this._submittingVote = false;
-      if (submitBtn) submitBtn.setAttribute('aria-busy', 'false');
+      if (submitBtn) {
+        submitBtn.setAttribute('aria-busy', 'false');
+        submitBtn.disabled = false;
+      }
     }
   },
 

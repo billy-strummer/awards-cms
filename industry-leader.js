@@ -69,6 +69,8 @@
     },
   ];
 
+  const NEW_BUSINESS_CATEGORY = 'New Business of the Year';
+
   // =====================================================
   // Lightweight toast for public pages
   // =====================================================
@@ -129,6 +131,77 @@
       this.setupCharCounters();
       this.setupTermsCheckbox();
       this.updateProgressIndicator(1);
+      this.applyFormContent();
+    },
+
+    // BTA-072: apply CMS-editable step headings/subtitles and confirmation
+    // copy, falling back to the page's existing hardcoded text when unset
+    // or malformed.
+    applyFormContent: async function () {
+      try {
+        const data = await nominationApi({ action: 'get_public_data' });
+        const content = data?.site_settings?.form_content?.industry_leader;
+        if (!content || typeof content !== 'object') return;
+
+        const steps = content.steps || {};
+        Object.keys(steps).forEach((stepId) => {
+          const stepEl = document.getElementById(stepId);
+          if (!stepEl) return;
+          const entry = steps[stepId] || {};
+          if (entry.title) {
+            const titleEl = stepEl.querySelector('.step-question');
+            if (titleEl) titleEl.textContent = entry.title;
+          }
+          if (entry.subtitle) {
+            const subtitleEl = stepEl.querySelector('.step-subtitle');
+            if (subtitleEl) subtitleEl.textContent = entry.subtitle;
+          }
+        });
+
+        const successEl = document.getElementById('stepSuccess');
+        if (successEl) {
+          if (content.confirmationTitle) {
+            const h2 = successEl.querySelector('h2');
+            if (h2) h2.textContent = content.confirmationTitle;
+          }
+          if (content.confirmationMessage) {
+            const p = successEl.querySelector('p.text-muted');
+            if (p) p.textContent = content.confirmationMessage;
+          }
+        }
+
+        // BTA-073: this page has no <footer> and isn't covered by
+        // public-site-settings.js's page_seo/og:title sync, so its own
+        // title/description/social-preview metadata is applied here,
+        // reusing the exact same admin-configured values as the step copy.
+        this._applyPageMeta(content);
+      } catch (_e) {
+        // Network/parse failure -- keep the existing hardcoded text.
+      }
+    },
+
+    _applyPageMeta: function (content) {
+      if (content.pageTitle) {
+        document.title = content.pageTitle;
+        this._setMetaContent('property', 'og:title', content.pageTitle);
+      }
+      if (content.metaDescription) {
+        this._setMetaContent('name', 'description', content.metaDescription);
+        this._setMetaContent('property', 'og:description', content.metaDescription);
+      }
+    },
+
+    _setMetaContent: function (attr, value, content) {
+      const selector = 'meta[' + attr + '="' + value + '"]';
+      const existing = document.querySelector(selector);
+      if (existing) {
+        existing.setAttribute('content', content);
+      } else {
+        const meta = document.createElement('meta');
+        meta.setAttribute(attr, value);
+        meta.setAttribute('content', content);
+        document.head.appendChild(meta);
+      }
     },
 
     // --------------------------------------------------
@@ -226,11 +299,34 @@
     },
 
     // --------------------------------------------------
-    // Toggle nominee fields based on category (no-op: step 3 now uses unified fields)
+    // Toggle nominee fields based on category.
+    //
+    // BTA-095: api/entry-proxy.js's handleSubmitNomination branches on
+    // awardCategory === 'New Business of the Year' and requires a
+    // different field set per branch (businessName/businessOwner vs.
+    // nomineeName/nomineeCompany). This had been reduced to a no-op at
+    // some point after the form was simplified to one shared field set,
+    // which is the root cause of every nomination submission failing --
+    // restoring it here (rather than removing the branching from the
+    // server) preserves the category-driven distinction the award
+    // programme still visibly offers via the category selector.
     // --------------------------------------------------
-    updateNomineeFields: function () {
-      // Step 3 now uses a single set of company/trade professional fields.
-      // This function is kept as a no-op for compatibility.
+    updateNomineeFields: function (categoryName) {
+      const isBusiness = categoryName === NEW_BUSINESS_CATEGORY;
+      const personFields = document.getElementById('personFields');
+      const businessFields = document.getElementById('businessFields');
+
+      if (personFields) personFields.style.display = isBusiness ? 'none' : '';
+      if (businessFields) businessFields.style.display = isBusiness ? '' : 'none';
+
+      // Clear -- not just hide -- whichever branch is no longer shown, so a
+      // value typed before switching categories is never submitted as
+      // though it belonged to the other branch.
+      const toClear = isBusiness ? ['nomineeName', 'nomineeCompany'] : ['businessName', 'businessOwner'];
+      toClear.forEach(function (id) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
     },
 
     // --------------------------------------------------
@@ -558,15 +654,48 @@
           return true;
         }
         case 3: {
-          const nameEl = document.getElementById('nomineeName');
-          if (!nameEl || !nameEl.value.trim()) {
-            this._markInvalid(nameEl, 'Please enter the name of the company or trade professional');
-            return false;
+          const isBusiness = this.selectedCategory === NEW_BUSINESS_CATEGORY;
+
+          if (isBusiness) {
+            const businessNameEl = document.getElementById('businessName');
+            if (!businessNameEl || !businessNameEl.value.trim()) {
+              this._markInvalid(businessNameEl, 'Please enter the business name');
+              return false;
+            }
+            if (businessNameEl.value.trim().length < 2) {
+              this._markInvalid(businessNameEl, 'Business name must be at least 2 characters');
+              return false;
+            }
+            const businessOwnerEl = document.getElementById('businessOwner');
+            if (!businessOwnerEl || !businessOwnerEl.value.trim()) {
+              this._markInvalid(businessOwnerEl, "Please enter the business owner's name");
+              return false;
+            }
+            if (businessOwnerEl.value.trim().length < 2) {
+              this._markInvalid(businessOwnerEl, 'Name must be at least 2 characters');
+              return false;
+            }
+          } else {
+            const nameEl = document.getElementById('nomineeName');
+            if (!nameEl || !nameEl.value.trim()) {
+              this._markInvalid(nameEl, "Please enter the nominee's name");
+              return false;
+            }
+            if (nameEl.value.trim().length < 2) {
+              this._markInvalid(nameEl, 'Name must be at least 2 characters');
+              return false;
+            }
+            const companyEl = document.getElementById('nomineeCompany');
+            if (!companyEl || !companyEl.value.trim()) {
+              this._markInvalid(companyEl, "Please enter the nominee's company");
+              return false;
+            }
+            if (companyEl.value.trim().length < 2) {
+              this._markInvalid(companyEl, 'Company name must be at least 2 characters');
+              return false;
+            }
           }
-          if (nameEl.value.trim().length < 2) {
-            this._markInvalid(nameEl, 'Name must be at least 2 characters');
-            return false;
-          }
+
           const phoneEl = document.getElementById('nomineePhone');
           if (!phoneEl || !phoneEl.value.trim()) {
             this._markInvalid(phoneEl, 'Please enter the business phone number');
@@ -639,6 +768,15 @@
           this.formData.nomineeName = (document.getElementById('nomineeName') || {}).value
             ? document.getElementById('nomineeName').value.trim()
             : '';
+          this.formData.nomineeCompany = (document.getElementById('nomineeCompany') || {}).value
+            ? document.getElementById('nomineeCompany').value.trim()
+            : '';
+          this.formData.businessName = (document.getElementById('businessName') || {}).value
+            ? document.getElementById('businessName').value.trim()
+            : '';
+          this.formData.businessOwner = (document.getElementById('businessOwner') || {}).value
+            ? document.getElementById('businessOwner').value.trim()
+            : '';
           this.formData.nomineeWebsite = (document.getElementById('nomineeWebsite') || {}).value
             ? document.getElementById('nomineeWebsite').value.trim()
             : '';
@@ -686,10 +824,13 @@
           : '<div class="review-text-block" style="color:#999; font-style:italic;">Not provided</div>';
       };
 
+      const isBusiness = d.awardCategory === NEW_BUSINESS_CATEGORY;
       const nomineeSection =
         '<div class="review-group">' +
         '<div class="review-group-title">Nominee Details <span class="review-edit-btn float-end" data-action="industryLeaderApp.goToStep" data-args="[3]">Edit</span></div>' +
-        row('Name', d.nomineeName) +
+        (isBusiness
+          ? row('Business Name', d.businessName) + row('Business Owner', d.businessOwner)
+          : row('Name', d.nomineeName) + row('Company', d.nomineeCompany)) +
         row('Website', d.nomineeWebsite) +
         row('Phone', d.nomineePhone) +
         '<div class="review-row"><span class="review-label">Description of Work</span></div>' +
@@ -746,6 +887,16 @@
       submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
 
       const d = this.formData;
+      const isBusiness = d.awardCategory === NEW_BUSINESS_CATEGORY;
+
+      // BTA-095: handleSubmitNomination has no dedicated column for the
+      // nominee's phone number in either branch -- fold it into the
+      // generic supportingInfo field it already reads and persists,
+      // rather than silently discarding it.
+      const supportingInfoParts = [];
+      if (d.nomineePhone) {
+        supportingInfoParts.push((isBusiness ? 'Business' : 'Company') + ' phone: ' + d.nomineePhone);
+      }
 
       const payload = {
         action: 'submit_nomination',
@@ -757,11 +908,25 @@
         nominatorName: d.nominatorName,
         nominatorEmail: d.nominatorEmail,
         nominatorPhone: d.nominatorPhone,
-        nomineeName: d.nomineeName,
-        nomineeWebsite: d.nomineeWebsite,
-        nomineePhone: d.nomineePhone,
-        nomineeWorkDesc: d.nomineeWorkDesc,
+        supportingInfo: supportingInfoParts.join('\n'),
       };
+
+      if (isBusiness) {
+        payload.businessName = d.businessName;
+        payload.businessOwner = d.businessOwner;
+        payload.businessWebsite = d.nomineeWebsite;
+        payload.businessDescription = d.nomineeWorkDesc;
+      } else {
+        payload.nomineeName = d.nomineeName;
+        payload.nomineeCompany = d.nomineeCompany;
+        // nomineeWebsite/nomineeWorkDesc have no structured destination in
+        // the person branch (only the New Business branch's
+        // businessWebsite/businessDescription are read) -- fold into
+        // supportingInfo rather than silently discarding them.
+        if (d.nomineeWebsite) supportingInfoParts.unshift('Company website: ' + d.nomineeWebsite);
+        if (d.nomineeWorkDesc) supportingInfoParts.push('Description of work: ' + d.nomineeWorkDesc);
+        payload.supportingInfo = supportingInfoParts.join('\n');
+      }
 
       nominationApi(payload)
         .then(function (result) {
@@ -772,7 +937,7 @@
           const successNominee = document.getElementById('success-nominee');
           const successCategory = document.getElementById('success-category');
           if (successNominee) {
-            successNominee.textContent = d.nomineeName || '';
+            successNominee.textContent = (isBusiness ? d.businessName : d.nomineeName) || '';
           }
           if (successCategory) {
             successCategory.textContent = d.awardCategory || '';

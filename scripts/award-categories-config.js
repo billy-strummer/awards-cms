@@ -45,7 +45,7 @@ const STANDARD_CATEGORIES = {
     'Timber Window Installer',
   ],
 
-  'FIT-OUT & FINISHES': [
+  'FIT-OUT & FINISHING': [
     'Bathroom Installer',
     'Carpet Fitter',
     'Curtains & Blinds Installer',
@@ -71,7 +71,7 @@ const STANDARD_CATEGORIES = {
     'Tree Surgery Services',
   ],
 
-  'TECH & GREEN ENERGY': [
+  'ENERGY, TECH & SUSTAINABILITY': [
     'EV Charger Installer',
     'Insulation & Energy Efficiency Company',
     'PV Installer',
@@ -118,7 +118,7 @@ const SMALL_CATEGORIES = {
 
   'CARPENTRY & JOINERY': ['Carpentry & Joinery Company', 'Timber Window Installer'],
 
-  'FIT-OUT & FINISHES': [
+  'FIT-OUT & FINISHING': [
     'Bathroom Installer',
     'Carpet Fitter',
     'Flooring Installer',
@@ -137,7 +137,7 @@ const SMALL_CATEGORIES = {
     'Tree Surgery Services',
   ],
 
-  'TECH & GREEN ENERGY': [
+  'ENERGY, TECH & SUSTAINABILITY': [
     'EV Charger Installer',
     'Insulation & Energy Efficiency Company',
     'PV Installer',

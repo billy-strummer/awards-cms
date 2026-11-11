@@ -27,6 +27,18 @@ CREATE TABLE IF NOT EXISTS email_lists (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal email_lists
+-- table; backfill columns missing from that stub version.
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS award_id UUID;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS allow_duplicates BOOLEAN DEFAULT false;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS auto_clean BOOLEAN DEFAULT true;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS subscriber_count INTEGER DEFAULT 0;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS active_subscriber_count INTEGER DEFAULT 0;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS tags TEXT;
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- Add columns that may be missing if table already existed
 ALTER TABLE email_lists ADD COLUMN IF NOT EXISTS description TEXT;
@@ -68,6 +80,19 @@ CREATE TABLE IF NOT EXISTS email_list_subscribers (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal email_list_subscribers
+-- table; backfill columns missing from that stub version.
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS subscription_date TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS unsubscribe_date TIMESTAMPTZ;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS source VARCHAR(100);
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS import_batch_id UUID;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS custom_fields JSONB;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS emails_clicked INTEGER DEFAULT 0;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_email_sent TIMESTAMPTZ;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS last_email_opened TIMESTAMPTZ;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- Add columns that may be missing if table already existed
 ALTER TABLE email_list_subscribers ADD COLUMN IF NOT EXISTS list_id UUID REFERENCES email_lists(id) ON DELETE CASCADE;
@@ -106,6 +131,18 @@ CREATE TABLE IF NOT EXISTS email_import_batches (
   imported_by VARCHAR(255),
   imported_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal email_import_batches
+-- table; backfill columns missing from that stub version.
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS list_id UUID NOT NULL REFERENCES email_lists(id) ON DELETE CASCADE;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS import_type VARCHAR(50) NOT NULL;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS total_rows INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS successful_imports INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS failed_imports INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS duplicate_count INTEGER DEFAULT 0;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS error_log TEXT;
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS imported_by VARCHAR(255);
+ALTER TABLE email_import_batches ADD COLUMN IF NOT EXISTS imported_at TIMESTAMPTZ DEFAULT NOW();
+
 
 -- ============================================
 -- EMAIL UNSUBSCRIBES TABLE

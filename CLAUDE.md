@@ -2,6 +2,23 @@
 
 **Read this file first.** It provides the project context, current state, and step-by-step implementation plan. If a session gets cut off, the next Claude session should read this file and the `IMPLEMENTATION-PLAN.md` to pick up where things left off.
 
+## MANDATORY: Project Continuity Protocol
+
+> **CLAUDE: This project has previously lost work and task history between sessions/recreated environments.** `BTA-CMS-PROJECT-TASKS.md` is the authoritative project handover record for the BTA workstream (task IDs, decisions, outstanding questions, git/recovery history). Before doing anything else in this project:
+>
+> 1. Read this file (`CLAUDE.md`) and `BTA-CMS-PROJECT-TASKS.md` before acting.
+> 2. Verify the actual current repository and Git state yourself (branch, HEAD, `git status`, remote tips) — do not trust a prior session's report as still current.
+> 3. Identify the recorded current task, its scope, dependencies and next intended action from the task sheet.
+> 4. Work on one approved task at a time; do not expand scope mid-task.
+> 5. Prefer read-only, evidence-first investigation before any implementation.
+> 6. Update `BTA-CMS-PROJECT-TASKS.md` with evidence and the next action before ending a task.
+> 7. Report discrepancies between the task sheet and actual repository state instead of silently resolving them.
+> 8. Stop and report if the task sheet is missing, materially contradictory, or inconsistent with repository evidence — do not silently proceed as if project history is known from memory.
+> 9. Never claim a task is complete without supporting evidence (exact test output, exact files changed).
+> 10. Never claim a file is "safe" merely because it exists in the current working tree — distinguish working-tree-only, committed-locally, and pushed-to-remote (see `BTA-CMS-PROJECT-TASKS.md` Section H for what each level actually guarantees).
+> 11. At the end of every task, explicitly report whether the work is untracked, committed locally, or pushed remotely.
+> 12. Preserve the existing substantive CMS roadmap (the BTA-00x task sequence and related work) when starting a new session — continuity administration must never silently replace or reorder the underlying project work.
+
 ## Design System Rules
 
 > **CLAUDE: Read these rules before touching any HTML page.**
@@ -22,6 +39,21 @@ The following pages serve a **legal purpose** and must **not** be restyled, rest
 - **`terms-and-conditions.html`** — Legal document. Content and structure must remain as-is.
 
 These pages intentionally use a plain/light design to ensure readability and legal clarity. Future design sweeps, brand refreshes, and UI improvements **must exclude these two files**.
+
+---
+
+## PERMANENT BUSINESS DECISION: Geographic Coverage (Northern Ireland Excluded)
+
+> **CLAUDE: Read this before touching anything related to areas, regions, countries, counties, cities, or location dropdowns. This is a settled business decision, not an open question to re-investigate.**
+
+**Northern Ireland is explicitly excluded from the British Trade Awards' intended geographic coverage** (decided BTA-070, 2026-11-02). The supported countries are England, Scotland and Wales only.
+
+- Do **not** reintroduce Northern Ireland into any public or admin geographic option, dropdown, select, or CSV-import help text.
+- Do **not** add Northern Ireland to any supported country, county, region, city or area list (`location.js`, `areas-manager.js`, `home-data.js`'s `REGION_DATA`, the `areas`/`regions` tables, or anywhere else).
+- Do **not** create Northern Ireland award areas or geographic seed records.
+- `migrations/090-allow-northern-ireland-areas.sql` (which would have widened `areas.country`'s CHECK constraint to permit Northern Ireland) was authored in BTA-069 and **deleted in BTA-070** as a direct consequence of this decision — it is not needed and must not be recreated for this purpose.
+- No historical Northern Ireland data exists anywhere in this repository's migrations or seed files (confirmed by a repository-wide audit, BTA-070) — there was nothing to clean up at the database level. If a live database somehow contains Northern Ireland rows at some future point, that is a separate, explicit data-cleanup decision, not something to infer from this rule.
+- **Future geographic expansion** (adding/removing a country, region, county, city or other classification) must go through the CMS once the relevant admin capability exists, and requires its own business approval — it is not something to implement unilaterally just because this exclusion decision exists. See `BTA-CMS-PROJECT-TASKS.md` Decision register item 23 (resolved) and the geographic-architecture findings in BTA-070's report (Section M) for the current state of `areas`/`regions`-based geographic management.
 
 ---
 
@@ -48,6 +80,14 @@ These pages intentionally use a plain/light design to ensure readability and leg
 ## ACTIVE WORK: Database Schema Audit
 
 > **CLAUDE: A database schema audit was run on 2026-05-30 covering all 48 SQL migration files. Findings are tracked at `DB-SCHEMA-AUDIT-TODO.md` with 3 Critical, 3 High, 3 Medium, and 1 Low item. The most urgent finding is missing RLS policies on 8 tables (DB-C3) — without RLS, authenticated Supabase users can read all data directly. Work through items DB-C1 → DB-C3 → DB-H1 → … → DB-L1. Mark each `[x]` when committed and pushed.**
+
+## ACTIVE WORK: Live Production RLS/Grant Exposure and Migration 093 (HIGHEST PRIORITY)
+
+> **CLAUDE: BTA-078/079 confirmed, via a direct live read-only connection to production (`qdzyknercdqwhwijbcxf`), that `organisations`, `organisation_contacts`, `gdpr_requests`, `entries`, `award_assignments`, `invoices`, `payments`, `award_years`, `event_guests`, `sponsorship_opportunities` and all 22 of migration 088's tables are currently fully exposed to the public `anon` key (original permissive policy never dropped by migration 052). `anonymize_organisation` is confirmed directly callable by `anon`. A corrective migration, `migrations/093-harden-remaining-permissive-policy-tables.sql`, was authored in BTA-080 and locally tested (40 static tests) but has **not been applied to any database** — verifying it against the test project (`htcsewpztvxafksdzuhp`) has been blocked since BTA-081 by that project's Postgres connection timing out despite the control plane reporting healthy; a Supabase support ticket is open. Read `BTA-PROJECT-CONTINUITY-CHECKPOINT.md` first for the full current state, migration inventory, and exact resume instructions before touching this area. Do not apply any migration to production without it first being verified on the test project and separately, explicitly authorised.
+>
+> **UPDATE (BTA-098/099/100):** the `test-data-manager.js` dependency (BTA-085, resolved BTA-098) and the `payment-success.html` anon-key `payments` dependency (BTA-097/099, resolved BTA-100 — replaced with a public, rate-limited, Stripe-session-authorised lookup, `api/stripe-payment.js`'s `public-payment-confirmation` action) have both been resolved. A fresh repository-wide re-check at the end of BTA-100 found **zero remaining browser-side dependency on any of migration 093's 8 target tables**. This is a **repository-evidence conclusion only** — the live Supabase schema/policy state has not been re-verified since BTA-078/079. See `BTA-CMS-PROJECT-TASKS.md` Section Y for full detail. Migration 093 must still not be applied without live test-project verification and separate, explicit authorisation — the connectivity blocker from BTA-081/082 has not been re-checked.**
+>
+> **UPDATE (BTA-101–105):** the BTA-081/082 test-project connectivity blocker is resolved (confirmed live, BTA-101). Migration 093 has been **applied to and independently verified on the test project** (`htcsewpztvxafksdzuhp`) — BTA-104, after two timed-out `apply_migration` confirmation attempts (BTA-102, and BTA-104's own second attempt) and a successful third attempt made with the user actively present to answer the MCP confirmation prompt (see BTA-103 for why the timeouts occurred — an unanswered MCP human-confirmation/elicitation request, not a database or SQL defect). **Production (`qdzyknercdqwhwijbcxf`) is untouched and still fully exposed** — BTA-105's fresh live read-only re-inspection confirms production's 8 target tables are unchanged since BTA-078/079. BTA-105 classifies migration 093 as **Ready with prerequisites** for production: no technical incompatibility was found (every policy it drops and grant it revokes matches production's live state exactly, statement-by-statement), and the remaining prerequisites are procedural — explicit separate authorisation, and a human actively present for the confirmation prompt during the call. See `BTA-CMS-PROJECT-TASKS.md` Section Z for full detail. **Do not apply migration 093 to production without that separate, explicit authorisation — this update does not constitute it.**
 
 ## ACTIVE WORK: Vercel / Build / CSP Configuration Audit
 
@@ -192,6 +232,15 @@ Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test sui
 | `ALLOWED_ORIGINS` | CORS origin allowlist for data-proxy (`data-proxy.js`) | Set (comma-separated URLs) |
 | `CONTACT_EMAIL` | Fallback contact email in payment receipts (`stripe-payment.js`); falls back to `FROM_EMAIL` if unset | Set |
 
+#### Required — verify these are set in Vercel before launch
+
+> **CLAUDE: These two were found missing from this document during a 2026-07 release-candidate audit — their presence in Vercel was never actually confirmed. Verify both are set before relying on the features below; do not assume "Set" just because they're listed here.**
+
+| Variable | Service | Why it's required |
+|---|---|---|
+| `CRON_SECRET` | Authenticates Vercel Cron's daily call to `/api/judge-automation?action=cron-tick` (judge assignment automation, `vercel.json`'s only scheduled cron) | `judge-automation.js` explicitly refuses to run (500) if this is unset — the daily automation silently does nothing every day until it's set. |
+| `RESEND_WEBHOOK_SECRET` | Verifies the `x-resend-signature` header on Resend's bounce/complaint webhook (`email-automation.js`, actions `resend-bounce`/`resend-complaint`) | As of this audit, the endpoint refuses the request (500) if unset, rather than skipping verification — previously it skipped verification silently, letting anyone suppress any email address. Must be set to the same value configured in the Resend dashboard's webhook settings for this endpoint to work at all. |
+
 #### Not Yet Configured (only needed when ready for these features)
 
 | Variable | Service | Where to get it |
@@ -208,6 +257,14 @@ Build passes (0 lint errors, ~1334KB JS chunks + core, 65KB CSS). 65/65 test sui
 | `FACEBOOK_PAGE_TOKEN` | Facebook & Instagram posting | developers.facebook.com → Graph API Explorer → Page Access Token (`pages_manage_posts`) |
 | `FACEBOOK_PAGE_ID` | Facebook posting | Facebook Page → About → Page ID |
 | `INSTAGRAM_ACCOUNT_ID` | Instagram posting | Graph API: `GET /{page-id}?fields=instagram_business_account` |
+
+#### Optional (have safe fallbacks — not needed to launch)
+
+| Variable | Service | Fallback if unset |
+|---|---|---|
+| `BTA_LOGO_URL` | Logo shown in Stripe Checkout and email headers (`stripe-payment.js`, `_lib/email-header.js`) | Falls back to `${APP_URL}/assets/british-trade-awards-logo.png`, or an empty string in email headers |
+| `SENTRY_DSN` | Error tracking | Sentry stays disabled; `build.js` logs this plainly at build time |
+| `DEV_EMAIL` | Redirects all outbound email to one inbox in non-production environments | Only read when `NODE_ENV !== 'production'` — irrelevant in production |
 
 ## Commands
 

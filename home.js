@@ -937,12 +937,11 @@
   }
 
   /* ============================================================
-     11. SPONSORS VISIBILITY — read from CMS config
+     11. PUBLIC CMS DATA — sponsors visibility + homepage entry countdown
+     (one shared request; see api/entry-proxy.js's handleGetPublicData)
   ============================================================ */
   try {
-    (function initSponsorsVisibility() {
-      const section = document.getElementById('sponsors');
-      if (!section) return;
+    (function initPublicData() {
       fetch('/api/entry-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -952,13 +951,54 @@
           return r.json();
         })
         .then(function (data) {
-          if (data.sponsors_visible) {
+          const section = document.getElementById('sponsors');
+          if (section && data.sponsors_visible) {
             section.style.display = '';
+          }
+          if (data.entry_open_date && typeof window.initBTAEntryCountdown === 'function') {
+            const targetMs = new Date(data.entry_open_date).getTime();
+            if (!isNaN(targetMs)) window.initBTAEntryCountdown(targetMs);
+          }
+
+          // Key Dates list + Vote box (BTA-064): replace the hardcoded
+          // fallback text with the live default season's dates wherever the
+          // CMS actually has them set. Each pair is independent -- a date an
+          // admin hasn't filled in yet simply leaves that line's existing
+          // fallback text in place rather than showing a blank or broken value.
+          function fmtDate(d) {
+            const ms = new Date(d).getTime();
+            if (isNaN(ms)) return null;
+            return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+          }
+          function setText(id, text) {
+            if (!text) return;
+            const el = document.getElementById(id);
+            if (el) el.textContent = text;
+          }
+
+          if (data.entry_open_date && data.entry_close_date) {
+            const entryOpen = fmtDate(data.entry_open_date);
+            const entryClose = fmtDate(data.entry_close_date);
+            if (entryOpen && entryClose) setText('key-date-entries', entryOpen + ' – ' + entryClose);
+          }
+          if (data.nominees_announcement_date) {
+            setText('key-date-nominees', fmtDate(data.nominees_announcement_date));
+          }
+          if (data.voting_open_date && data.voting_close_date) {
+            const votingOpen = fmtDate(data.voting_open_date);
+            const votingClose = fmtDate(data.voting_close_date);
+            if (votingOpen && votingClose) {
+              setText('key-date-voting', votingOpen + ' – ' + votingClose);
+              setText('vote-box-dates', votingOpen + ' to ' + votingClose);
+            }
+          }
+          if (data.winners_announcement_date) {
+            setText('key-date-winners', fmtDate(data.winners_announcement_date));
           }
         })
         .catch(function () {});
     })();
   } catch (e) {
-    console.warn('[BTA] initSponsorsVisibility', e);
+    console.warn('[BTA] initPublicData', e);
   }
 })();

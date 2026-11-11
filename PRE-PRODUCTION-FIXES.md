@@ -2,11 +2,11 @@
 
 **Purpose:** Checklist of all issues found during the March 2026 production readiness audit. Claude should read this file when asked to work through these fixes. Work through each item in order — security fixes first, then code fixes, then infrastructure.
 
-**Status:** SECTIONS A & B COMPLETE (code fixes done), SECTION C pending (infrastructure — requires user action)
+**Status:** SECTIONS A & B COMPLETE (code fixes done), SECTION C mostly complete per `CLAUDE.md`'s own env-var table — see the 2026-10-27 note below.
 **Created:** 2026-03-08
 **Last updated:** 2026-03-08
 
----
+> **Update (2026-10-27, BTA-050):** This file predates the BTA-007–051 workstream recorded in `BTA-CMS-PROJECT-TASKS.md`, which is now the current source for security/role-check status (Section A's fixes here were authentication-only; BTA-037/040/041/044/046/049 later found and closed the *role-check* gap this file didn't cover). For Section C: `CLAUDE.md`'s "Vercel Environment Variables" table is the current source of truth — as of this date it reports C1–C4 (Supabase keys, Stripe, Resend) **Set**, C5 (`ANTHROPIC_API_KEY`) and C6 (social platform keys) still **Not Yet Configured**, matching this file's own C5/C6 checkboxes below. **C7 (Deploy to Vercel) is checked `[ ]` below but that is stale**: this repository's own PR activity confirms Vercel preview deployments build and go `Ready` successfully (seen directly, 2026-10-27) — build/deploy infrastructure works. What remains genuinely unconfirmed from this repository is **production** specifically: the live custom domain, SSL, and whether every required env var is set in the **Production** environment scope specifically (not just Preview/Development) — see `BTA-CMS-PROJECT-TASKS.md`'s BTA-050 section for the exact remaining checks. C8 (Sentry) is correctly `[ ]` — confirmed still disabled by `node build.js`'s own build-time log line.
 
 ## A. Security Fixes (Code Changes — Claude Can Do These)
 

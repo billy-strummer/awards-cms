@@ -156,9 +156,12 @@ const locationModule = {
     const el = document.getElementById(selectId);
     if (!el) return;
     const current = el.value;
+    // England/Scotland/Wales only -- Northern Ireland is permanently excluded
+    // from British Trade Awards' geographic coverage (BTA-070 decision; see
+    // CLAUDE.md and BTA-CMS-PROJECT-TASKS.md Decision register item 23).
     el.innerHTML =
       `<option value="">${utils.escapeHtml(allLabel)}</option>` +
-      ['England', 'Northern Ireland', 'Scotland', 'Wales']
+      ['England', 'Scotland', 'Wales']
         .map((c) => `<option value="${c}"${current === c ? ' selected' : ''}>${c}</option>`)
         .join('');
   },

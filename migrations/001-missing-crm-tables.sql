@@ -71,29 +71,17 @@ GRANT ALL ON public.organisation_segments TO service_role;
 
 
 -- 4. ORGANISATIONS WITH CRM SUMMARY (view)
-CREATE OR REPLACE VIEW organisations_with_crm_summary AS
-SELECT
-  o.*,
-  (SELECT COUNT(*) FROM deals d WHERE d.organisation_id = o.id AND d.stage NOT IN ('won', 'lost')) AS active_deals,
-  (SELECT SUM(d.value) FROM deals d WHERE d.organisation_id = o.id AND d.stage NOT IN ('lost')) AS pipeline_value,
-  (SELECT MAX(c.communication_date) FROM communications c WHERE c.organisation_id = o.id) AS last_communication_date,
-  (SELECT COUNT(*) FROM communications c WHERE c.organisation_id = o.id AND c.follow_up_required = true AND c.follow_up_date >= NOW()) AS pending_follow_ups,
-  (SELECT string_agg(cs.segment_name, ', ') FROM organisation_segments os JOIN contact_segments cs ON cs.id = os.segment_id WHERE os.organisation_id = o.id) AS segments
-FROM organisations o;
-
+-- Note: database-crm-setup.sql already creates a fuller organisations_with_crm_summary
+-- view (with deal_count, meeting_count, etc.); CREATE OR REPLACE can't change an
+-- existing view's column set, so skip re-defining it here and just ensure grants.
 GRANT ALL ON public.organisations_with_crm_summary TO anon;
 GRANT ALL ON public.organisations_with_crm_summary TO authenticated;
 GRANT ALL ON public.organisations_with_crm_summary TO service_role;
 
 
 -- 5. EMAIL LISTS WITH STATS (view)
-CREATE OR REPLACE VIEW email_lists_with_stats AS
-SELECT
-  el.*,
-  (SELECT COUNT(*) FROM email_list_subscribers els WHERE els.list_id = el.id) AS subscriber_count,
-  (SELECT COUNT(*) FROM email_list_subscribers els WHERE els.list_id = el.id AND els.status = 'active') AS active_subscribers
-FROM email_lists el;
-
+-- Note: database-email-lists-setup.sql already creates email_lists_with_stats
+-- with equivalent total/active subscriber counts; skip re-defining it here.
 GRANT ALL ON public.email_lists_with_stats TO anon;
 GRANT ALL ON public.email_lists_with_stats TO authenticated;
 GRANT ALL ON public.email_lists_with_stats TO service_role;

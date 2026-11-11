@@ -47,6 +47,23 @@ CREATE TABLE IF NOT EXISTS running_order (
 
   UNIQUE(event_id, award_number)
 );
+-- migrations/000-complete-database-setup.sql already created a minimal running_order
+-- table; backfill columns missing from that stub version.
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS organisation_id UUID REFERENCES organisations(id) ON DELETE CASCADE;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS award_id UUID REFERENCES award_years(id) ON DELETE SET NULL;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS guest_id UUID REFERENCES event_guests(id) ON DELETE SET NULL;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS display_name VARCHAR(255) NOT NULL;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS award_name VARCHAR(255);
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS award_number VARCHAR(20) NOT NULL;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS recipient_collecting VARCHAR(255);
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS section INTEGER DEFAULT 1;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS scheduled_time TIME;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS actual_time TIME;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS special_requirements TEXT;
+ALTER TABLE running_order ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
 
 -- 2. Create running_order_settings table
 CREATE TABLE IF NOT EXISTS running_order_settings (
@@ -70,6 +87,17 @@ CREATE TABLE IF NOT EXISTS running_order_settings (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+-- migrations/000-complete-database-setup.sql already created a minimal running_order_settings
+-- table; backfill columns missing from that stub version.
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE;
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS published_by VARCHAR(255);
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS auto_number_format VARCHAR(50) DEFAULT '{section}-{number:02d}';
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS current_section INTEGER DEFAULT 1;
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS show_times BOOLEAN DEFAULT TRUE;
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS show_notes BOOLEAN DEFAULT FALSE;
+ALTER TABLE running_order_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
 
 -- 3. Create indexes for running order
 CREATE INDEX IF NOT EXISTS idx_running_order_event ON running_order(event_id);
@@ -279,6 +307,17 @@ CREATE TABLE IF NOT EXISTS event_tables (
 
   UNIQUE(event_id, table_number)
 );
+-- migrations/000-complete-database-setup.sql already created a minimal event_tables
+-- table; backfill columns missing from that stub version.
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS table_name VARCHAR(100);
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS total_seats INTEGER NOT NULL DEFAULT 8;
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS shape VARCHAR(50) DEFAULT 'round';
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS position_x INTEGER DEFAULT 0;
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS position_y INTEGER DEFAULT 0;
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE event_tables ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
 
 -- 2. Create table_assignments table
 CREATE TABLE IF NOT EXISTS table_assignments (
@@ -304,6 +343,17 @@ CREATE TABLE IF NOT EXISTS table_assignments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+-- migrations/000-complete-database-setup.sql already created a minimal table_assignments
+-- table; backfill columns missing from that stub version.
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS guest_name VARCHAR(255) NOT NULL;
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS organisation_id UUID REFERENCES organisations(id) ON DELETE SET NULL;
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS company_name VARCHAR(255);
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS seat_number INTEGER;
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS is_vip BOOLEAN DEFAULT FALSE;
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS dietary_requirements TEXT;
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE table_assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
 
 -- 3. Create indexes for table plan
 CREATE INDEX IF NOT EXISTS idx_event_tables_event ON event_tables(event_id);

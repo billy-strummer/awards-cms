@@ -335,7 +335,7 @@
       <a href="home.html#find-a-trade">Find a Trade</a><a href="home.html#about">About</a>
     </nav>
     <div class="sh-cta"><a href="submit-entry.html" class="btn-gold-nav">Enter Now</a></div>
-    <button class="sh-hamburger" id="sh-hamburger-btn" aria-expanded="false" aria-controls="sh-mobile-menu"><span class="sh-hbar"></span><span class="sh-hbar"></span><span class="sh-hbar"></span></button>
+    <button class="sh-hamburger" id="sh-hamburger-btn" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sh-mobile-menu"><span class="sh-hbar"></span><span class="sh-hbar"></span><span class="sh-hbar"></span></button>
   </div>
 </header>
 <nav id="sh-mobile-menu" aria-label="Mobile navigation" aria-hidden="true">
@@ -398,6 +398,6 @@
   (function(){var h=document.getElementById('site-header'),btn=document.getElementById('sh-hamburger-btn'),mob=document.getElementById('sh-mobile-menu');if(h){var lastY=0,ticking=false;window.addEventListener('scroll',function(){if(!ticking){requestAnimationFrame(function(){var y=window.scrollY;h.className=y<20?'at-top':y<lastY?'scrolled':'scrolled hidden';lastY=y;ticking=false;});ticking=true;}},{passive:true});}if(btn&&mob){btn.addEventListener('click',function(){var open=mob.classList.contains('open');mob.classList.toggle('open');mob.setAttribute('aria-hidden',open?'true':'false');btn.setAttribute('aria-expanded',open?'false':'true');});mob.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mob.classList.remove('open');mob.setAttribute('aria-hidden','true');btn.setAttribute('aria-expanded','false');});});}})();
   </script>
 <script src="/cookie-consent.js" defer></script>
-
+<script src="public-site-settings.js"></script>
 </body>
 </html>

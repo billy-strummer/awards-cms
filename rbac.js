@@ -23,6 +23,7 @@ const rbacModule = {
         'crm',
         'settings',
         'reports',
+        'bitcoin',
       ],
       actions: [
         'create',
@@ -52,6 +53,7 @@ const rbacModule = {
         'crm',
         'settings',
         'reports',
+        'bitcoin',
       ],
       actions: ['create', 'read', 'update', 'delete', 'export', 'import', 'backup'],
     },
@@ -163,6 +165,7 @@ const rbacModule = {
       'crm-tab': 'crm',
       'settings-tab': 'settings',
       'reports-tab': 'reports',
+      'markets-tab': 'bitcoin',
     };
 
     // Show/hide tabs based on module access

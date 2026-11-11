@@ -15,8 +15,8 @@
     'Apprentice of The Year',
     'Lifetime Achievement',
     'Community Impact Award',
-    'Female Tradesperson of the Year',
-    'Male Tradesperson of the Year',
+    'Tradeswoman of the Year',
+    'Tradesman of the Year',
     'Young Tradesperson of the Year',
     'New Business of the Year',
   ];
@@ -266,7 +266,6 @@
     const payload = {
       action: 'submit_nomination',
       website: (getEl('hp_website')?.value || '').trim(),
-      nomineeName: (getEl('nomineeName')?.value || '').trim(),
       nomineeWebsite: (getEl('nomineeWebsite')?.value || '').trim(),
       nomineePhone: (getEl('nomineePhone')?.value || '').trim(),
       nomineeWorkDesc: (getEl('nomineeWorkDesc')?.value || '').trim(),

@@ -425,8 +425,8 @@ describe('industryLeaderApp - category list (BTA-095)', () => {
       'Apprentice of The Year',
       'Lifetime Achievement',
       'Community Impact Award',
-      'Female Tradesperson of the Year',
-      'Male Tradesperson of the Year',
+      'Tradeswoman of the Year',
+      'Tradesman of the Year',
       'Young Tradesperson of the Year',
       'New Business of the Year',
     ].forEach((name) => {

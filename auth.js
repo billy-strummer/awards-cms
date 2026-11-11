@@ -213,7 +213,7 @@ const authModule = {
       } else if (error.message.includes('Email not confirmed')) {
         errorMessage = 'Please confirm your email address before logging in.';
       } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = 'Something went wrong while signing in. Please try again in a moment.';
       }
 
       errorDiv.textContent = errorMessage;

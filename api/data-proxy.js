@@ -1360,6 +1360,16 @@ async function executeAwardAreaImport(body, user) {
   if (!Array.isArray(rows) || rows.length === 0) throw new Error('award_area_import: rows must be a non-empty array');
   if (rows.length > 2000) throw new Error('award_area_import: maximum 2000 rows per import');
 
+  // Which awards cycle these nominees belong to -- the upload modal's Award
+  // Year selector, not the server's current date, so a "2027" file uploaded
+  // in 2026 doesn't silently collide with this year's data. Defaults to the
+  // current year only when the client sends nothing (back-compat).
+  const currentYear = new Date().getFullYear();
+  const requestedYear = body.year != null ? Number(body.year) : currentYear;
+  if (!Number.isInteger(requestedYear) || requestedYear < currentYear - 5 || requestedYear > currentYear + 5) {
+    throw new Error('award_area_import: year must be a whole number within 5 years of the current year');
+  }
+
   const { data: area, error: areaErr } = await supabase
     .from('areas')
     .select('id, display_name, country, area_type')
@@ -1451,7 +1461,7 @@ async function executeAwardAreaImport(body, user) {
 
   // ── Import — errors is empty at this point ──────────────────────
   const countrySlug = (area.country || 'england').toLowerCase().replace(/\s+/g, '-');
-  const yearNow = new Date().getFullYear();
+  const yearNow = requestedYear;
   const awardCache = new Map(); // category name -> award_id (found-or-created once per import)
 
   async function getOrCreateAward(resolved) {
@@ -1597,6 +1607,14 @@ async function executeAwardAreaImport(body, user) {
       supporting_information: r.notes,
       priority_rank: r.rank,
       status: 'shortlisted',
+      // Every other path that sets status to 'shortlisted' (the admin edit
+      // modal, judge-automation.js's score-based generateShortlist) also
+      // sets these two fields alongside it -- without them,
+      // sendShortlistNotifications() in api/email-automation.js, which
+      // filters on is_shortlisted rather than status, silently skips every
+      // bulk-imported nominee.
+      is_shortlisted: true,
+      shortlisted_date: new Date().toISOString(),
       is_public: true,
       allow_public_voting: true,
       is_self_nomination: false,
@@ -2408,3 +2426,12 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// Test-only hook: the in-memory rate limiter above is real module state that
+// persists for the lifetime of this module, which is the whole lifetime of
+// a Jest test file sharing one require() of this module. Without a way to
+// clear it, a large enough test suite calling this handler repeatedly for
+// the same mocked user id eventually (and non-deterministically, depending
+// on how many other tests ran first) trips the real 429 path. Harmless in
+// production -- nothing else references or calls this.
+module.exports._resetRateLimitsForTests = () => rateLimits.clear();

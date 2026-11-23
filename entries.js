@@ -703,6 +703,12 @@ const entriesModule = {
       } else if (this._sortField === 'submission_date') {
         aVal = a.submission_date || '';
         bVal = b.submission_date || '';
+      } else if (this._sortField === 'priority_rank') {
+        // Nulls sort last ascending (1, 2, 3, then unranked) and first
+        // descending, matching Postgres's own default NULLS ordering that
+        // the server-paginated path already gets for free from .order().
+        aVal = a.priority_rank == null ? Infinity : a.priority_rank;
+        bVal = b.priority_rank == null ? Infinity : b.priority_rank;
       } else {
         aVal = a[this._sortField] || '';
         bVal = b[this._sortField] || '';

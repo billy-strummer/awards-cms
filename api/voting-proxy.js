@@ -408,9 +408,16 @@ async function loadPublicSectors() {
 
 async function loadWinners() {
   const now = new Date().toISOString();
+  // Explicit column allowlist, not select('*') -- this is a public,
+  // unauthenticated endpoint. winners also carries access_token (the
+  // credential handleGetWinner in api/entry-proxy.js strips before
+  // returning it) plus consent/tenant columns that must never leave
+  // this server. Only select what public-winners-app.js actually reads.
   const { data, error } = await supabase
     .from('winners')
-    .select('*, award_years(award_name, award_category, year), organisations(company_name, logo_url)')
+    .select(
+      'id, placement, award_name, award_category, company_name, logo_url, year, embargo_until, award_years(award_name, award_category, year), organisations(company_name, logo_url)'
+    )
     .eq('is_published', true)
     .or(`embargo_until.is.null,embargo_until.lte.${now}`);
 

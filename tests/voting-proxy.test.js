@@ -22,6 +22,7 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     neq: jest.fn(() => obj),
     gte: jest.fn(() => obj),
     in: jest.fn(() => obj),
+    or: jest.fn(() => obj),
     order: jest.fn(() => obj),
     limit: jest.fn(() => obj),
     single: jest.fn(() => Promise.resolve(resolveWith)),
@@ -573,5 +574,75 @@ describe('Voting Proxy API', () => {
     await handler(req, res);
     expect(res.statusCode).toBe(200);
     expect(res.body.awards).toEqual(mockAwards);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// load_winners — must never leak winners.access_token (or any other internal
+// column) to this public, unauthenticated endpoint. See handleGetWinner in
+// api/entry-proxy.js, which explicitly strips access_token for the same
+// table on its own (token-gated) read.
+// ---------------------------------------------------------------------------
+describe('Voting Proxy API - load_winners() column allowlist', () => {
+  test('does not select(*) on winners', async () => {
+    const mockWinners = [
+      {
+        id: 'winner-1',
+        placement: 1,
+        award_name: 'Best Plumber',
+        award_category: 'Plumbing',
+        company_name: 'Acme Plumbing',
+        logo_url: null,
+        year: 2026,
+        embargo_until: null,
+        award_years: { award_name: 'Best Plumber', award_category: 'Plumbing', year: 2026 },
+        organisations: { company_name: 'Acme Plumbing', logo_url: null },
+      },
+    ];
+    const winnersChain = chainable({ data: mockWinners, error: null });
+    mockFrom.mockReturnValueOnce(winnersChain);
+
+    const req = createReq({ body: { action: 'load_winners' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(mockFrom).toHaveBeenCalledWith('winners');
+    const selectArg = winnersChain.select.mock.calls[0][0];
+    expect(selectArg).not.toContain('*,');
+    expect(selectArg).not.toBe('*');
+    expect(selectArg).not.toMatch(/access_token/);
+    expect(selectArg).not.toMatch(/consent/);
+    expect(selectArg).not.toMatch(/tenant_id/);
+  });
+
+  test('returned winners rows carry no access_token field even if the db row has one', async () => {
+    // Defence in depth: even if a future column slips into the select list,
+    // prove the response actually sent to the client has no such field for
+    // this specific row shape.
+    const mockWinners = [
+      {
+        id: 'winner-1',
+        placement: 1,
+        award_name: 'Best Plumber',
+        award_category: 'Plumbing',
+        company_name: 'Acme Plumbing',
+        logo_url: null,
+        year: 2026,
+        embargo_until: null,
+        award_years: { award_name: 'Best Plumber', award_category: 'Plumbing', year: 2026 },
+        organisations: { company_name: 'Acme Plumbing', logo_url: null },
+      },
+    ];
+    mockFrom.mockReturnValueOnce(chainable({ data: mockWinners, error: null }));
+
+    const req = createReq({ body: { action: 'load_winners' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.winners[0].access_token).toBeUndefined();
+    expect(res.body.grouped['Plumbing'][0]).toEqual(
+      expect.objectContaining({ company_name: 'Acme Plumbing', award_name: 'Best Plumber' })
+    );
   });
 });

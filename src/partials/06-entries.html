@@ -198,7 +198,10 @@
                     <th scope="col" style="width: 40px;">
                       <input type="checkbox" id="selectAllEntries" data-on-change="entriesModule.toggleSelectAll" aria-label="Select all entries">
                     </th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]" aria-sort="none">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" aria-sort="none">
+                      <span class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;entry_number&quot;]">Entry # <i data-sort-icon-entries="entry_number" class="bi bi-arrow-down-up text-muted ms-1 small"></i></span>
+                      <span class="u-pointer ms-2" data-action="entriesModule.sortEntries" data-args="[&quot;priority_rank&quot;]" title="Sort by Priority Rank (from the upload spreadsheet)">/ Rank <i data-sort-icon-entries="priority_rank" class="bi bi-arrow-down-up text-muted ms-1 small"></i></span>
+                    </th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]" aria-sort="none">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]" aria-sort="none">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>

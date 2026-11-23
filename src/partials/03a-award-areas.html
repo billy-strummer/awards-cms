@@ -108,6 +108,11 @@
                   Any other columns (e.g. Region, Sector, Nomination Date) are ignored — this importer only reads the columns listed above.
                 </p>
                 <input class="form-control" type="file" id="nomineeFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls">
+                <div class="mt-3">
+                  <label for="nomineeUploadYear" class="form-label small fw-semibold">Award Year</label>
+                  <select class="form-select" id="nomineeUploadYear" style="max-width: 200px;"></select>
+                  <div class="form-text">Which awards cycle this file's nominees belong to. Pre-selected from the filename when a year is detected (e.g. "Somerset 2027...") — change it if that's wrong.</div>
+                </div>
               </div>
 
               <!-- Step 2: preview + validation + duplicate strategy + confirm -->

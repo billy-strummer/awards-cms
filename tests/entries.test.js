@@ -1527,6 +1527,21 @@ describe('Entries Module - sortEntries (client-side)', () => {
     entriesModule.sortEntries('status');
     expect(entriesModule._currentPage).toBe(1);
   });
+
+  test('sortEntries by priority_rank sorts ranked entries first, ascending, nulls last', () => {
+    const ranked = [
+      { ...sampleEntries[0], id: 'a', priority_rank: null },
+      { ...sampleEntries[0], id: 'b', priority_rank: 2 },
+      { ...sampleEntries[0], id: 'c', priority_rank: 1 },
+      { ...sampleEntries[0], id: 'd', priority_rank: null },
+      { ...sampleEntries[0], id: 'e', priority_rank: 3 },
+    ];
+    entriesModule.allEntries = ranked;
+    entriesModule.filteredEntries = [...ranked];
+    entriesModule.sortEntries('priority_rank');
+    expect(entriesModule._sortDir).toBe('asc');
+    expect(entriesModule.filteredEntries.map((e) => e.priority_rank)).toEqual([1, 2, 3, null, null]);
+  });
 });
 
 describe('Entries Module - goToEntriesPage', () => {

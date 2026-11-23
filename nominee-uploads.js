@@ -198,8 +198,43 @@ const nomineeUploads = (() => {
     _resetForm();
     const nameEl = document.getElementById('nomineeUploadAreaName');
     if (nameEl) nameEl.textContent = _currentArea.display_name;
+    _populateYearSelect();
     const modalEl = document.getElementById('nomineeUploadModal');
     if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  // Current year plus a small window either side, so an admin uploading a
+  // "2027" file ahead of time (or a late "2025" catch-up file) has it
+  // available without the import defaulting to whatever year the server
+  // happens to be running on.
+  function _yearSelectOptions() {
+    const current = new Date().getFullYear();
+    return [current - 1, current, current + 1, current + 2];
+  }
+
+  function _populateYearSelect() {
+    const select = document.getElementById('nomineeUploadYear');
+    if (!select) return;
+    const current = new Date().getFullYear();
+    select.innerHTML = _yearSelectOptions()
+      .map((y) => `<option value="${y}" ${y === current ? 'selected' : ''}>${y}</option>`)
+      .join('');
+  }
+
+  // Non-blocking helpful default: if the filename contains a 4-digit year
+  // that's one of the selectable options, pre-select it -- e.g. "Somerset
+  // 2027 NEW ARGON.xlsx" pre-selects 2027. The admin can still change it.
+  function _detectYearFromFilename(filename) {
+    const match = String(filename || '').match(/\b(20\d{2})\b/);
+    if (!match) return null;
+    const year = parseInt(match[1], 10);
+    return _yearSelectOptions().includes(year) ? year : null;
+  }
+
+  function _selectedYear() {
+    const select = document.getElementById('nomineeUploadYear');
+    const parsed = select ? parseInt(select.value, 10) : NaN;
+    return Number.isInteger(parsed) ? parsed : new Date().getFullYear();
   }
 
   function _renderPreview() {
@@ -289,6 +324,11 @@ const nomineeUploads = (() => {
 
   async function _handleFile(file) {
     _currentFilename = file.name;
+    const detectedYear = _detectYearFromFilename(file.name);
+    if (detectedYear != null) {
+      const yearSelect = document.getElementById('nomineeUploadYear');
+      if (yearSelect) yearSelect.value = String(detectedYear);
+    }
     let text, sheetName;
     try {
       ({ text, sheetName } = await _readFileAsCSVText(file));
@@ -361,6 +401,7 @@ const nomineeUploads = (() => {
         mode: 'validate',
         areaId: _currentArea.id,
         rows: _rowsForServer(),
+        year: _selectedYear(),
         tenantId: apiClient._getTenantId(),
       });
       _lastValidation = result;
@@ -465,6 +506,7 @@ const nomineeUploads = (() => {
           rows: chunks[i],
           duplicateStrategy: _duplicateStrategy,
           filename: _currentFilename,
+          year: _selectedYear(),
           tenantId: apiClient._getTenantId(),
         });
         area = result.area;
@@ -583,6 +625,9 @@ const nomineeUploads = (() => {
     _stripMarkdownLinks,
     _readFileAsCSVText,
     _mergeTotals,
+    _detectYearFromFilename,
+    _yearSelectOptions,
+    _selectedYear,
   };
 })();
 

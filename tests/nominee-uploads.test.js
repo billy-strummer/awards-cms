@@ -215,6 +215,53 @@ describe('nomineeUploads - _readFileAsCSVText()', () => {
 });
 
 // -----------------------------------------------------------------------
+// _detectYearFromFilename / _selectedYear — Award Year selector
+// -----------------------------------------------------------------------
+describe('nomineeUploads - Award Year detection and selection', () => {
+  test('_detectYearFromFilename finds a 4-digit year within the selectable range', () => {
+    expect(uploads._detectYearFromFilename('Somerset 2027 NEW ARGON.xlsx')).toBe(2027);
+  });
+
+  test('_detectYearFromFilename returns null when no year is present', () => {
+    expect(uploads._detectYearFromFilename('Somerset NEW ARGON.xlsx')).toBeNull();
+  });
+
+  test('_detectYearFromFilename returns null for a year outside the selectable range', () => {
+    expect(uploads._detectYearFromFilename('Somerset 1999 archive.xlsx')).toBeNull();
+  });
+
+  test('_yearSelectOptions is a 4-year window centred on the current year', () => {
+    const current = new Date().getFullYear();
+    expect(uploads._yearSelectOptions()).toEqual([current - 1, current, current + 1, current + 2]);
+  });
+
+  describe('_selectedYear', () => {
+    let select;
+
+    beforeEach(() => {
+      select = win.document.createElement('select');
+      select.id = 'nomineeUploadYear';
+      win.document.body.appendChild(select);
+    });
+
+    afterEach(() => {
+      select.remove();
+    });
+
+    test('reads the selected year from the dropdown', () => {
+      select.innerHTML = '<option value="2027" selected>2027</option>';
+      select.value = '2027';
+      expect(uploads._selectedYear()).toBe(2027);
+    });
+
+    test('falls back to the current year when the dropdown is missing', () => {
+      select.remove();
+      expect(uploads._selectedYear()).toBe(new Date().getFullYear());
+    });
+  });
+});
+
+// -----------------------------------------------------------------------
 // _mergeTotals — accumulates totals across chunked import calls
 // -----------------------------------------------------------------------
 describe('nomineeUploads - _mergeTotals()', () => {

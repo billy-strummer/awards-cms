@@ -1,14 +1,23 @@
 /**
  * @module automation-scheduler
- * Automation Scheduler with cron jobs for automated tasks.
+ * Automation business logic for scheduled tasks (deadline reminders, payment
+ * reminders, scheduled campaign dispatch, judging deadline checks, weekly
+ * judge progress reports, weekly stats, GDPR retention cleanup).
  *
- * Tasks:
- * - Daily: Check payment reminders, deadline reminders
- * - Weekly: Send judge progress reports
- * - On-demand: Winner announcements, certificate generation
+ * Production scheduling is via Vercel Cron (see vercel.json's `crons` array),
+ * which invokes `runDailyAutomation()` once per day through
+ * `api/judge-automation.js`'s `cron-tick` action (this file lives in
+ * `api/_lib/`, which Vercel does not route HTTP traffic to directly — see
+ * DEPLOYMENT-GUIDE.md's Automation section for the full explanation).
+ *
+ * This file previously registered its own schedule via `node-cron`, which
+ * never actually ran in production: node-cron needs a long-lived process to
+ * keep its in-memory timers alive, and Vercel serverless functions are
+ * spun up per-request with no persistent process between invocations. That
+ * approach has been removed in favour of the Vercel Cron + runDailyAutomation
+ * design above — see RELEASE-REPORT-V1.md for the history of this finding.
  */
 
-const cron = require('node-cron');
 const { sendDeadlineReminders, sendWinnerAnnouncements, sendTemplateEmail } = require('../email-automation');
 const { assignJudgesToEntries, generateAllShortlists } = require('../judge-automation');
 const { generateAllWinnerCertificates } = require('../certificates-qr');
@@ -16,132 +25,6 @@ const { generateAllWinnerCertificates } = require('../certificates-qr');
 // Supabase client for scheduler queries
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-
-/**
- * Scheduled email campaign dispatcher (runs every 5 minutes).
- * Finds campaigns with status='Scheduled' and scheduled_date <= now, then sends them.
- */
-cron.schedule(
-  '*/5 * * * *',
-  async () => {
-    try {
-      await dispatchScheduledCampaigns();
-    } catch (error) {
-      console.error('Error dispatching scheduled campaigns:', error);
-    }
-  },
-  {
-    timezone: 'Europe/London',
-  }
-);
-
-/**
- * Daily automation tasks (runs at 9:00 AM)
- */
-cron.schedule(
-  '0 9 * * *',
-  async () => {
-    console.log('\nRunning daily automation tasks...');
-
-    try {
-      // Send deadline reminders (entry close dates and judging deadlines)
-      await sendDeadlineReminders();
-      await checkDeadlineReminders();
-
-      // Check for overdue invoices and send payment reminders
-      await sendPaymentReminders();
-
-      console.log('Daily automation complete\n');
-    } catch (error) {
-      console.error('Error in daily automation:', error);
-    }
-  },
-  {
-    timezone: 'Europe/London',
-  }
-);
-
-/**
- * Weekly data retention cleanup (runs Sunday at 2:00 AM).
- * Deletes records older than their configured retention period per GDPR Article 5(1)(e).
- */
-cron.schedule(
-  '0 2 * * 0',
-  async () => {
-    console.log('\nRunning weekly retention cleanup...');
-    try {
-      await runRetentionCleanup();
-      console.log('Retention cleanup complete\n');
-    } catch (error) {
-      console.error('Error in retention cleanup:', error);
-    }
-  },
-  { timezone: 'Europe/London' }
-);
-
-/**
- * Weekly automation tasks (runs Monday at 8:00 AM)
- */
-cron.schedule(
-  '0 8 * * 1',
-  async () => {
-    console.log('\nRunning weekly automation tasks...');
-
-    try {
-      // Send judge progress reports
-      await sendJudgeProgressReports();
-
-      // Generate weekly statistics
-      await generateWeeklyStats();
-
-      console.log('Weekly automation complete\n');
-    } catch (error) {
-      console.error('Error in weekly automation:', error);
-    }
-  },
-  {
-    timezone: 'Europe/London',
-  }
-);
-
-/**
- * Judging deadline check (runs daily at 10:00 AM during judging period)
- */
-cron.schedule(
-  '0 10 * * *',
-  async () => {
-    console.log('\nChecking judging progress...');
-
-    try {
-      // Get judging deadline from active awards
-      const judgingDeadline = await getJudgingDeadline();
-
-      if (!judgingDeadline) {
-        console.log('No active judging deadline found');
-        return;
-      }
-
-      const now = new Date();
-      const daysUntilDeadline = Math.ceil((Number(judgingDeadline) - Number(now)) / (1000 * 60 * 60 * 24));
-
-      if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
-        console.log(`Judging deadline in ${daysUntilDeadline} days`);
-      }
-
-      if (daysUntilDeadline === 0) {
-        console.log('Judging deadline reached - generating shortlists');
-        await generateAllShortlists();
-      }
-
-      console.log('Judging check complete\n');
-    } catch (error) {
-      console.error('Error in judging check:', error);
-    }
-  },
-  {
-    timezone: 'Europe/London',
-  }
-);
 
 /**
  * Dispatch all scheduled email campaigns whose send time has arrived.
@@ -246,6 +129,38 @@ async function getJudgingDeadline() {
     console.error('Error getting judging deadline:', error);
     return null;
   }
+}
+
+/**
+ * Check the nearest active judging deadline and generate shortlists once it's
+ * reached. Uses <= 0 (not === 0) so a missed day — e.g. this check's first
+ * run happens after the deadline already passed — still generates shortlists
+ * rather than silently never firing. Safe to call more than once: shortlist
+ * generation only touches entries with status 'submitted', so entries
+ * already shortlisted by an earlier run are skipped automatically.
+ * @returns {Promise<{deadlineFound: boolean, daysUntilDeadline?: number, shortlistsGenerated?: boolean}>}
+ */
+async function runJudgingDeadlineCheck() {
+  const judgingDeadline = await getJudgingDeadline();
+  if (!judgingDeadline) {
+    console.log('runJudgingDeadlineCheck: no active judging deadline found');
+    return { deadlineFound: false };
+  }
+
+  const now = new Date();
+  const daysUntilDeadline = Math.ceil((Number(judgingDeadline) - Number(now)) / (1000 * 60 * 60 * 24));
+
+  if (daysUntilDeadline <= 7 && daysUntilDeadline > 0) {
+    console.log(`runJudgingDeadlineCheck: judging deadline in ${daysUntilDeadline} day(s)`);
+  }
+
+  if (daysUntilDeadline <= 0) {
+    console.log('runJudgingDeadlineCheck: deadline reached — generating shortlists');
+    await generateAllShortlists();
+    return { deadlineFound: true, daysUntilDeadline, shortlistsGenerated: true };
+  }
+
+  return { deadlineFound: true, daysUntilDeadline, shortlistsGenerated: false };
 }
 
 /**
@@ -633,69 +548,6 @@ async function triggerShortlistGeneration(awardId = null) {
 }
 
 /**
- * Register automation API endpoints on an Express app.
- * @param {Object} app - Express application instance.
- * @returns {void}
- */
-function setupAutomationEndpoints(app) {
-  app.post('/api/automation/trigger-winner-announcements', async (req, res) => {
-    try {
-      const result = await triggerWinnerAnnouncements();
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/automation/trigger-judge-assignments', async (req, res) => {
-    try {
-      const { awardId } = req.body;
-      const result = await triggerJudgeAssignments(awardId);
-      res.json(result);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/automation/trigger-shortlist-generation', async (req, res) => {
-    try {
-      const { awardId } = req.body;
-      const results = await triggerShortlistGeneration(awardId);
-      res.json({ success: true, results });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post('/api/automation/trigger-payment-reminders', async (req, res) => {
-    try {
-      await sendPaymentReminders();
-      res.json({ success: true, message: 'Payment reminders processed' });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.get('/api/automation/status', async (req, res) => {
-    try {
-      const judgingDeadline = await getJudgingDeadline();
-      res.json({
-        scheduler: 'running',
-        timezone: 'Europe/London',
-        dailyTasks: '09:00 GMT',
-        weeklyTasks: 'Monday 08:00 GMT',
-        judgingChecks: '10:00 GMT',
-        nextJudgingDeadline: judgingDeadline ? judgingDeadline.toISOString() : null,
-      });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  console.log('Automation endpoints registered');
-}
-
-/**
  * GDPR Article 5(1)(e) retention cleanup.
  * Deletes personal data older than configured retention periods.
  * Runs automatically via weekly cron and can be triggered manually.
@@ -729,7 +581,7 @@ async function runRetentionCleanup() {
   deleted.notification_queue = emailDeleted?.length || 0;
 
   // Public vote records: 1 year
-  const { data: votesDeleted } = await supabase.from('public_votes').delete().lt('voted_at', cutoff(1)).select('id');
+  const { data: votesDeleted } = await supabase.from('public_votes').delete().lt('created_at', cutoff(1)).select('id');
   deleted.public_votes = votesDeleted?.length || 0;
 
   // Event guests: 3 years after event (approximate: 3 years from created_at)
@@ -750,75 +602,127 @@ async function runRetentionCleanup() {
 }
 
 /**
- * Start the automation scheduler and log cron schedule details.
- * @returns {void}
+ * Run the full daily automation tick. This is the real production entry
+ * point, invoked once per day by Vercel Cron via
+ * api/judge-automation.js's `cron-tick` action (see that file and
+ * DEPLOYMENT-GUIDE.md's Automation section for the full wiring).
+ *
+ * Consolidates what used to be 5 separate node-cron schedules — which never
+ * actually ran on Vercel — into a single entry point that fits Vercel's
+ * Hobby-plan "at most once per day" cron limit, using the current day of
+ * week (Europe/London) to preserve the original weekly/Sunday cadence for
+ * tasks that don't need to run every day.
+ *
+ * Reliability: each sub-task runs independently — one failing task (e.g. an
+ * email provider hiccup) is caught and logged without preventing the rest
+ * from running.
+ *
+ * Idempotency / retry-safety: every sub-task's own domain logic already
+ * de-dupes against database state before sending anything (see
+ * checkDeadlineReminders' and sendPaymentReminders' "already sent" checks,
+ * dispatchScheduledCampaigns' immediate status flip to 'Sending', and
+ * runJudgingDeadlineCheck's status-filtered shortlist generation) — so
+ * invoking this function more than once on the same day (a manual
+ * re-trigger, or Vercel retrying a slow/failed invocation) is safe and will
+ * not double-send anything.
+ *
+ * Observability: every sub-task and the overall run logs to
+ * console.log/console.error, which lands in Vercel's function logs (see
+ * MONITORING.md).
+ *
+ * @returns {Promise<{startedAt: string, finishedAt: string, dayOfWeek: number, tasksRun: string[], results: Object}>}
+ *   A structured summary of every task attempted and its outcome.
  */
-function startScheduler() {
-  console.log('Automation scheduler started');
-  console.log('Daily tasks: 9:00 AM GMT');
-  console.log('Weekly tasks: Monday 8:00 AM GMT');
-  console.log('Judging checks: 10:00 AM GMT');
+async function runDailyAutomation() {
+  const startedAt = new Date();
+  // Compute the current day of week in Europe/London so the weekly/Sunday
+  // tasks below fire on the intended local day regardless of the server's
+  // own timezone (Vercel Cron schedules are always evaluated in UTC).
+  const londonNow = new Date(startedAt.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const dayOfWeek = londonNow.getDay(); // 0 = Sunday, 1 = Monday, ... 6 = Saturday
+
+  const results = {};
+
+  const run = async (key, fn) => {
+    const taskStart = Date.now();
+    try {
+      const value = await fn();
+      results[key] = {
+        status: 'ok',
+        durationMs: Date.now() - taskStart,
+        ...(value !== undefined ? { result: value } : {}),
+      };
+    } catch (error) {
+      results[key] = { status: 'error', durationMs: Date.now() - taskStart, error: error.message };
+      console.error(`[automation] task "${key}" failed:`, error);
+    }
+  };
+
+  // Daily tasks — every invocation
+  await run('entryDeadlineReminders', () => sendDeadlineReminders());
+  await run('deadlineReminders', () => checkDeadlineReminders());
+  await run('paymentReminders', () => sendPaymentReminders());
+  await run('scheduledCampaigns', () => dispatchScheduledCampaigns());
+  await run('judgingDeadlineCheck', () => runJudgingDeadlineCheck());
+
+  // Weekly tasks — Monday only (Europe/London), matches the original 8am
+  // Monday node-cron schedule's intent
+  if (dayOfWeek === 1) {
+    await run('judgeProgressReports', () => sendJudgeProgressReports());
+    await run('weeklyStats', () => generateWeeklyStats());
+  }
+
+  // GDPR retention cleanup — Sunday only (Europe/London), matches the
+  // original weekly cleanup schedule's intent
+  if (dayOfWeek === 0) {
+    await run('retentionCleanup', () => runRetentionCleanup());
+  }
+
+  const summary = {
+    startedAt: startedAt.toISOString(),
+    finishedAt: new Date().toISOString(),
+    dayOfWeek,
+    tasksRun: Object.keys(results),
+    results,
+  };
+
+  console.log('[automation] daily tick complete:', JSON.stringify(summary));
+  return summary;
 }
 
-/**
- * Vercel serverless handler — routes by query action.
- * Can be triggered by Vercel Cron or manual API calls.
- */
-module.exports = async function handler(req, res) {
-  const action = req.query.action || req.body?.action;
-
-  try {
-    switch (action) {
-      case 'winner-announcements':
-        await triggerWinnerAnnouncements();
-        return res.json({ success: true, action: 'winner-announcements' });
-      case 'judge-assignments':
-        await triggerJudgeAssignments(req.body?.awardId);
-        return res.json({ success: true, action: 'judge-assignments' });
-      case 'shortlist-generation':
-        await triggerShortlistGeneration(req.body?.awardId);
-        return res.json({ success: true, action: 'shortlist-generation' });
-      case 'payment-reminders':
-        await sendPaymentReminders();
-        return res.json({ success: true, action: 'payment-reminders' });
-      case 'judge-progress':
-        await sendJudgeProgressReports();
-        return res.json({ success: true, action: 'judge-progress' });
-      case 'weekly-stats':
-        await generateWeeklyStats();
-        return res.json({ success: true, action: 'weekly-stats' });
-      case 'send-scheduled-campaigns':
-        await dispatchScheduledCampaigns();
-        return res.json({ success: true, action: 'send-scheduled-campaigns' });
-      case 'retention-cleanup': {
-        const cleanupResult = await runRetentionCleanup();
-        return res.json({ success: true, action: 'retention-cleanup', ...cleanupResult });
-      }
-      default:
-        return res.status(400).json({
-          error:
-            'Invalid action. Use: winner-announcements, judge-assignments, shortlist-generation, payment-reminders, judge-progress, weekly-stats, send-scheduled-campaigns, retention-cleanup',
-        });
-    }
-  } catch (error) {
-    console.error('Automation error:', error);
-    return res.status(500).json({ error: error.message });
-  }
+// This module exports plain business-logic functions only — no HTTP handler.
+// The one real HTTP entry point for automation is api/judge-automation.js's
+// `cron-tick` action, which requires runDailyAutomation directly. (An
+// earlier version of this file also exported its own (req, res) handler
+// switch, but nothing ever routed HTTP traffic to it — this file lives in
+// api/_lib/, which Vercel does not deploy as a function — so it was dead
+// code and has been removed.)
+module.exports = {
+  runDailyAutomation,
+  runJudgingDeadlineCheck,
+  checkDeadlineReminders,
+  getJudgingDeadline,
+  triggerWinnerAnnouncements,
+  triggerJudgeAssignments,
+  triggerShortlistGeneration,
+  sendPaymentReminders,
+  sendJudgeProgressReports,
+  generateWeeklyStats,
+  dispatchScheduledCampaigns,
+  runRetentionCleanup,
 };
 
-module.exports.startScheduler = startScheduler;
-module.exports.setupAutomationEndpoints = setupAutomationEndpoints;
-module.exports.triggerWinnerAnnouncements = triggerWinnerAnnouncements;
-module.exports.triggerJudgeAssignments = triggerJudgeAssignments;
-module.exports.triggerShortlistGeneration = triggerShortlistGeneration;
-module.exports.sendPaymentReminders = sendPaymentReminders;
-module.exports.sendJudgeProgressReports = sendJudgeProgressReports;
-module.exports.generateWeeklyStats = generateWeeklyStats;
-module.exports.dispatchScheduledCampaigns = dispatchScheduledCampaigns;
-module.exports.runRetentionCleanup = runRetentionCleanup;
-
-// Start scheduler if running directly
+// Run one full daily tick when this file is executed directly — useful for
+// local manual testing (`node api/_lib/automation-scheduler.js`) without
+// needing to simulate a Vercel Cron HTTP request.
 if (require.main === module) {
-  startScheduler();
-  console.log('\nScheduler is running. Press Ctrl+C to stop.\n');
+  runDailyAutomation()
+    .then((summary) => {
+      console.log('Manual run complete:', JSON.stringify(summary, null, 2));
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Manual run failed:', error);
+      process.exit(1);
+    });
 }

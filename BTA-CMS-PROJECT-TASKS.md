@@ -2910,3 +2910,56 @@ The detail record for everything below lives in `RECONCILIATION-OPEN-QUESTIONS.m
 ### II.4 — Git/worktree state
 
 This branch, `claude/supabase-cms-setup-test-e6oiza`: HEAD unchanged at `5201479` before this append. This section's own addition to `BTA-CMS-PROJECT-TASKS.md` is, as of writing, an **uncommitted** change on this branch's working tree — matching this log's established practice of leaving documentation-only appends uncommitted pending separate, explicit authorisation to commit (see HH's own note on this same convention), since appending a continuity-log entry was what was asked for here, not a commit or push.
+
+## III. Nominee/Entry Upload Pipeline — Audit, Fixes, and Lifecycle Hardening (2026-11-23)
+
+**This section covers work done directly on `claude/supabase-cms-setup-test-e6oiza`**, independent of and unaffected by Section II's `feature/safe-reconciliation` detour (that stack is untouched by anything below).
+
+### III.1 — Commit `f0533a7` — upload pipeline audit, first round of fixes
+
+Fixed three gaps found when auditing `nominee-uploads.js`/`api/data-proxy.js`'s bulk county/city/London-borough upload pipeline against the real 10-column production spreadsheet schema (`Somerset 2027 NEW ARGON.xlsx`):
+
+1. **London Borough list sync** (`home-data.js`): the public homepage's county/city browser (`REGION_DATA`) had drifted from the canonical 33-entry `areas` table (migration 067) — stuck at an old 15-entry list carrying two dead legacy names (`Kingston & Richmond`, `Middlesex`) that match no real area, while missing 20 real boroughs entirely. Fixed to the full 33 (32 boroughs + City of London), with `FLAG_MAP` entries added for the newly-included ones.
+2. **10-column mapping**: `Business/Contact Address` and `Catchment Area` are now detected, forwarded, and stored on `organisations.address`/`organisations.catchment_area` (columns existed since migration 003, previously unused by this pipeline). `Rank` is now detected, validated (positive integer or blank), and stored — this required a genuine schema addition: **migration `095-add-entries-priority-rank.sql`**, adding `entries.priority_rank` (nullable `SMALLINT`, `CHECK (priority_rank IS NULL OR priority_rank > 0)`). Also added a non-blocking notice comparing an uploaded `.xlsx`'s first sheet-tab name against the selected dropdown area.
+3. **Admin CMS UI wiring**: `priority_rank` is now viewable/editable/clearable in the Entries table (inline badge), detail view, and edit modal. `organisations.address`/`catchment_area` already had full view/edit UI in the Company Profile modal from an earlier, untested feature — added test coverage for that save path rather than building new UI.
+
+Verified: lint clean, 84/84 suites, 6838/6838 tests, build clean.
+
+### III.2 — End-to-end lifecycle audit (read-only) and commit `61a5c56` — fixes
+
+A follow-up, read-only audit traced all 10 imported fields plus the assigned area from `executeAwardAreaImport` through every downstream consumer on this branch. Findings, and what was fixed:
+
+| Finding | Severity | Fixed in `61a5c56`? |
+|---|---|---|
+| `api/voting-proxy.js`'s `loadWinners()` (backs the fully public `public-winners.html`) selected `winners.*` and returned raw unredacted rows — almost certainly including `access_token`, the same credential `handleGetWinner` in `api/entry-proxy.js` explicitly strips with a comment calling it "an internal auth secret". Unrelated to the bulk-upload fields, found while tracing public exposure. | **Critical** | ✅ Replaced with an explicit column allowlist. |
+| Bulk-imported entries are created with `status: 'shortlisted'`, `is_public: true`, `allow_public_voting: true`, and go live on `public-voting.html` immediately — no admin approval/publish step exists. | High (flagged, not changed) | ❌ Not changed — confirmed as a deliberate choice (see III.3), not a bug. |
+| `year` was always `new Date().getFullYear()` at import time, with no way to target a future cycle — a "Somerset 2027" file uploaded in 2026 would silently stamp `year: 2026` and could collide with genuine 2026 data in the same category+area. | High | ✅ Added an Award Year selector to the upload modal (auto-detected from the filename), validated server-side, threading a real `year` through instead of the server clock. |
+| `api/judge-automation.js` and `judge-portal.js` hardcode `status: 'submitted'` for judge assignment/queue — a bulk-imported entry (`status: 'shortlisted'`) can never be assigned to or seen by a judge through any existing path. | High (flagged, not changed) | ❌ Not changed — see III.3; judging bulk-sourced nominees through the existing panel-judge pipeline was explicitly not chosen. |
+| `api/email-automation.js`'s `sendShortlistNotifications()` filters on `is_shortlisted = true`, which the importer never set (only `status`) — every bulk-imported nominee was silently skipped by this outreach campaign despite showing "Shortlisted" everywhere in the UI. | Medium | ✅ Importer now also sets `is_shortlisted: true` + `shortlisted_date`. |
+| The importer never creates an `award_assignments` row, so `assignments.js`'s batch-decision email feature (a separate table/workflow from `entries`) never sees bulk-imported nominees either. | Medium (flagged, not changed) | ❌ Not in scope for this pass — noted as a known gap. |
+| `entries.priority_rank` had no sort/ordering wiring anywhere (confirmed by grep — stored and displayed only). | Low | ✅ Wired into the admin Entries table as a dedicated "Rank" sort option (ranked first ascending, unranked last). Public voting's sort was explicitly left as pure vote-count, unchanged, by request. |
+| `entry_description` is never set by the importer, so every bulk-imported nominee's public-voting card shows an empty description paragraph where self-nominated entries show real text. | Low (flagged, not changed) | ❌ Not changed — cosmetic, not in this pass's scope. |
+
+### III.3 — Decisions made, with rationale on record
+
+- **Bulk-imported entries keep going straight to public voting** (`status: 'shortlisted'`, `is_public: true`) rather than being routed through `status: 'submitted'` + full judge review. Considered both; chose to preserve current behaviour and fix only the concrete `is_shortlisted` outreach bug, on the reasoning that this spreadsheet workflow (externally pre-vetted businesses, with `Rank`/`Catchment Area`/structured `Notes` already reflecting prior curation) may be intentionally designed to skip panel judging — routing 554+ rows per county file through per-entry judge assignment would be a much larger workflow change than this pass's scope, and wasn't confirmed as the intended business process. **The judging-pipeline exclusion this implies remains open** — if bulk-sourced nominees are meant to be judged, `api/judge-automation.js`'s and `judge-portal.js`'s hardcoded `status: 'submitted'` filters are the actual blocker to revisit.
+- **Public voting's sort order is unchanged** — `priority_rank` is treated as an internal curation signal from the spreadsheet, not something that should pre-bias what the public sees in a vote.
+- **`award_assignments` non-population and the empty `entry_description` gap are logged, not fixed** — both out of scope for this pass; neither was named in the request this section documents.
+
+### III.4 — Pending migrations checklist
+
+| Migration | Applied to test? | Applied to production? | Notes |
+|---|---|---|---|
+| `093-harden-remaining-permissive-policy-tables.sql` | ✅ yes, verified (BTA-104) | ❌ no | "Ready with prerequisites" per Section Z — needs explicit separate authorisation + a human present for the MCP confirmation prompt. Not touched by this section's work. |
+| `094-add-fk-indexes.sql` | ❌ not yet | ❌ no | Written, never verified anywhere. Not touched by this section's work. |
+| `095-add-entries-priority-rank.sql` | ❌ not yet | ❌ no | New this section (III.1). A plain `ALTER TABLE entries ADD COLUMN` with a `CHECK` constraint — no RLS policy change needed, no dependency on 093/094. |
+
+093/094/095 touch disjoint tables/columns with no dependency between them — order doesn't technically matter, but applying them in ascending numeric order keeps `list_migrations` coherent with this project's own convention. Each should go through the same test-project-first, then-explicit-separate-authorisation process already established for every prior migration in this log. **None of the three have been applied to any database as of this entry.**
+
+### III.5 — Verification and Git state
+
+**Commands run:** `npm run lint`, `npm test` (84/84 suites, 6851/6851 tests after `61a5c56`), `npm run build` — all clean, both before and after `61a5c56`.
+
+**Git state:** `claude/supabase-cms-setup-test-e6oiza`, HEAD at `61a5c56` (on top of `f0533a7`, on top of `5201479`) at the point this section was written, pushed to `origin`. This section's own append to `BTA-CMS-PROJECT-TASKS.md` is a separate, subsequent docs-only commit (see git log for its hash), matching this log's established convention of keeping documentation-only changes in their own commit.
+
+**Known entanglement, carried over from the prior session's report and still true:** this branch is the head of open PR #308 (`billy-strummer/awards-cms`), an older, unrelated organisation-matching fix dating to July 2026. `61a5c56`/`f0533a7` are now part of that PR's diff as a side effect of pushing to this branch, not by intent. PR #308's `mergeable_state` was last seen as `"dirty"` (merge conflicts against `main`) — untouched by this section's work.

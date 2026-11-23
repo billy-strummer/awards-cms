@@ -122,6 +122,15 @@ describe('nomineeUploads - _detectColumn()', () => {
   ];
   const categoryCandidates = ['category', 'award category', 'category name'];
   const emailCandidates = ['email', 'email address', 'direct email'];
+  const addressCandidates = [
+    'address',
+    'business address',
+    'contact address',
+    'business/contact address',
+    'business contact address',
+  ];
+  const catchmentCandidates = ['catchment area', 'catchment', 'service area'];
+  const rankCandidates = ['rank', 'priority', 'priority rank'];
 
   test('finds "Company Name" column', () => {
     expect(uploads._detectColumn(['Company Name', 'Award Category'], companyCandidates)).toBe('Company Name');
@@ -141,6 +150,20 @@ describe('nomineeUploads - _detectColumn()', () => {
 
   test('returns null when no match', () => {
     expect(uploads._detectColumn(['Name', 'Trade', 'Website'], categoryCandidates)).toBeNull();
+  });
+
+  test('finds "Business/Contact Address" column, punctuation normalised', () => {
+    expect(uploads._detectColumn(['Company', 'Business/Contact Address'], addressCandidates)).toBe(
+      'Business/Contact Address'
+    );
+  });
+
+  test('finds "Catchment Area" column', () => {
+    expect(uploads._detectColumn(['Company', 'Catchment Area'], catchmentCandidates)).toBe('Catchment Area');
+  });
+
+  test('finds "Rank" column', () => {
+    expect(uploads._detectColumn(['Company', 'Rank'], rankCandidates)).toBe('Rank');
   });
 });
 
@@ -170,21 +193,23 @@ describe('nomineeUploads - _stripMarkdownLinks()', () => {
 // _readFileAsCSVText — .csv passthrough vs. .xlsx conversion
 // -----------------------------------------------------------------------
 describe('nomineeUploads - _readFileAsCSVText()', () => {
-  test('reads a .csv file as plain text, no XLSX involved', async () => {
+  test('reads a .csv file as plain text, no XLSX involved, with a null sheetName', async () => {
     const file = { name: 'nominees.csv', text: async () => 'Company Name,Category\nAcme,Roofing Company' };
-    const text = await uploads._readFileAsCSVText(file);
+    const { text, sheetName } = await uploads._readFileAsCSVText(file);
     expect(text).toBe('Company Name,Category\nAcme,Roofing Company');
+    expect(sheetName).toBeNull();
   });
 
-  test('converts a .xlsx file to CSV text via the SheetJS global', async () => {
+  test('converts a .xlsx file to CSV text via the SheetJS global, and captures the first sheet name', async () => {
     const fakeSheet = { '!ref': 'A1:B2' };
     win.XLSX = {
-      read: (_data, _opts) => ({ SheetNames: ['Sheet1'], Sheets: { Sheet1: fakeSheet } }),
+      read: (_data, _opts) => ({ SheetNames: ['Somerset'], Sheets: { Somerset: fakeSheet } }),
       utils: { sheet_to_csv: (sheet) => (sheet === fakeSheet ? 'Company Name,Category\nAcme,Roofing Company' : '') },
     };
     const file = { name: 'nominees.xlsx', arrayBuffer: async () => new ArrayBuffer(8) };
-    const text = await uploads._readFileAsCSVText(file);
+    const { text, sheetName } = await uploads._readFileAsCSVText(file);
     expect(text).toBe('Company Name,Category\nAcme,Roofing Company');
+    expect(sheetName).toBe('Somerset');
     delete win.XLSX;
   });
 });

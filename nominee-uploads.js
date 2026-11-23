@@ -21,6 +21,9 @@ const nomineeUploads = (() => {
   let _phoneColumn = null;
   let _websiteColumn = null;
   let _notesColumn = null;
+  let _addressColumn = null;
+  let _catchmentColumn = null;
+  let _rankColumn = null;
   let _currentFilename = '';
   let _duplicateStrategy = 'skip';
   let _lastValidation = null; // result of the last server validate call
@@ -96,6 +99,9 @@ const nomineeUploads = (() => {
       phone: get(r, _phoneColumn),
       website: get(r, _websiteColumn),
       notes: get(r, _notesColumn),
+      address: get(r, _addressColumn),
+      catchment_area: get(r, _catchmentColumn),
+      rank: get(r, _rankColumn),
     }));
   }
 
@@ -240,7 +246,7 @@ const nomineeUploads = (() => {
 
   async function _readFileAsCSVText(file) {
     const ext = file.name.split('.').pop().toLowerCase();
-    if (ext !== 'xlsx' && ext !== 'xls') return file.text();
+    if (ext !== 'xlsx' && ext !== 'xls') return { text: await file.text(), sheetName: null };
 
     if (typeof XLSX === 'undefined') {
       await new Promise((resolve, reject) => {
@@ -253,15 +259,39 @@ const nomineeUploads = (() => {
     }
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data, { type: 'array' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_csv(sheet);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    return { text: XLSX.utils.sheet_to_csv(sheet), sheetName };
+  }
+
+  // Non-blocking check: does the workbook's first tab name look like it's
+  // for a different area than the one selected in the dropdown? A tab name
+  // is a convention the real spreadsheets happen to follow, not a guarantee,
+  // so this only ever warns — it never blocks validation or import.
+  function _renderSheetNameNotice(sheetName) {
+    const el = document.getElementById('nomineeSheetNameNotice');
+    if (!el) return;
+    if (!sheetName || !_currentArea) {
+      el.innerHTML = '';
+      return;
+    }
+    const norm = (s) =>
+      s
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_-]/g, '');
+    if (norm(sheetName) === norm(_currentArea.display_name)) {
+      el.innerHTML = `<div class="alert alert-success py-2 small mb-0"><i class="bi bi-check-circle-fill me-1"></i>Sheet tab "${utils.escapeHtml(sheetName)}" matches the selected area.</div>`;
+    } else {
+      el.innerHTML = `<div class="alert alert-warning py-2 small mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i>Heads up: this file's sheet tab is "${utils.escapeHtml(sheetName)}" but you've selected "${utils.escapeHtml(_currentArea.display_name)}" — double-check you picked the right area.</div>`;
+    }
   }
 
   async function _handleFile(file) {
     _currentFilename = file.name;
-    let text;
+    let text, sheetName;
     try {
-      text = await _readFileAsCSVText(file);
+      ({ text, sheetName } = await _readFileAsCSVText(file));
     } catch (e) {
       const container = document.getElementById('nomineeValidationContainer');
       if (container) {
@@ -287,6 +317,17 @@ const nomineeUploads = (() => {
     _phoneColumn = _detectColumn(headers, ['phone', 'phone number', 'telephone']);
     _websiteColumn = _detectColumn(headers, ['website', 'website url', 'url']);
     _notesColumn = _detectColumn(headers, ['notes', 'note', 'comments']);
+    _addressColumn = _detectColumn(headers, [
+      'address',
+      'business address',
+      'contact address',
+      'business/contact address',
+      'business contact address',
+    ]);
+    _catchmentColumn = _detectColumn(headers, ['catchment area', 'catchment', 'service area']);
+    _rankColumn = _detectColumn(headers, ['rank', 'priority', 'priority rank']);
+
+    _renderSheetNameNotice(sheetName);
 
     const step1 = document.getElementById('nomineeStep1');
     const step2 = document.getElementById('nomineeStep2');
@@ -470,12 +511,18 @@ const nomineeUploads = (() => {
     _phoneColumn = null;
     _websiteColumn = null;
     _notesColumn = null;
+    _addressColumn = null;
+    _catchmentColumn = null;
+    _rankColumn = null;
     _currentFilename = '';
     _duplicateStrategy = 'skip';
     _lastValidation = null;
 
     const fileInput = document.getElementById('nomineeFileInput');
     if (fileInput) fileInput.value = '';
+
+    const sheetNotice = document.getElementById('nomineeSheetNameNotice');
+    if (sheetNotice) sheetNotice.innerHTML = '';
 
     const valContainer = document.getElementById('nomineeValidationContainer');
     if (valContainer) valContainer.innerHTML = '';

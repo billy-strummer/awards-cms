@@ -1398,6 +1398,20 @@ async function executeAwardAreaImport(body, user) {
       errors.push({ row: rowNum, field: 'email', message: `Invalid email address "${email}"` });
     }
 
+    // Rank is optional (blank = null); when present it must be a positive
+    // whole number — the real files only ever carry 1/2/3, but we don't
+    // hard-code that set so a future file with e.g. rank 4 isn't rejected.
+    const rawRank = raw.rank != null ? String(raw.rank).trim() : '';
+    let rank = null;
+    if (rawRank) {
+      const parsedRank = Number(rawRank);
+      if (!Number.isInteger(parsedRank) || parsedRank <= 0) {
+        errors.push({ row: rowNum, field: 'rank', message: `Rank "${rawRank}" must be a positive whole number` });
+      } else {
+        rank = parsedRank;
+      }
+    }
+
     // Keyed on company+category, not company alone — the same organisation
     // legitimately appears on multiple rows when it's nominated in more than
     // one category (a common, expected pattern), so only an exact repeat of
@@ -1425,6 +1439,9 @@ async function executeAwardAreaImport(body, user) {
       phone: raw.phone ? String(raw.phone).trim().slice(0, 50) : null,
       website: raw.website ? String(raw.website).trim().slice(0, 500) : null,
       notes: raw.notes ? String(raw.notes).trim().slice(0, 2000) : null,
+      address: raw.address ? String(raw.address).trim().slice(0, 500) : null,
+      catchmentArea: raw.catchment_area ? String(raw.catchment_area).trim().slice(0, 255) : null,
+      rank,
     });
   });
 
@@ -1516,6 +1533,8 @@ async function executeAwardAreaImport(body, user) {
       sector: r.resolvedCategory.sector,
       status: 'active',
       tenant_id: tenantId,
+      address: r.address,
+      catchment_area: r.catchmentArea,
     };
 
     if (!orgId) {
@@ -1576,6 +1595,7 @@ async function executeAwardAreaImport(body, user) {
       county_city: area.display_name,
       selected_country: countrySlug,
       supporting_information: r.notes,
+      priority_rank: r.rank,
       status: 'shortlisted',
       is_public: true,
       allow_public_voting: true,

@@ -704,6 +704,100 @@ describe('Data Proxy API', () => {
         mockFrom.mockImplementation(originalMockFromImpl);
       }
     });
+
+    test('rejects a non-numeric Rank value with a clear per-row error, blocking the whole import', async () => {
+      const req = importReq({
+        rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company', rank: 'first' }],
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      const body = res.body;
+      expect(body.valid).toBe(false);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ row: 1, field: 'rank', message: expect.stringContaining('Rank "first"') }),
+        ])
+      );
+    });
+
+    test('treats a blank Rank as valid (null), not an error', async () => {
+      const req = importReq({
+        rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company', rank: '' }],
+      });
+      const res = createRes();
+      await handler(req, res);
+      const body = res.body;
+      expect(body.valid).toBe(true);
+    });
+
+    test('forwards Address and Catchment Area onto the organisation, and Rank onto the entry', async () => {
+      const recordedInserts = [];
+      function recordingChain(resolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          recordedInserts.push(payload);
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve({ data: { id: 'new-org-1' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({
+            data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+            error: null,
+          });
+        }
+        if (table === 'organisations') return recordingChain({ data: null, error: null });
+        if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+        if (table === 'entries') return recordingChain({ data: null, error: null });
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = importReq({
+          mode: 'import',
+          rows: [
+            {
+              company_name: 'Acme Roofing Ltd',
+              category: 'Roofing Company',
+              address: '12 Mill Lane, Taunton, TA1 1AA',
+              catchment_area: 'Bath & Somerset',
+              rank: '2',
+            },
+          ],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+
+        const orgInsert = recordedInserts.find((p) => p.company_name === 'Acme Roofing Ltd');
+        expect(orgInsert.address).toBe('12 Mill Lane, Taunton, TA1 1AA');
+        expect(orgInsert.catchment_area).toBe('Bath & Somerset');
+
+        const entryInsert = recordedInserts.find((p) => p.organisation_id === 'new-org-1');
+        expect(entryInsert.priority_rank).toBe(2);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
   });
 
   // --- sponsorship_catalogue_packages role permission (BTA-074) ---

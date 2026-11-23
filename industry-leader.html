@@ -824,11 +824,34 @@
   <div class="form-section">
     <h2 class="step-question">About the nominee</h2>
     <p class="step-subtitle">Tell us about the company or trade professional you are nominating</p>
-    <div class="mb-3">
-      <label class="form-label" for="nomineeName">Name of company or trade professional <span class="required-star">*</span></label>
-      <input type="text" class="form-control form-control-lg" id="nomineeName"
-        placeholder="e.g. Smith & Sons Electrical Ltd" required autocomplete="off">
+
+    <div id="personFields">
+      <div class="mb-3">
+        <label class="form-label" for="nomineeName">Nominee's name <span class="required-star">*</span></label>
+        <input type="text" class="form-control form-control-lg" id="nomineeName"
+          placeholder="e.g. Jane Smith" autocomplete="off">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="nomineeCompany">Nominee's company <span class="required-star">*</span></label>
+        <input type="text" class="form-control form-control-lg" id="nomineeCompany"
+          placeholder="e.g. Smith & Sons Electrical Ltd" autocomplete="off">
+        <div class="form-text text-muted mt-1">The company the nominee works for or owns &mdash; not your own employer.</div>
+      </div>
     </div>
+
+    <div id="businessFields" style="display:none;">
+      <div class="mb-3">
+        <label class="form-label" for="businessName">Business name <span class="required-star">*</span></label>
+        <input type="text" class="form-control form-control-lg" id="businessName"
+          placeholder="e.g. Smith & Sons Electrical Ltd" autocomplete="off">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="businessOwner">Business owner's name <span class="required-star">*</span></label>
+        <input type="text" class="form-control form-control-lg" id="businessOwner"
+          placeholder="e.g. Jane Smith" autocomplete="off">
+      </div>
+    </div>
+
     <div class="mb-3">
       <label class="form-label" for="nomineeWebsite">Company website <small class="text-muted">(optional)</small></label>
       <input type="url" class="form-control form-control-lg" id="nomineeWebsite"

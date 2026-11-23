@@ -1381,3 +1381,117 @@ describe('buildCategoryList — Enter key handler on award options (line 414)', 
     expect(entryFormApp.selectedAwardCategory).toBeNull();
   });
 });
+
+// -----------------------------------------------------------------------
+// BTA-072: applyFormContent — CMS-editable step headings/subtitles and
+// confirmation copy. This fixture has no step0 and no .step-question/
+// .step-subtitle classes on its existing elements, so they're injected
+// here and cleaned up afterwards. step1 is this fixture's location step
+// (step0 -- "Entry Type" -- isn't part of this test fixture at all).
+// -----------------------------------------------------------------------
+describe('entryFormApp.applyFormContent (BTA-072)', () => {
+  beforeEach(() => {
+    document
+      .getElementById('step1')
+      .insertAdjacentHTML(
+        'afterbegin',
+        '<h2 class="step-question">Where are you based?</h2><p class="step-subtitle">Select your Country, then your County or City.</p>'
+      );
+    document
+      .getElementById('step2')
+      .insertAdjacentHTML(
+        'afterbegin',
+        '<h2 class="step-question">What sector are you in?</h2><p class="step-subtitle">Choose the trade sector that best fits your work.</p>'
+      );
+    document
+      .getElementById('stepSuccess')
+      .insertAdjacentHTML(
+        'afterbegin',
+        '<h2 class="mb-3">Entry Submitted!</h2><p class="text-muted mb-4">Thank you for entering the British Trade Awards. We\'ll be in touch soon with next steps.</p>'
+      );
+    global.fetch.mockReset();
+  });
+
+  afterEach(() => {
+    document.getElementById('step1').querySelector('.step-question')?.remove();
+    document.getElementById('step1').querySelector('.step-subtitle')?.remove();
+    document.getElementById('step2').querySelector('.step-question')?.remove();
+    document.getElementById('step2').querySelector('.step-subtitle')?.remove();
+    document.getElementById('stepSuccess').querySelector('h2')?.remove();
+    document.getElementById('stepSuccess').querySelector('p')?.remove();
+  });
+
+  test('overrides step headings/subtitles and confirmation copy when configured', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          site_settings: {
+            form_content: {
+              submit_entry: {
+                steps: { step1: { title: 'Custom Location Heading', subtitle: 'Custom location subtitle' } },
+                confirmationTitle: 'Custom Confirmation',
+                confirmationMessage: 'Custom confirmation message',
+              },
+            },
+          },
+        }),
+    });
+
+    await entryFormApp.applyFormContent();
+
+    expect(document.getElementById('step1').querySelector('.step-question').textContent).toBe(
+      'Custom Location Heading'
+    );
+    expect(document.getElementById('step1').querySelector('.step-subtitle').textContent).toBe(
+      'Custom location subtitle'
+    );
+    expect(document.getElementById('step2').querySelector('.step-question').textContent).toBe(
+      'What sector are you in?'
+    );
+    expect(document.getElementById('stepSuccess').querySelector('h2').textContent).toBe('Custom Confirmation');
+    expect(document.getElementById('stepSuccess').querySelector('p').textContent).toBe('Custom confirmation message');
+  });
+
+  test('leaves existing hardcoded text in place when form_content is not configured', async () => {
+    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ site_settings: {} }) });
+
+    await entryFormApp.applyFormContent();
+
+    expect(document.getElementById('step1').querySelector('.step-question').textContent).toBe('Where are you based?');
+    expect(document.getElementById('stepSuccess').querySelector('h2').textContent).toBe('Entry Submitted!');
+  });
+
+  test('leaves existing hardcoded text in place when the fetch fails', async () => {
+    global.fetch.mockRejectedValueOnce(new Error('network down'));
+
+    await entryFormApp.applyFormContent();
+
+    expect(document.getElementById('step1').querySelector('.step-question').textContent).toBe('Where are you based?');
+  });
+
+  test('also overrides the page title and social-preview metadata when configured (BTA-073)', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          site_settings: {
+            form_content: {
+              submit_entry: { pageTitle: 'Custom Entry Page Title', metaDescription: 'Custom entry meta description' },
+            },
+          },
+        }),
+    });
+
+    await entryFormApp.applyFormContent();
+
+    expect(document.title).toBe('Custom Entry Page Title');
+    expect(document.querySelector('meta[name="description"]').getAttribute('content')).toBe(
+      'Custom entry meta description'
+    );
+    expect(document.querySelector('meta[property="og:title"]').getAttribute('content')).toBe('Custom Entry Page Title');
+    expect(document.querySelector('meta[property="og:description"]').getAttribute('content')).toBe(
+      'Custom entry meta description'
+    );
+  });
+});

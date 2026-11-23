@@ -1170,7 +1170,15 @@ const judgePortal = {
 // Expose globally — required because judge-portal.html loads this as a plain
 // <script> (not type="module"), so export {} would cause a SyntaxError.
 window.judgePortal = judgePortal;
-ModuleRegistry.register('judgePortal', judgePortal);
+// config.js is loaded as type="module" (deferred) while this file is a plain
+// classic script, so it can execute before config.js has run and defined
+// ModuleRegistry — guard this so that race doesn't throw and abort the rest
+// of this script (specifically the DOMContentLoaded listener below, which is
+// what actually calls judgePortal.initialize()). Nothing reads this
+// registration back out, so skipping it when the timing is unlucky is safe.
+if (typeof ModuleRegistry !== 'undefined') {
+  ModuleRegistry.register('judgePortal', judgePortal);
+}
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {

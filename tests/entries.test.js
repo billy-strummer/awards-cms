@@ -1527,6 +1527,21 @@ describe('Entries Module - sortEntries (client-side)', () => {
     entriesModule.sortEntries('status');
     expect(entriesModule._currentPage).toBe(1);
   });
+
+  test('sortEntries by priority_rank sorts ranked entries first, ascending, nulls last', () => {
+    const ranked = [
+      { ...sampleEntries[0], id: 'a', priority_rank: null },
+      { ...sampleEntries[0], id: 'b', priority_rank: 2 },
+      { ...sampleEntries[0], id: 'c', priority_rank: 1 },
+      { ...sampleEntries[0], id: 'd', priority_rank: null },
+      { ...sampleEntries[0], id: 'e', priority_rank: 3 },
+    ];
+    entriesModule.allEntries = ranked;
+    entriesModule.filteredEntries = [...ranked];
+    entriesModule.sortEntries('priority_rank');
+    expect(entriesModule._sortDir).toBe('asc');
+    expect(entriesModule.filteredEntries.map((e) => e.priority_rank)).toEqual([1, 2, 3, null, null]);
+  });
 });
 
 describe('Entries Module - goToEntriesPage', () => {
@@ -1912,6 +1927,135 @@ describe('Entries Module - renderEntries row content', () => {
     entriesModule.renderEntries();
     const tbody = document.getElementById('entriesTableBody');
     expect(tbody.innerHTML).toContain('checked');
+  });
+
+  test('renderEntries shows a Priority Rank badge next to the entry number when set', () => {
+    const rankedEntry = { ...sampleEntries[0], priority_rank: 2 };
+    entriesModule.filteredEntries = [rankedEntry];
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    expect(tbody.innerHTML).toContain('#2');
+  });
+
+  test('renderEntries shows no rank badge when priority_rank is null', () => {
+    const unrankedEntry = { ...sampleEntries[0], priority_rank: null };
+    entriesModule.filteredEntries = [unrankedEntry];
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    expect(tbody.innerHTML).not.toContain('Priority Rank from upload');
+  });
+});
+
+describe('Entries Module - saveEntryEdit() priority rank', () => {
+  let fields;
+
+  // Plain <input> stand-ins for every field saveEntryEdit() reads by id --
+  // it only ever calls .value on them, so the real <select>/<textarea> tag
+  // isn't needed for this unit test, and a bare <input> avoids jsdom's
+  // "can't set .value on a <select> with no matching <option>" quirk.
+  function makeField(_tag, id, value) {
+    const el = document.createElement('input');
+    el.id = id;
+    el.value = value;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  beforeEach(() => {
+    const form = document.createElement('form');
+    form.id = 'editEntryForm';
+    form.checkValidity = () => true;
+    document.body.appendChild(form);
+
+    const modal = document.createElement('div');
+    modal.id = 'editEntryModal';
+    modal.dataset.currentStatus = 'submitted';
+    document.body.appendChild(modal);
+
+    fields = [
+      form,
+      modal,
+      makeField('input', 'editEntryTitle', 'Best Plumber Award Entry'),
+      makeField('select', 'editEntryAward', ''),
+      makeField('select', 'editEntryOrg', ''),
+      makeField('select', 'editEntryStatus', 'submitted'),
+      makeField('select', 'editEntryPaymentStatus', 'paid'),
+      makeField('input', 'editEntryYear', '2026'),
+      makeField('input', 'editEntryPriorityRank', '2'),
+      makeField('input', 'editEntryContactName', 'John Smith'),
+      makeField('input', 'editEntryContactEmail', 'john@acme.com'),
+      makeField('input', 'editEntryContactPhone', ''),
+      makeField('input', 'editEntryContactPosition', ''),
+      makeField('textarea', 'editEntryDescription', ''),
+      makeField('textarea', 'editEntryWhyWin', ''),
+      makeField('textarea', 'editEntrySupportingInfo', ''),
+      makeField('textarea', 'editEntryAdminNotes', ''),
+    ];
+    const selfNom = document.createElement('input');
+    selfNom.type = 'checkbox';
+    selfNom.id = 'editEntrySelfNom';
+    document.body.appendChild(selfNom);
+    fields.push(selfNom);
+
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
+    jest.spyOn(entriesModule, 'loadEntries').mockResolvedValue(undefined);
+    jest.spyOn(entriesModule, 'loadStats').mockResolvedValue(undefined);
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    fields.forEach((el) => el.remove());
+    apiClient.update.mockRestore();
+    entriesModule.loadEntries.mockRestore();
+    entriesModule.loadStats.mockRestore();
+    utils.showToast.mockRestore();
+  });
+
+  test('persists a numeric Priority Rank', async () => {
+    await entriesModule.saveEntryEdit('entry-1');
+    expect(apiClient.update).toHaveBeenCalledWith('entries', 'entry-1', expect.objectContaining({ priority_rank: 2 }));
+  });
+
+  test('clearing the field saves priority_rank as null', async () => {
+    document.getElementById('editEntryPriorityRank').value = '';
+    await entriesModule.saveEntryEdit('entry-1');
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'entries',
+      'entry-1',
+      expect.objectContaining({ priority_rank: null })
+    );
+  });
+
+  test('rejects a non-numeric Priority Rank without calling the API', async () => {
+    document.getElementById('editEntryPriorityRank').value = 'first';
+    await entriesModule.saveEntryEdit('entry-1');
+    expect(apiClient.update).not.toHaveBeenCalled();
+    expect(utils.showToast).toHaveBeenCalledWith(expect.stringContaining('positive whole number'), 'error');
+  });
+
+  test('rejects a zero or negative Priority Rank without calling the API', async () => {
+    document.getElementById('editEntryPriorityRank').value = '0';
+    await entriesModule.saveEntryEdit('entry-1');
+    expect(apiClient.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('Entries Module - showEntryDetailsModal priority rank display', () => {
+  afterEach(() => {
+    document.getElementById('entryDetailsModal')?.remove();
+  });
+
+  test('shows the Priority Rank badge when set', () => {
+    entriesModule.showEntryDetailsModal({ ...sampleEntries[0], priority_rank: 1 });
+    const modal = document.getElementById('entryDetailsModal');
+    expect(modal.innerHTML).toContain('Priority Rank');
+    expect(modal.innerHTML).toContain('#1');
+  });
+
+  test('shows N/A when priority_rank is null', () => {
+    entriesModule.showEntryDetailsModal({ ...sampleEntries[0], priority_rank: null });
+    const modal = document.getElementById('entryDetailsModal');
+    expect(modal.innerHTML).toContain('N/A');
   });
 });
 

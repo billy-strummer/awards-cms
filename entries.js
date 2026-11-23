@@ -406,7 +406,7 @@ const entriesModule = {
                    data-on-change="entriesModule.toggleSelectEntry" data-id="${entry.id}"
                    ${this.selectedEntryIds.has(entry.id) ? 'checked' : ''}>
           </td>
-          <td><strong>${utils.escapeHtml(entry.entry_number)}</strong></td>
+          <td><strong>${utils.escapeHtml(entry.entry_number)}</strong>${entry.priority_rank != null ? ` <span class="badge bg-warning text-dark" title="Priority Rank from upload">#${entry.priority_rank}</span>` : ''}</td>
           <td>${utils.escapeHtml(companyName)}</td>
           <td>${utils.escapeHtml(awardName)}</td>
           <td>
@@ -703,6 +703,12 @@ const entriesModule = {
       } else if (this._sortField === 'submission_date') {
         aVal = a.submission_date || '';
         bVal = b.submission_date || '';
+      } else if (this._sortField === 'priority_rank') {
+        // Nulls sort last ascending (1, 2, 3, then unranked) and first
+        // descending, matching Postgres's own default NULLS ordering that
+        // the server-paginated path already gets for free from .order().
+        aVal = a.priority_rank == null ? Infinity : a.priority_rank;
+        bVal = b.priority_rank == null ? Infinity : b.priority_rank;
       } else {
         aVal = a[this._sortField] || '';
         bVal = b[this._sortField] || '';
@@ -1004,6 +1010,10 @@ const entriesModule = {
                         <tr>
                           <td class="text-muted">Area:</td>
                           <td>${utils.escapeHtml(entry.awards?.county || entry.county_city || 'N/A')}</td>
+                        </tr>
+                        <tr>
+                          <td class="text-muted">Priority Rank:</td>
+                          <td>${entry.priority_rank != null ? `<span class="badge bg-warning text-dark">#${entry.priority_rank}</span>` : '<span class="text-muted">N/A</span>'}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>
@@ -1804,6 +1814,14 @@ const entriesModule = {
                           <input type="number" class="form-control" id="editEntryYear" value="${entry.year || new Date().getFullYear()}">
                         </div>
                       </div>
+                      <div class="row">
+                        <div class="col-md-4 mb-3">
+                          <label class="form-label">Priority Rank</label>
+                          <input type="number" class="form-control" id="editEntryPriorityRank" min="1" step="1"
+                            placeholder="None" value="${entry.priority_rank != null ? entry.priority_rank : ''}">
+                          <div class="form-text">From the upload spreadsheet's Rank column. Leave blank to clear.</div>
+                        </div>
+                      </div>
                       <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="editEntrySelfNom" ${entry.is_self_nomination ? 'checked' : ''}>
                         <label class="form-check-label" for="editEntrySelfNom">Self-Nomination</label>
@@ -1946,7 +1964,19 @@ const entriesModule = {
       return;
     }
 
+    const rawPriorityRank = document.getElementById('editEntryPriorityRank').value.trim();
+    let priorityRank = null;
+    if (rawPriorityRank) {
+      const parsed = Number(rawPriorityRank);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        utils.showToast('Priority Rank must be a positive whole number, or left blank', 'error');
+        return;
+      }
+      priorityRank = parsed;
+    }
+
     const updateData = {
+      priority_rank: priorityRank,
       entry_title: document.getElementById('editEntryTitle').value,
       award_id: document.getElementById('editEntryAward').value || null,
       organisation_id: document.getElementById('editEntryOrg').value || null,

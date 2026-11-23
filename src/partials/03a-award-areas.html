@@ -104,14 +104,20 @@
               <div id="nomineeStep1">
                 <p class="text-muted small">
                   CSV or Excel (.xlsx) file must include a <strong>Company Name</strong> column and an <strong>Award Category</strong> column
-                  (category must match an existing award category exactly). Optional columns: Email, Contact Name, Phone, Website, Notes.
-                  Any other columns (e.g. Region, Sector, Catchment Area, Nomination Date) are ignored — this importer only reads the columns listed above.
+                  (category must match an existing award category exactly). Optional columns: Email, Contact Name, Phone, Website, Address, Catchment Area, Rank, Notes.
+                  Any other columns (e.g. Region, Sector, Nomination Date) are ignored — this importer only reads the columns listed above.
                 </p>
                 <input class="form-control" type="file" id="nomineeFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls">
+                <div class="mt-3">
+                  <label for="nomineeUploadYear" class="form-label small fw-semibold">Award Year</label>
+                  <select class="form-select" id="nomineeUploadYear" style="max-width: 200px;"></select>
+                  <div class="form-text">Which awards cycle this file's nominees belong to. Pre-selected from the filename when a year is detected (e.g. "Somerset 2027...") — change it if that's wrong.</div>
+                </div>
               </div>
 
               <!-- Step 2: preview + validation + duplicate strategy + confirm -->
               <div id="nomineeStep2" class="d-none">
+                <div id="nomineeSheetNameNotice" class="mb-2"></div>
                 <div id="nomineePreviewStats" class="mb-2"></div>
                 <div id="nomineePreviewContainer" class="mb-3"></div>
 

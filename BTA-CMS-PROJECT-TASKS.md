@@ -2870,3 +2870,164 @@ Implemented the full BTA-115 resolution plan under explicit authorisation.
 ### HH.4 — Git/worktree state
 
 Branch `claude/supabase-cms-setup-test-e6oiza`. **HEAD before this task:** `a5d330e`. Committed and pushed as part of this same task, per its explicit instruction — see the commit referenced in this task's own completion report for the resulting HEAD.
+
+## II. Post-BTA-117 — `feature/safe-reconciliation` Main-Merge Branch (2026-11-11)
+
+**Important continuity note before anything else:** everything in this section happened on a **separate branch, `feature/safe-reconciliation`**, created off `origin/main`, not on `claude/supabase-cms-setup-test-e6oiza`. This work was not given a `BTA-NNN` number by the person directing it, so none is invented here — titled descriptively instead, per this log's standing rule against fabricating continuity that doesn't exist. **This branch (`claude/supabase-cms-setup-test-e6oiza`) is untouched by any of it** — still exactly at `5201479` (BTA-119's commit: 3 skipped tests fixed, `home.html` link fix on 4 public pages, `auth.js`'s raw-error fallback fixed), both locally and on `origin`.
+
+The detail record for everything below lives in `RECONCILIATION-OPEN-QUESTIONS.md` **on `feature/safe-reconciliation` only** — it does not exist on this branch or on `main`. A future session picking up this work needs to check out `feature/safe-reconciliation` to read it in full; this section is a summary, not a replacement.
+
+### II.1 — What happened, in sequence
+
+1. **Why:** separately from the BTA-NNN sequence, a decision was made to reconcile `claude/supabase-cms-setup-test-e6oiza` with `origin/main`, which had drifted 85 commits apart (a parallel public-voting-site workstream on `main`, merged with this branch's security/audit work) — `+26,622/−35,155` lines across 234 files.
+2. **`feature/safe-reconciliation` created**, the merge run, **24 real git conflicts resolved by hand** (home-link fixes, `nominate.js` payload fix, category-rename sync to match `main`'s migration-068 rename, dual script-tag merges, 3 public pages restored that `main` had kept building out as a live feature — `award-nominees.html`/`award_companies.html`/`company-profile.html` — while this branch had deleted them as orphaned). Verified clean build + 85/85 test suites after resolution.
+3. **`btc-module.js` (a TradingView crypto/FX ticker widget)** was restored per explicit instruction (to avoid silently dropping a `main` feature), then **empirically tested live** (Playwright, headless Chromium, driving the real `rbacModule.applyPermissions()` code path) — found to be unreachable by **any** role, including `super_admin`, because Bootstrap's `.d-none` (`display:none !important`) blocks the inline-style-only visibility toggle `main` itself ships. **Reverted** on that evidence. Fully recoverable from commit `bba140d` on that branch if ever wanted back — the bug would need fixing at the same time.
+4. **The 4 architecturally-diverged files** (`entries.js`, `nominee-uploads.js`, `test-data-manager.js`, `automation-scheduler.js`) — large, non-conflicting rewrites that git auto-resolved silently in this branch's favour, never flagged as conflicts — were given a dedicated decision-focused review and **explicitly approved to keep this branch's versions**, including locking `nominee-uploads.js` to its strict dropdown-first area-selection model over `main`'s free-text fuzzy-matching, specifically for the data-integrity reason (eliminates silent geographic mis-assignment of nominees).
+5. **The merged branch was split into 4 reviewable PR branches** rather than left as one 235-file diff, using `build.js`'s own `PUBLIC_PAGES`/`publicJsFiles` lists as the ground-truth split criterion for the public-vs-admin division:
+   - `pr1/security-infra-migrations` (21 files: migrations 091–094 + tests, new `api/_lib/` modules, the 4 decided files) — pushed to `origin`, verified standalone (72/72 suites, 6,461 tests).
+   - `pr2/documentation` (54 files, all docs) — pushed to `origin`, zero code risk.
+   - `pr3a/public-pages-ui` (38 files) — pushed to `origin`, verified **fully independent** standalone (75/75 suites, 6,588 tests).
+   - `pr3b/admin-app-drift` (122 files) — pushed to `origin`, builds clean but **3 suites fail standalone** (`tests/entry-proxy.test.js`, `tests/data-proxy-user-management.test.js`, `tests/data-proxy.test.js`) because `api/data-proxy.js`/`api/entry-proxy.js` here `require()` modules that only exist in PR1 — a confirmed, expected dependency, not a defect.
+   - An original unsplit `pr3/application-integration` (160 files, the union of 3a+3b) was created first as an intermediate step and still exists **locally only, not pushed** — not meant to become a PR itself.
+
+### II.2 — Current state (verify this yourself before trusting it — don't take a prior session's word for it)
+
+- `claude/supabase-cms-setup-test-e6oiza`: unaffected, at `5201479`, in sync with `origin`.
+- `origin/main`: unaffected — nothing from any of the above has merged into it.
+- `origin/feature/safe-reconciliation`: pushed, HEAD `d561b6d` (adds the final decisions + branch-split record to `RECONCILIATION-OPEN-QUESTIONS.md` on that branch).
+- `origin/pr1/security-infra-migrations`, `origin/pr2/documentation`, `origin/pr3a/public-pages-ui`, `origin/pr3b/admin-app-drift`: all pushed, no GitHub PRs opened yet for any of them.
+- `pr3/application-integration`: local only, not pushed, superseded by `pr3a`+`pr3b`.
+
+### II.3 — What's left to do
+
+1. **Open the 4 GitHub PRs** — branches are pushed and ready, but no PR has actually been opened for any of them yet.
+2. **Merge order: PR1 first, then PR2 and PR3a in parallel (no dependency), then PR3b last** (needs PR1's `api/_lib/` modules merged into `main` to build/test green — a testing-correctness constraint, not a merge-conflict one, since PR1 and PR3b touch disjoint files).
+3. **A 15-minute manual/browser pass was never done** — the admin SPA's live load (console-error-free) and the handful of touched public pages (`payment-success.html`, `payment-cancelled.html`, `home.html`, `nominate.html`, etc.) have only been verified via build + Jest, never clicked through in a real browser session with a live backend.
+4. **Open epistemic question, not yet answered:** whether this entire reconciliation detour was actually necessary, given BTA-119's own deliverable (the thing this branch needed) was already complete and pushed before the detour started. Worth confirming explicitly whether the standing intent is still to keep this branch caught up with `main`'s parallel site work.
+5. **Unrelated small ticket, noticed in passing, not fixed:** `api/_lib/award-categories.js` on `main` is stale against its own declared source of truth (`config.js`) — missing the migration-068 category renames. Doesn't block anything above.
+6. Once the 4 PRs are through review and merged (in order), decide whether `feature/safe-reconciliation` and the now-superseded `pr3/application-integration` local branch should be deleted, or kept a while as a reference.
+
+### II.4 — Git/worktree state
+
+This branch, `claude/supabase-cms-setup-test-e6oiza`: HEAD unchanged at `5201479` before this append. This section's own addition to `BTA-CMS-PROJECT-TASKS.md` is, as of writing, an **uncommitted** change on this branch's working tree — matching this log's established practice of leaving documentation-only appends uncommitted pending separate, explicit authorisation to commit (see HH's own note on this same convention), since appending a continuity-log entry was what was asked for here, not a commit or push.
+
+## III. Nominee/Entry Upload Pipeline — Audit, Fixes, and Lifecycle Hardening (2026-11-23)
+
+**This section covers work done directly on `claude/supabase-cms-setup-test-e6oiza`**, independent of and unaffected by Section II's `feature/safe-reconciliation` detour (that stack is untouched by anything below).
+
+### III.1 — Commit `f0533a7` — upload pipeline audit, first round of fixes
+
+Fixed three gaps found when auditing `nominee-uploads.js`/`api/data-proxy.js`'s bulk county/city/London-borough upload pipeline against the real 10-column production spreadsheet schema (`Somerset 2027 NEW ARGON.xlsx`):
+
+1. **London Borough list sync** (`home-data.js`): the public homepage's county/city browser (`REGION_DATA`) had drifted from the canonical 33-entry `areas` table (migration 067) — stuck at an old 15-entry list carrying two dead legacy names (`Kingston & Richmond`, `Middlesex`) that match no real area, while missing 20 real boroughs entirely. Fixed to the full 33 (32 boroughs + City of London), with `FLAG_MAP` entries added for the newly-included ones.
+2. **10-column mapping**: `Business/Contact Address` and `Catchment Area` are now detected, forwarded, and stored on `organisations.address`/`organisations.catchment_area` (columns existed since migration 003, previously unused by this pipeline). `Rank` is now detected, validated (positive integer or blank), and stored — this required a genuine schema addition: **migration `095-add-entries-priority-rank.sql`**, adding `entries.priority_rank` (nullable `SMALLINT`, `CHECK (priority_rank IS NULL OR priority_rank > 0)`). Also added a non-blocking notice comparing an uploaded `.xlsx`'s first sheet-tab name against the selected dropdown area.
+3. **Admin CMS UI wiring**: `priority_rank` is now viewable/editable/clearable in the Entries table (inline badge), detail view, and edit modal. `organisations.address`/`catchment_area` already had full view/edit UI in the Company Profile modal from an earlier, untested feature — added test coverage for that save path rather than building new UI.
+
+Verified: lint clean, 84/84 suites, 6838/6838 tests, build clean.
+
+### III.2 — End-to-end lifecycle audit (read-only) and commit `61a5c56` — fixes
+
+A follow-up, read-only audit traced all 10 imported fields plus the assigned area from `executeAwardAreaImport` through every downstream consumer on this branch. Findings, and what was fixed:
+
+| Finding | Severity | Fixed in `61a5c56`? |
+|---|---|---|
+| `api/voting-proxy.js`'s `loadWinners()` (backs the fully public `public-winners.html`) selected `winners.*` and returned raw unredacted rows — almost certainly including `access_token`, the same credential `handleGetWinner` in `api/entry-proxy.js` explicitly strips with a comment calling it "an internal auth secret". Unrelated to the bulk-upload fields, found while tracing public exposure. | **Critical** | ✅ Replaced with an explicit column allowlist. |
+| Bulk-imported entries are created with `status: 'shortlisted'`, `is_public: true`, `allow_public_voting: true`, and go live on `public-voting.html` immediately — no admin approval/publish step exists. | High (flagged, not changed) | ❌ Not changed — confirmed as a deliberate choice (see III.3), not a bug. |
+| `year` was always `new Date().getFullYear()` at import time, with no way to target a future cycle — a "Somerset 2027" file uploaded in 2026 would silently stamp `year: 2026` and could collide with genuine 2026 data in the same category+area. | High | ✅ Added an Award Year selector to the upload modal (auto-detected from the filename), validated server-side, threading a real `year` through instead of the server clock. |
+| `api/judge-automation.js` and `judge-portal.js` hardcode `status: 'submitted'` for judge assignment/queue — a bulk-imported entry (`status: 'shortlisted'`) can never be assigned to or seen by a judge through any existing path. | High (flagged, not changed) | ❌ Not changed — see III.3; judging bulk-sourced nominees through the existing panel-judge pipeline was explicitly not chosen. |
+| `api/email-automation.js`'s `sendShortlistNotifications()` filters on `is_shortlisted = true`, which the importer never set (only `status`) — every bulk-imported nominee was silently skipped by this outreach campaign despite showing "Shortlisted" everywhere in the UI. | Medium | ✅ Importer now also sets `is_shortlisted: true` + `shortlisted_date`. |
+| The importer never creates an `award_assignments` row, so `assignments.js`'s batch-decision email feature (a separate table/workflow from `entries`) never sees bulk-imported nominees either. | Medium (flagged, not changed) | ❌ Not in scope for this pass — noted as a known gap. |
+| `entries.priority_rank` had no sort/ordering wiring anywhere (confirmed by grep — stored and displayed only). | Low | ✅ Wired into the admin Entries table as a dedicated "Rank" sort option (ranked first ascending, unranked last). Public voting's sort was explicitly left as pure vote-count, unchanged, by request. |
+| `entry_description` is never set by the importer, so every bulk-imported nominee's public-voting card shows an empty description paragraph where self-nominated entries show real text. | Low (flagged, not changed) | ❌ Not changed — cosmetic, not in this pass's scope. |
+
+### III.3 — Decisions made, with rationale on record
+
+- **Bulk-imported entries keep going straight to public voting** (`status: 'shortlisted'`, `is_public: true`) rather than being routed through `status: 'submitted'` + full judge review. Considered both; chose to preserve current behaviour and fix only the concrete `is_shortlisted` outreach bug, on the reasoning that this spreadsheet workflow (externally pre-vetted businesses, with `Rank`/`Catchment Area`/structured `Notes` already reflecting prior curation) may be intentionally designed to skip panel judging — routing 554+ rows per county file through per-entry judge assignment would be a much larger workflow change than this pass's scope, and wasn't confirmed as the intended business process. **The judging-pipeline exclusion this implies remains open** — if bulk-sourced nominees are meant to be judged, `api/judge-automation.js`'s and `judge-portal.js`'s hardcoded `status: 'submitted'` filters are the actual blocker to revisit.
+- **Public voting's sort order is unchanged** — `priority_rank` is treated as an internal curation signal from the spreadsheet, not something that should pre-bias what the public sees in a vote.
+- **`award_assignments` non-population and the empty `entry_description` gap are logged, not fixed** — both out of scope for this pass; neither was named in the request this section documents.
+
+### III.4 — Pending migrations checklist
+
+| Migration | Applied to test? | Applied to production? | Notes |
+|---|---|---|---|
+| `093-harden-remaining-permissive-policy-tables.sql` | ✅ yes, verified (BTA-104) | ❌ no | "Ready with prerequisites" per Section Z — needs explicit separate authorisation + a human present for the MCP confirmation prompt. Not touched by this section's work. |
+| `094-add-fk-indexes.sql` | ❌ not yet | ❌ no | Written, never verified anywhere. Not touched by this section's work. |
+| `095-add-entries-priority-rank.sql` | ❌ not yet | ❌ no | New this section (III.1). A plain `ALTER TABLE entries ADD COLUMN` with a `CHECK` constraint — no RLS policy change needed, no dependency on 093/094. |
+
+093/094/095 touch disjoint tables/columns with no dependency between them — order doesn't technically matter, but applying them in ascending numeric order keeps `list_migrations` coherent with this project's own convention. Each should go through the same test-project-first, then-explicit-separate-authorisation process already established for every prior migration in this log. **None of the three have been applied to any database as of this entry.**
+
+### III.5 — Verification and Git state
+
+**Commands run:** `npm run lint`, `npm test` (84/84 suites, 6851/6851 tests after `61a5c56`), `npm run build` — all clean, both before and after `61a5c56`.
+
+**Git state:** `claude/supabase-cms-setup-test-e6oiza`, HEAD at `61a5c56` (on top of `f0533a7`, on top of `5201479`) at the point this section was written, pushed to `origin`. This section's own append to `BTA-CMS-PROJECT-TASKS.md` is a separate, subsequent docs-only commit (see git log for its hash), matching this log's established convention of keeping documentation-only changes in their own commit.
+
+**Known entanglement, carried over from the prior session's report and still true:** this branch is the head of open PR #308 (`billy-strummer/awards-cms`), an older, unrelated organisation-matching fix dating to July 2026. `61a5c56`/`f0533a7` are now part of that PR's diff as a side effect of pushing to this branch, not by intent. PR #308's `mergeable_state` was last seen as `"dirty"` (merge conflicts against `main`) — untouched by this section's work. **Update, this branch (`claude/geographic-upload-security-fixes`):** PR #308 has since been closed in favour of the reconciliation stack (PRs #361–#364, merged into `main`), and this work has been ported onto the new `main` as its own focused PR — see the top of this file's history for the port.
+
+### III.6 — Migrations `094`/`095` applied and verified on test; a correction to Section Z's production claim; `094` blocked on production by a real schema difference
+
+**Test project (`htcsewpztvxafksdzuhp`)**, found paused (`INACTIVE`) and restored before anything below:
+
+- Baseline confirmed by direct schema inspection before touching anything: `093` already applied and in its correct end-state (re-verified, matching Section Z); `entries.priority_rank` absent; 0 of 094's 7 target indexes present.
+- Applied `094_add_fk_indexes` and `095_add_entries_priority_rank` — both clean, no errors.
+- Post-apply verification, all direct schema inspection, not just `list_migrations`: `entries.priority_rank` is `smallint`, nullable, with `CHECK (((priority_rank IS NULL) OR (priority_rank > 0)))` — an exact match to the migration file. All 7 of `094`'s indexes present (`idx_award_years_tenant_id`, `idx_organisations_tenant_id`, `idx_award_assignments_tenant_id`, `idx_entries_tenant_id`, `idx_invoices_tenant_id`, `idx_invoices_award_id`, `idx_payments_tenant_id`), each a plain btree index on exactly the column named. `093`'s RLS state re-checked and unchanged (all 8 target tables still exactly `{service_role_all, no_direct_client_access}`, zero `anon`/`authenticated` grants). `get_advisors(security)`: 3 pre-existing warnings, all unrelated to this work (function `search_path` mutability ×43, `pg_trgm` extension location, leaked-password-protection setting) — nothing new introduced.
+
+**Production (`qdzyknercdqwhwijbcxf`) — a correction, not a repeat of Section Z's finding:**
+
+- **`093` is already applied to production.** `list_migrations` shows it recorded (`version 20261110143834`, i.e. 2026-11-10), and — critically, since this log's own standing rule is to verify schema state rather than trust the migration log alone — I independently re-derived the real end-state by direct query: all 8 target tables (`organisations`, `organisation_contacts`, `gdpr_requests`, `entries`, `award_assignments`, `invoices`, `payments`, `award_years`) show exactly `{service_role_all, no_direct_client_access}` with zero `anon`/`authenticated` grants, identical to test. **This contradicts Section Z's last recorded state** ("Production... is untouched and still fully exposed" — BTA-105, dated through 2026-11-09). The migration's own timestamp (Nov 10) is after BTA-105's cutoff, so this was applied by some action after BTA-105 that this log has no other record of — I have no evidence of who or in what session. Reported here as a discrepancy between this log and live reality, per this project's standing rule, rather than silently updated as if it had always been known.
+- **`094` is NOT fully applied, and attempting it surfaced a real schema difference between test and production.** Before applying anything, direct inspection showed 4 of the 7 target indexes already present on production (`idx_payments_tenant_id`, `idx_invoices_tenant_id`, `idx_entries_tenant_id`, `idx_award_assignments_tenant_id` — origin unknown, not from this migration, `list_migrations` had no `094` entry at all) and 3 missing. Applying the full migration as written failed: `ERROR: 42703: column "award_id" does not exist` — **production's `invoices` table has no `award_id` column at all** (confirmed by listing its full column set: `id, organisation_id, invoice_number, invoice_type, status, payment_status, invoice_date, due_date, total_amount, paid_amount, balance_due, currency, payment_method, payment_reference, paid_date, notes, created_at, package_type, description, tenant_id` — no award reference of any kind), whereas test's `invoices` table does have it and the migration applied there without issue. The failed attempt ran in a single transaction and rolled back atomically — re-verified after the error: production's indexes are unchanged from the pre-attempt baseline (the 4 pre-existing ones only), and `list_migrations` did not record a `094` entry. **No partial or dirty state resulted.** `095` was not attempted — paused here rather than guessing how to proceed past an unexpected production/test schema divergence that the migration's own authored assumptions didn't anticipate, pending a decision on how to handle the `invoices.award_id` gap (e.g. split the migration, add the column first, or confirm the column was intentionally never added to production and drop that one index statement for production specifically).
+
+**Git/verification state:** no code changed this entry — database-only work plus this log append. Full details (exact SQL run, exact query outputs) are in this session's transcript; this entry summarizes rather than reproduces them verbatim.
+
+### III.7 — Merge path to `main`: read-only investigation and recommendation
+
+Investigated with `git merge-tree` (a read-only three-way merge simulation — no working-tree changes, no commits, nothing pushed) rather than relying on recorded claims alone. One correction along the way: this clone was shallow, which made `git merge-base` initially report `main` and this branch as having **no common ancestor at all** — false, an artifact of the shallow fetch depth. Unshallowed (`git fetch --unshallow`) before drawing any conclusion; the real merge-base is `1f2030b` (matching PR #308's own recorded `base.sha` — that field was accurate all along).
+
+**Why PR #308 shows `mergeable_state: "dirty"`:** a real three-way merge simulation between `main` and this branch's current tip finds **24 files with genuine, overlapping-edit conflicts** (not just "many months of drift") — `about.html`, `api/voting-proxy.js`, `award-nominees.html`, `award_companies.html`, `become-a-sponsor.html`, `build.js`, `check-in.html`, `company-profile.html`, `config.js`, 5 `home*.html` variants, `home.js`, `judge-login.html`, `judge-portal.html`, `nominate.js`, `payment-cancelled.html`, `payment-success.html`, `public-voting.html`, `public-winners.html`, `register.html`, `upload-documents.html`, `vote.html`, `winners-portal.html`. This count and file set closely matches Section II.1's own recorded "24 real git conflicts resolved by hand" during the `feature/safe-reconciliation` effort — independent confirmation that record was accurate.
+
+**The reconciliation branches are genuinely ready, independently re-verified, not just taken on trust:**
+- `feature/safe-reconciliation` merges into `main` with **zero conflicts**.
+- Each of `pr1/security-infra-migrations`, `pr2/documentation`, `pr3a/public-pages-ui`, `pr3b/admin-app-drift` merges into `main` individually with **zero conflicts**.
+- Every pair of the four merges against every other pair with **zero conflicts** (checked all 6 pairs) — confirming Section II.2/II.3's recommended merge order (`pr1` → `pr2`+`pr3a` in parallel → `pr3b` last) introduces no inter-branch conflict regardless of order.
+- **None of the 4 branches have an open GitHub PR yet** (confirmed via `list_pull_requests` — only #308, plus two long-unrelated pre-existing open PRs, #151 and #99, from entirely different old branches, left untouched).
+
+**What this means for landing today's/last session's verified work (London borough sync, 10-column upload mapping, migration `095`, admin UI wiring, the `winners.access_token` leak fix, Award Year selector, `is_shortlisted` outreach fix, `priority_rank` sorting — commits `f0533a7`/`61a5c56`/`a6c1455`):** this branch's current tip merges cleanly against `feature/safe-reconciliation` as a whole (shares a real common ancestor, `5201479`, confirmed after unshallowing) — but merges against the 4 *individual* split branches with real conflicts once compared against the correct shared base: **4–6 files each**, union across all four: `BTA-CMS-PROJECT-TASKS.md`, `api/data-proxy.js`, `home-data.js`, `src/partials/03a-award-areas.html`, `tests/data-proxy.test.js`, `nominee-uploads.js`, `tests/nominee-uploads.test.js`. All from the *first* round of fixes (`f0533a7`) — the second round (`61a5c56`: the security fix, year selector server-side piece already included above, outreach fix, sort wiring) and the docs commit's own file (`a6c1455`) land clean except for `BTA-CMS-PROJECT-TASKS.md` itself, which is an append-only file and trivial to reconcile. These are real overlapping edits (the long-diverged admin-upload-pipeline work and this session's audit fixes both touched the same functions), not mechanical — resolving them will need actual review, not a blind cherry-pick.
+
+**Recommendation:**
+1. Open the 4 pending GitHub PRs for `pr1`, `pr2`, `pr3a`, `pr3b` (branches are pushed and verified; nothing is blocking this).
+2. Merge in the order Section II.3 already recommended: `pr1` first, then `pr2`+`pr3a` (no dependency between them), then `pr3b` last (its own standalone test failures are exactly the documented `api/_lib/` dependency on `pr1`, resolved once `pr1` is in `main`).
+3. Close PR #308 — it is the old, pre-reconciliation, 24-conflict state of this branch; merging it directly would be strictly worse than the already-resolved reconciliation branches, and superseded by them.
+4. For today's/last session's work specifically: once `main` has absorbed `pr1`–`pr3b`, branch fresh off the new `main` and port `f0533a7`/`61a5c56`/`a6c1455`'s changes onto it — expect real, manual conflict resolution in the 7 files named above (not a clean cherry-pick), then open a new, small, focused PR for just that work in place of #308.
+
+No branch was merged, pushed to, or PR'd as part of this investigation — read-only throughout, per the task.
+
+### III.9 — Recommendation executed
+
+All 4 steps above executed, with explicit authorization for each:
+
+1. Opened #361 (`pr1`), #362 (`pr2`), #363 (`pr3a`), #364 (`pr3b`) via `mcp__github__create_pull_request`, each citing this section.
+2. Merged in the recommended order — `pr1` → `pr2`+`pr3a` → `pr3b` — via `mcp__github__merge_pull_request`. All 4 merged cleanly, no conflicts, matching this section's pre-merge `git merge-tree` verification.
+3. Closed #308 with a comment pointing to the merged stack and this file.
+4. Branched `claude/geographic-upload-security-fixes` off the new `main` and cherry-picked `f0533a7^..ba8cd43` (the 5 commits this and the prior section cover) onto it. Contrary to this section's own pessimistic static prediction of 7 conflicting files, cherry-pick's real 3-way merge against the actual reconciled `main` only conflicted in `BTA-CMS-PROJECT-TASKS.md` itself (twice, both pure append conflicts — resolved by keeping the fuller continuation each time). Every other predicted file (`api/data-proxy.js`, `home-data.js`, `src/partials/03a-award-areas.html`, `tests/data-proxy.test.js`, `nominee-uploads.js`, `tests/nominee-uploads.test.js`) merged clean on its own.
+
+**Verification on the ported branch:** lint clean; 85/85 suites, 6,867/6,867 tests; production build clean.
+
+**Pushed and opened as #365** (`claude/geographic-upload-security-fixes` → `main`), held unmerged pending review of the conflict-resolution summary in its own description, per explicit instruction.
+
+**Git/worktree state:** this entry is committed on `claude/geographic-upload-security-fixes` itself (the branch it describes), not on `claude/supabase-cms-setup-test-e6oiza` — that branch's own PR (#308) is now closed, so further work in this area continues on this branch and its PR (#365) instead.
+
+### III.8 — Production migration state finalized: `093`, `095`, `096` live; `094` deliberately not applied to production as written
+
+Following III.6's pause on the `invoices.award_id` blocker, confirmed by direct code search (not the migration's own comment, which claims the opposite) that `invoices.award_id` has zero references anywhere in `api/*.js` or any client-side file — the column's absence on production is consistent with current application reality, not a gap to fix.
+
+Rather than edit `094-add-fk-indexes.sql` after the fact (it already ran successfully on test exactly as written; rewriting it would make "migration 094" mean two different things depending on which project you inspect — the same class of drift already seen with this branch's and `main`'s independently-numbered 067/068 migrations), wrote a new migration instead: **`migrations/096-add-remaining-fk-indexes-production.sql`**, containing only the 2 of `094`'s 7 statements still missing anywhere (`idx_award_years_tenant_id`, `idx_organisations_tenant_id`), with `invoices.award_id`'s index deliberately omitted and the reasoning recorded in the file's own header comment.
+
+**Actions taken, both independently verified by direct schema inspection:**
+- `095-add-entries-priority-rank.sql` applied to production. Confirmed: `entries.priority_rank` is `smallint`, nullable, with `CHECK (((priority_rank IS NULL) OR (priority_rank > 0)))` — exact match to the migration file.
+- `096-add-remaining-fk-indexes-production.sql` applied to **both** test and production (a no-op on test, where `094` already covered both statements; genuinely new on production). Confirmed present on test: both new indexes. Confirmed present on production: `idx_award_years_tenant_id`, `idx_organisations_tenant_id`, plus the 4 that already existed from some undocumented prior action (`idx_award_assignments_tenant_id`, `idx_entries_tenant_id`, `idx_invoices_tenant_id`, `idx_payments_tenant_id`) — 6 of the 7 original target indexes now present on production; the 7th (`idx_invoices_award_id`) is intentionally absent, by design, because the column it would index doesn't exist there.
+
+**Final production (`qdzyknercdqwhwijbcxf`) migration state:** `093`, `095`, `096` applied and verified. `094` deliberately not applied as written — superseded for production by `096`'s narrower, column-existence-safe equivalent. `list_migrations` on production: `093` (`20261110143834`), `095` (`20261123213618`), `096` (`20261123213859`) — no `094` entry, by design, not an oversight.
+
+**Final test (`htcsewpztvxafksdzuhp`) migration state:** `093`, `094`, `095`, `096` all applied and verified — `096` is a harmless no-op there, included for consistency so the same migration file set exists in both places even though its effect on test is nil.
+
+**Git/verification state:** `migrations/096-add-remaining-fk-indexes-production.sql` and this log entry are committed together on `claude/supabase-cms-setup-test-e6oiza` (see git log for the commit hash) and pushed to `origin`. The test project was paused again after this work, having been restored earlier in this session purely to do it.

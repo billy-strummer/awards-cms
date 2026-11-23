@@ -6875,6 +6875,88 @@ describe('Organisations Module - Undo Inline Edit', () => {
 });
 
 // ---------------------------------------------------------------------------
+// saveOrgChanges() — persists the company-profile edit form, including the
+// Address/Catchment Area fields populated by the bulk nominee upload
+// ---------------------------------------------------------------------------
+describe('Organisations Module - saveOrgChanges()', () => {
+  function makeField(id, value) {
+    const el = document.createElement('input');
+    el.id = id;
+    el.value = value;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  let fields;
+
+  beforeEach(() => {
+    STATE.allOrganisations = [makeOrg({ id: 'org-save-1', company_name: 'Save Co' })];
+    STATE.filteredOrganisations = [...STATE.allOrganisations];
+
+    fields = [
+      makeField('editContactName', 'Jane Smith'),
+      makeField('editEmail', 'jane@save.co'),
+      makeField('editPhone', '01234 567890'),
+      makeField('editWebsite', 'https://save.co'),
+      makeField('editRegion', ''),
+      makeField('editAddress', '12 Mill Lane, Taunton, TA1 1AA'),
+      makeField('editCatchmentArea', 'Bath & Somerset'),
+    ];
+
+    orgsModule.currentEditingOrg = STATE.allOrganisations[0];
+
+    jest.spyOn(apiClient, 'update').mockResolvedValue({ data: null, error: null });
+    jest.spyOn(orgsModule, 'openCompanyProfile').mockResolvedValue(undefined);
+    jest.spyOn(orgsModule, 'renderOrganisations').mockImplementation(() => {});
+    jest.spyOn(orgsModule, 'calculateDashboardStats').mockImplementation(() => {});
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    fields.forEach((el) => el.remove());
+    apiClient.update.mockRestore();
+    orgsModule.openCompanyProfile.mockRestore();
+    orgsModule.renderOrganisations.mockRestore();
+    orgsModule.calculateDashboardStats.mockRestore();
+    utils.showToast.mockRestore();
+  });
+
+  test('persists Address and Catchment Area from the edit form', async () => {
+    await orgsModule.saveOrgChanges('org-save-1');
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'organisations',
+      'org-save-1',
+      expect.objectContaining({
+        address: '12 Mill Lane, Taunton, TA1 1AA',
+        catchment_area: 'Bath & Somerset',
+      })
+    );
+  });
+
+  test('updates local STATE with the saved Address and Catchment Area', async () => {
+    await orgsModule.saveOrgChanges('org-save-1');
+
+    const org = STATE.allOrganisations.find((o) => o.id === 'org-save-1');
+    expect(org.address).toBe('12 Mill Lane, Taunton, TA1 1AA');
+    expect(org.catchment_area).toBe('Bath & Somerset');
+  });
+
+  test('clearing both fields saves them as empty strings', async () => {
+    document.getElementById('editAddress').value = '';
+    document.getElementById('editCatchmentArea').value = '';
+
+    await orgsModule.saveOrgChanges('org-save-1');
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'organisations',
+      'org-save-1',
+      expect.objectContaining({ address: '', catchment_area: '' })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // SMS templates data
 // ---------------------------------------------------------------------------
 describe('Organisations Module - SMS/WhatsApp Templates', () => {

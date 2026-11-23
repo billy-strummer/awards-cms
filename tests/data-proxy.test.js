@@ -141,6 +141,11 @@ function createRes() {
 describe('Data Proxy API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // The handler's in-memory rate limiter is real module state, not a
+    // mock -- every test in this file shares the same mocked user id, so
+    // without this it accumulates across the whole file's run and can trip
+    // a real 429 on an unrelated, later test.
+    handler._resetRateLimitsForTests();
     // Default: auth succeeds
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123', email: 'admin@test.com' } },
@@ -606,6 +611,20 @@ describe('Data Proxy API', () => {
       expect(res.statusCode).toBe(500);
     });
 
+    test('rejects a non-integer year', async () => {
+      const req = importReq({ year: 'twenty-twenty-seven' });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects a year more than 5 years from now', async () => {
+      const req = importReq({ year: new Date().getFullYear() + 50 });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
     test('requires editor role or above', async () => {
       mockFrom.mockImplementationOnce((table) => {
         if (table === 'user_roles') return chainable({ data: { role: 'viewer' }, error: null, count: 1 });
@@ -700,6 +719,221 @@ describe('Data Proxy API', () => {
         // ...and must have been scoped to the resolved area.
         const areaIdEqCalls = recordedCalls.filter(([m, col]) => m === 'eq' && col === 'area_id');
         expect(areaIdEqCalls.some(([, , val]) => val === 'area-1')).toBe(true);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
+    test('rejects a non-numeric Rank value with a clear per-row error, blocking the whole import', async () => {
+      const req = importReq({
+        rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company', rank: 'first' }],
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      const body = res.body;
+      expect(body.valid).toBe(false);
+      expect(body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ row: 1, field: 'rank', message: expect.stringContaining('Rank "first"') }),
+        ])
+      );
+    });
+
+    test('treats a blank Rank as valid (null), not an error', async () => {
+      const req = importReq({
+        rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company', rank: '' }],
+      });
+      const res = createRes();
+      await handler(req, res);
+      const body = res.body;
+      expect(body.valid).toBe(true);
+    });
+
+    test('forwards Address and Catchment Area onto the organisation, and Rank onto the entry', async () => {
+      const recordedInserts = [];
+      function recordingChain(resolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          recordedInserts.push(payload);
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve({ data: { id: 'new-org-1' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({
+            data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+            error: null,
+          });
+        }
+        if (table === 'organisations') return recordingChain({ data: null, error: null });
+        if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+        if (table === 'entries') return recordingChain({ data: null, error: null });
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = importReq({
+          mode: 'import',
+          rows: [
+            {
+              company_name: 'Acme Roofing Ltd',
+              category: 'Roofing Company',
+              address: '12 Mill Lane, Taunton, TA1 1AA',
+              catchment_area: 'Bath & Somerset',
+              rank: '2',
+            },
+          ],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+
+        const orgInsert = recordedInserts.find((p) => p.company_name === 'Acme Roofing Ltd');
+        expect(orgInsert.address).toBe('12 Mill Lane, Taunton, TA1 1AA');
+        expect(orgInsert.catchment_area).toBe('Bath & Somerset');
+
+        const entryInsert = recordedInserts.find((p) => p.organisation_id === 'new-org-1');
+        expect(entryInsert.priority_rank).toBe(2);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
+    test('stamps a requested year, not the server current year, on the new award and entry', async () => {
+      const recordedInserts = [];
+      function recordingChain(resolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          recordedInserts.push(payload);
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve({ data: { id: 'award-2027' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({
+            data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+            error: null,
+          });
+        }
+        // No existing organisation/award/entry -- forces real inserts so we
+        // can inspect the year stamped on each one.
+        if (table === 'organisations') return recordingChain({ data: null, error: null });
+        if (table === 'award_years') return recordingChain({ data: null, error: null });
+        if (table === 'entries') return recordingChain({ data: null, error: null });
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = importReq({
+          mode: 'import',
+          year: 2027,
+          rows: [{ company_name: 'Future Roofing Ltd', category: 'Roofing Company' }],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+
+        const awardInsert = recordedInserts.find((p) => p.award_name === 'Roofing Company');
+        expect(awardInsert.year).toBe(2027);
+
+        const entryInsert = recordedInserts.find((p) => p.entry_title && p.entry_title.includes('Future Roofing'));
+        expect(entryInsert.year).toBe(2027);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
+    test('sets is_shortlisted and shortlisted_date alongside status, so shortlist-notification outreach does not skip imported entries', async () => {
+      const recordedInserts = [];
+      function recordingChain(resolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          recordedInserts.push(payload);
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve({ data: { id: 'new-org-1' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({
+            data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+            error: null,
+          });
+        }
+        if (table === 'organisations') return recordingChain({ data: null, error: null });
+        if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+        if (table === 'entries') return recordingChain({ data: null, error: null });
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = importReq({
+          mode: 'import',
+          rows: [{ company_name: 'Acme Roofing Ltd', category: 'Roofing Company' }],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+
+        const entryInsert = recordedInserts.find((p) => p.organisation_id === 'new-org-1');
+        expect(entryInsert.status).toBe('shortlisted');
+        expect(entryInsert.is_shortlisted).toBe(true);
+        expect(typeof entryInsert.shortlisted_date).toBe('string');
+        expect(Number.isNaN(Date.parse(entryInsert.shortlisted_date))).toBe(false);
       } finally {
         mockFrom.mockImplementation(originalMockFromImpl);
       }

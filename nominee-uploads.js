@@ -21,6 +21,9 @@ const nomineeUploads = (() => {
   let _phoneColumn = null;
   let _websiteColumn = null;
   let _notesColumn = null;
+  let _addressColumn = null;
+  let _catchmentColumn = null;
+  let _rankColumn = null;
   let _currentFilename = '';
   let _duplicateStrategy = 'skip';
   let _lastValidation = null; // result of the last server validate call
@@ -96,6 +99,9 @@ const nomineeUploads = (() => {
       phone: get(r, _phoneColumn),
       website: get(r, _websiteColumn),
       notes: get(r, _notesColumn),
+      address: get(r, _addressColumn),
+      catchment_area: get(r, _catchmentColumn),
+      rank: get(r, _rankColumn),
     }));
   }
 
@@ -192,8 +198,43 @@ const nomineeUploads = (() => {
     _resetForm();
     const nameEl = document.getElementById('nomineeUploadAreaName');
     if (nameEl) nameEl.textContent = _currentArea.display_name;
+    _populateYearSelect();
     const modalEl = document.getElementById('nomineeUploadModal');
     if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  // Current year plus a small window either side, so an admin uploading a
+  // "2027" file ahead of time (or a late "2025" catch-up file) has it
+  // available without the import defaulting to whatever year the server
+  // happens to be running on.
+  function _yearSelectOptions() {
+    const current = new Date().getFullYear();
+    return [current - 1, current, current + 1, current + 2];
+  }
+
+  function _populateYearSelect() {
+    const select = document.getElementById('nomineeUploadYear');
+    if (!select) return;
+    const current = new Date().getFullYear();
+    select.innerHTML = _yearSelectOptions()
+      .map((y) => `<option value="${y}" ${y === current ? 'selected' : ''}>${y}</option>`)
+      .join('');
+  }
+
+  // Non-blocking helpful default: if the filename contains a 4-digit year
+  // that's one of the selectable options, pre-select it -- e.g. "Somerset
+  // 2027 NEW ARGON.xlsx" pre-selects 2027. The admin can still change it.
+  function _detectYearFromFilename(filename) {
+    const match = String(filename || '').match(/\b(20\d{2})\b/);
+    if (!match) return null;
+    const year = parseInt(match[1], 10);
+    return _yearSelectOptions().includes(year) ? year : null;
+  }
+
+  function _selectedYear() {
+    const select = document.getElementById('nomineeUploadYear');
+    const parsed = select ? parseInt(select.value, 10) : NaN;
+    return Number.isInteger(parsed) ? parsed : new Date().getFullYear();
   }
 
   function _renderPreview() {
@@ -240,7 +281,7 @@ const nomineeUploads = (() => {
 
   async function _readFileAsCSVText(file) {
     const ext = file.name.split('.').pop().toLowerCase();
-    if (ext !== 'xlsx' && ext !== 'xls') return file.text();
+    if (ext !== 'xlsx' && ext !== 'xls') return { text: await file.text(), sheetName: null };
 
     if (typeof XLSX === 'undefined') {
       await new Promise((resolve, reject) => {
@@ -253,15 +294,44 @@ const nomineeUploads = (() => {
     }
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data, { type: 'array' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_csv(sheet);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    return { text: XLSX.utils.sheet_to_csv(sheet), sheetName };
+  }
+
+  // Non-blocking check: does the workbook's first tab name look like it's
+  // for a different area than the one selected in the dropdown? A tab name
+  // is a convention the real spreadsheets happen to follow, not a guarantee,
+  // so this only ever warns — it never blocks validation or import.
+  function _renderSheetNameNotice(sheetName) {
+    const el = document.getElementById('nomineeSheetNameNotice');
+    if (!el) return;
+    if (!sheetName || !_currentArea) {
+      el.innerHTML = '';
+      return;
+    }
+    const norm = (s) =>
+      s
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_-]/g, '');
+    if (norm(sheetName) === norm(_currentArea.display_name)) {
+      el.innerHTML = `<div class="alert alert-success py-2 small mb-0"><i class="bi bi-check-circle-fill me-1"></i>Sheet tab "${utils.escapeHtml(sheetName)}" matches the selected area.</div>`;
+    } else {
+      el.innerHTML = `<div class="alert alert-warning py-2 small mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i>Heads up: this file's sheet tab is "${utils.escapeHtml(sheetName)}" but you've selected "${utils.escapeHtml(_currentArea.display_name)}" — double-check you picked the right area.</div>`;
+    }
   }
 
   async function _handleFile(file) {
     _currentFilename = file.name;
-    let text;
+    const detectedYear = _detectYearFromFilename(file.name);
+    if (detectedYear != null) {
+      const yearSelect = document.getElementById('nomineeUploadYear');
+      if (yearSelect) yearSelect.value = String(detectedYear);
+    }
+    let text, sheetName;
     try {
-      text = await _readFileAsCSVText(file);
+      ({ text, sheetName } = await _readFileAsCSVText(file));
     } catch (e) {
       const container = document.getElementById('nomineeValidationContainer');
       if (container) {
@@ -287,6 +357,17 @@ const nomineeUploads = (() => {
     _phoneColumn = _detectColumn(headers, ['phone', 'phone number', 'telephone']);
     _websiteColumn = _detectColumn(headers, ['website', 'website url', 'url']);
     _notesColumn = _detectColumn(headers, ['notes', 'note', 'comments']);
+    _addressColumn = _detectColumn(headers, [
+      'address',
+      'business address',
+      'contact address',
+      'business/contact address',
+      'business contact address',
+    ]);
+    _catchmentColumn = _detectColumn(headers, ['catchment area', 'catchment', 'service area']);
+    _rankColumn = _detectColumn(headers, ['rank', 'priority', 'priority rank']);
+
+    _renderSheetNameNotice(sheetName);
 
     const step1 = document.getElementById('nomineeStep1');
     const step2 = document.getElementById('nomineeStep2');
@@ -320,6 +401,7 @@ const nomineeUploads = (() => {
         mode: 'validate',
         areaId: _currentArea.id,
         rows: _rowsForServer(),
+        year: _selectedYear(),
         tenantId: apiClient._getTenantId(),
       });
       _lastValidation = result;
@@ -424,6 +506,7 @@ const nomineeUploads = (() => {
           rows: chunks[i],
           duplicateStrategy: _duplicateStrategy,
           filename: _currentFilename,
+          year: _selectedYear(),
           tenantId: apiClient._getTenantId(),
         });
         area = result.area;
@@ -470,12 +553,18 @@ const nomineeUploads = (() => {
     _phoneColumn = null;
     _websiteColumn = null;
     _notesColumn = null;
+    _addressColumn = null;
+    _catchmentColumn = null;
+    _rankColumn = null;
     _currentFilename = '';
     _duplicateStrategy = 'skip';
     _lastValidation = null;
 
     const fileInput = document.getElementById('nomineeFileInput');
     if (fileInput) fileInput.value = '';
+
+    const sheetNotice = document.getElementById('nomineeSheetNameNotice');
+    if (sheetNotice) sheetNotice.innerHTML = '';
 
     const valContainer = document.getElementById('nomineeValidationContainer');
     if (valContainer) valContainer.innerHTML = '';
@@ -536,6 +625,9 @@ const nomineeUploads = (() => {
     _stripMarkdownLinks,
     _readFileAsCSVText,
     _mergeTotals,
+    _detectYearFromFilename,
+    _yearSelectOptions,
+    _selectedYear,
   };
 })();
 

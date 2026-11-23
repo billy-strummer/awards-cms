@@ -3001,6 +3001,21 @@ Investigated with `git merge-tree` (a read-only three-way merge simulation — n
 
 No branch was merged, pushed to, or PR'd as part of this investigation — read-only throughout, per the task.
 
+### III.9 — Recommendation executed
+
+All 4 steps above executed, with explicit authorization for each:
+
+1. Opened #361 (`pr1`), #362 (`pr2`), #363 (`pr3a`), #364 (`pr3b`) via `mcp__github__create_pull_request`, each citing this section.
+2. Merged in the recommended order — `pr1` → `pr2`+`pr3a` → `pr3b` — via `mcp__github__merge_pull_request`. All 4 merged cleanly, no conflicts, matching this section's pre-merge `git merge-tree` verification.
+3. Closed #308 with a comment pointing to the merged stack and this file.
+4. Branched `claude/geographic-upload-security-fixes` off the new `main` and cherry-picked `f0533a7^..ba8cd43` (the 5 commits this and the prior section cover) onto it. Contrary to this section's own pessimistic static prediction of 7 conflicting files, cherry-pick's real 3-way merge against the actual reconciled `main` only conflicted in `BTA-CMS-PROJECT-TASKS.md` itself (twice, both pure append conflicts — resolved by keeping the fuller continuation each time). Every other predicted file (`api/data-proxy.js`, `home-data.js`, `src/partials/03a-award-areas.html`, `tests/data-proxy.test.js`, `nominee-uploads.js`, `tests/nominee-uploads.test.js`) merged clean on its own.
+
+**Verification on the ported branch:** lint clean; 85/85 suites, 6,867/6,867 tests; production build clean.
+
+**Pushed and opened as #365** (`claude/geographic-upload-security-fixes` → `main`), held unmerged pending review of the conflict-resolution summary in its own description, per explicit instruction.
+
+**Git/worktree state:** this entry is committed on `claude/geographic-upload-security-fixes` itself (the branch it describes), not on `claude/supabase-cms-setup-test-e6oiza` — that branch's own PR (#308) is now closed, so further work in this area continues on this branch and its PR (#365) instead.
+
 ### III.8 — Production migration state finalized: `093`, `095`, `096` live; `094` deliberately not applied to production as written
 
 Following III.6's pause on the `invoices.award_id` blocker, confirmed by direct code search (not the migration's own comment, which claims the opposite) that `invoices.award_id` has zero references anywhere in `api/*.js` or any client-side file — the column's absence on production is consistent with current application reality, not a gap to fix.

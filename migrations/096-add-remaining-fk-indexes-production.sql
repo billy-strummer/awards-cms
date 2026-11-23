@@ -1,0 +1,42 @@
+-- ============================================================
+-- Migration 096: Add the remaining FK indexes migration 094
+-- couldn't apply to production as written
+-- ============================================================
+-- migrations/094-add-fk-indexes.sql targets 7 FK columns, found
+-- unindexed on the TEST project (htcsewpztvxafksdzuhp). Applying it to
+-- production (qdzyknercdqwhwijbcxf) failed: production's `invoices`
+-- table has no `award_id` column at all (confirmed by listing its full
+-- column set), so `CREATE INDEX ... ON invoices (award_id)` errored
+-- with `column "award_id" does not exist` and the whole statement
+-- batch rolled back atomically -- no partial state resulted.
+--
+-- Re-checked against the current codebase (not just 094's own comment,
+-- which claims the opposite): zero references to `invoices.award_id`
+-- anywhere in `api/*.js` or any client-side file, in reads or writes.
+-- The only `award_id` usage near invoices-adjacent code is on the
+-- unrelated `award_assignments` table. So the column's absence on
+-- production is consistent with current reality, not a bug to fix
+-- here, and no index for it belongs in this migration.
+--
+-- 094's file is left untouched rather than edited after the fact --
+-- it already ran successfully on test exactly as written, and
+-- rewriting it would make "migration 094" mean two different things
+-- depending on which project you inspect (the same class of drift
+-- already seen with this branch's and main's independently-numbered
+-- 067/068 migrations, and the areas table that existed live but was
+-- never captured in any migration file). This migration instead adds
+-- just the 2 of 094's 7 statements that are still missing anywhere:
+--
+-- idx_award_assignments_tenant_id, idx_entries_tenant_id,
+-- idx_invoices_tenant_id, idx_payments_tenant_id already existed on
+-- production from some other, undocumented prior action before this
+-- task; idx_invoices_award_id is deliberately excluded for the reason
+-- above. idx_award_years_tenant_id and idx_organisations_tenant_id did
+-- not exist anywhere and are the two this migration adds.
+--
+-- Idempotent (CREATE INDEX IF NOT EXISTS) and safe to apply to both
+-- test and production: a no-op on test, where 094 already created both.
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_award_years_tenant_id ON award_years (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_organisations_tenant_id ON organisations (tenant_id);

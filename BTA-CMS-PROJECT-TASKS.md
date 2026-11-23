@@ -3000,3 +3000,19 @@ Investigated with `git merge-tree` (a read-only three-way merge simulation — n
 4. For today's/last session's work specifically: once `main` has absorbed `pr1`–`pr3b`, branch fresh off the new `main` and port `f0533a7`/`61a5c56`/`a6c1455`'s changes onto it — expect real, manual conflict resolution in the 7 files named above (not a clean cherry-pick), then open a new, small, focused PR for just that work in place of #308.
 
 No branch was merged, pushed to, or PR'd as part of this investigation — read-only throughout, per the task.
+
+### III.8 — Production migration state finalized: `093`, `095`, `096` live; `094` deliberately not applied to production as written
+
+Following III.6's pause on the `invoices.award_id` blocker, confirmed by direct code search (not the migration's own comment, which claims the opposite) that `invoices.award_id` has zero references anywhere in `api/*.js` or any client-side file — the column's absence on production is consistent with current application reality, not a gap to fix.
+
+Rather than edit `094-add-fk-indexes.sql` after the fact (it already ran successfully on test exactly as written; rewriting it would make "migration 094" mean two different things depending on which project you inspect — the same class of drift already seen with this branch's and `main`'s independently-numbered 067/068 migrations), wrote a new migration instead: **`migrations/096-add-remaining-fk-indexes-production.sql`**, containing only the 2 of `094`'s 7 statements still missing anywhere (`idx_award_years_tenant_id`, `idx_organisations_tenant_id`), with `invoices.award_id`'s index deliberately omitted and the reasoning recorded in the file's own header comment.
+
+**Actions taken, both independently verified by direct schema inspection:**
+- `095-add-entries-priority-rank.sql` applied to production. Confirmed: `entries.priority_rank` is `smallint`, nullable, with `CHECK (((priority_rank IS NULL) OR (priority_rank > 0)))` — exact match to the migration file.
+- `096-add-remaining-fk-indexes-production.sql` applied to **both** test and production (a no-op on test, where `094` already covered both statements; genuinely new on production). Confirmed present on test: both new indexes. Confirmed present on production: `idx_award_years_tenant_id`, `idx_organisations_tenant_id`, plus the 4 that already existed from some undocumented prior action (`idx_award_assignments_tenant_id`, `idx_entries_tenant_id`, `idx_invoices_tenant_id`, `idx_payments_tenant_id`) — 6 of the 7 original target indexes now present on production; the 7th (`idx_invoices_award_id`) is intentionally absent, by design, because the column it would index doesn't exist there.
+
+**Final production (`qdzyknercdqwhwijbcxf`) migration state:** `093`, `095`, `096` applied and verified. `094` deliberately not applied as written — superseded for production by `096`'s narrower, column-existence-safe equivalent. `list_migrations` on production: `093` (`20261110143834`), `095` (`20261123213618`), `096` (`20261123213859`) — no `094` entry, by design, not an oversight.
+
+**Final test (`htcsewpztvxafksdzuhp`) migration state:** `093`, `094`, `095`, `096` all applied and verified — `096` is a harmless no-op there, included for consistency so the same migration file set exists in both places even though its effect on test is nil.
+
+**Git/verification state:** `migrations/096-add-remaining-fk-indexes-production.sql` and this log entry are committed together on `claude/supabase-cms-setup-test-e6oiza` (see git log for the commit hash) and pushed to `origin`. The test project was paused again after this work, having been restored earlier in this session purely to do it.

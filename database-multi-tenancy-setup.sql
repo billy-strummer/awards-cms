@@ -49,8 +49,12 @@ DECLARE
   t TEXT;
 BEGIN
   FOREACH t IN ARRAY tables LOOP
-    -- Only add column if table exists and column doesn't
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = t) THEN
+    -- Only add column if table exists and column doesn't.
+    -- table_type = 'BASE TABLE' excludes views (e.g. email_list_members,
+    -- migration 083) -- information_schema.tables matches views too, and
+    -- ALTER TABLE ADD COLUMN on a view errors out and aborts this whole
+    -- DO block mid-loop. Matches migration 071's equivalent guard.
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = t AND table_type = 'BASE TABLE') THEN
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = t AND column_name = 'tenant_id') THEN
         EXECUTE format('ALTER TABLE %I ADD COLUMN tenant_id UUID REFERENCES tenants(id)', t);
         EXECUTE format('CREATE INDEX idx_%s_tenant_id ON %I (tenant_id)', t, t);

@@ -144,7 +144,10 @@ RETURNS INTEGER AS $$
 $$ LANGUAGE sql;
 
 -- Get unassigned guests for an event
-CREATE OR REPLACE FUNCTION get_unassigned_guests(p_event_id UUID)
+-- database-event-management-setup.sql already defined this function with a
+-- different RETURNS TABLE shape; CREATE OR REPLACE can't change that, so drop first.
+DROP FUNCTION IF EXISTS get_unassigned_guests(UUID);
+CREATE FUNCTION get_unassigned_guests(p_event_id UUID)
 RETURNS TABLE (
   id UUID,
   guest_id UUID,

@@ -18,10 +18,9 @@ Disallow: /payment-success.html
 Disallow: /payment-cancelled.html
 Disallow: /upload-documents.html
 Disallow: /submit-entry-payment.html
-Disallow: /company-profile.html
 Disallow: /winners-portal.html
 Disallow: /check-in.html
-Disallow: /award-nominees.html
+Disallow: /reset-password.html
 Disallow: /api/
 
 Sitemap: https://britishtradeawards.com/sitemap.xml

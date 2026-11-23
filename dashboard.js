@@ -148,16 +148,18 @@ const dashboardModule = {
     const dateFilters = dateStart ? { 'created_at@gte': dateStart } : {};
 
     // Fetch accurate total counts from the server (STATE arrays only contain current page)
-    let totalAwards, pendingAwards, totalOrgs, totalWinners;
+    let totalAwards, pendingAwards, totalOrgs, totalWinners, totalEntries;
     try {
-      const [awardsResult, orgsResult, winnersResult] = await Promise.all([
+      const [awardsResult, orgsResult, winnersResult, entriesResult] = await Promise.all([
         apiClient.select('award_years', { select: 'id, status', page: 1, pageSize: 1, filters: dateFilters }),
         apiClient.select('organisations', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
         apiClient.select('winners', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
+        apiClient.select('entries', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
       ]);
       totalAwards = awardsResult.count || STATE.allAwards.length;
       totalOrgs = orgsResult.count || STATE.allOrganisations.length;
       totalWinners = winnersResult.count || STATE.allWinners.length;
+      totalEntries = entriesResult.count ?? (STATE.allEntries || []).length;
       // Pending awards: filter local state by date range when active
       const awardsInRange = dateStart
         ? STATE.allAwards.filter((a) => a.created_at && a.created_at >= dateStart)
@@ -169,6 +171,7 @@ const dashboardModule = {
       pendingAwards = STATE.allAwards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
       totalOrgs = STATE.allOrganisations.length;
       totalWinners = STATE.allWinners.length;
+      totalEntries = (STATE.allEntries || []).length;
     }
 
     // Update stat cards
@@ -183,6 +186,12 @@ const dashboardModule = {
 
     this._initGettingStartedBanner(totalAwards, totalOrgs);
 
+    // Cache the accurate server-side entries count. Entries aren't eagerly loaded
+    // into STATE.allEntries like awards/orgs/winners (could be 20,000+ rows), so
+    // reportsAnalytics.loadAnalytics() falls back to this when it hasn't been
+    // populated yet, instead of showing a misleading 0.
+    STATE._reportsEntriesCount = totalEntries;
+
     // Update reports tab stats
     const reportsTotalEl = document.getElementById('reportsTotal');
     if (reportsTotalEl) {
@@ -191,6 +200,8 @@ const dashboardModule = {
       if (reportsTotalOrgsEl) reportsTotalOrgsEl.textContent = totalOrgs;
       const reportsTotalWinnersEl = document.getElementById('reportsTotalWinners');
       if (reportsTotalWinnersEl) reportsTotalWinnersEl.textContent = totalWinners;
+      const reportsTotalEntriesEl = document.getElementById('reportsTotalEntries');
+      if (reportsTotalEntriesEl) reportsTotalEntriesEl.textContent = totalEntries;
     }
 
     // Load and update additional stats

@@ -8,26 +8,33 @@
 -- This migration renames the column to match what it stores.
 -- ============================================
 
--- Step 1: Check if 'county' column already exists
--- If it does and has data, we need to merge; if not, just rename.
+-- Step 1: Check if 'region' column exists at all first — a fresh install's
+-- awards/award_years table has had 'county' from the start and has never
+-- had a 'region' column, so there is nothing to rename or merge.
 DO $$
 BEGIN
-  -- Check if 'county' column already exists
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'awards' AND column_name = 'county'
+    WHERE table_name = 'awards' AND column_name = 'region'
   ) THEN
-    -- County column exists - copy any region data into county where county is null
-    UPDATE awards
-    SET county = region
-    WHERE county IS NULL AND region IS NOT NULL;
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'awards' AND column_name = 'county'
+    ) THEN
+      -- County column exists - copy any region data into county where county is null
+      UPDATE awards
+      SET county = region
+      WHERE county IS NULL AND region IS NOT NULL;
 
-    RAISE NOTICE 'County column already exists. Copied region values into empty county fields.';
+      RAISE NOTICE 'County column already exists. Copied region values into empty county fields.';
 
+    ELSE
+      -- County column does not exist - rename region to county
+      ALTER TABLE awards RENAME COLUMN region TO county;
+      RAISE NOTICE 'Renamed awards.region to awards.county';
+    END IF;
   ELSE
-    -- County column does not exist - rename region to county
-    ALTER TABLE awards RENAME COLUMN region TO county;
-    RAISE NOTICE 'Renamed awards.region to awards.county';
+    RAISE NOTICE 'awards.region does not exist (already renamed or never existed).';
   END IF;
 END $$;
 

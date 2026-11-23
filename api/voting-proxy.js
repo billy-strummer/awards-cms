@@ -154,7 +154,7 @@ async function checkRateLimit({ voter_email, voter_ip }) {
     .from('public_votes')
     .select('id', { count: 'exact', head: true })
     .eq('voter_email', voter_email)
-    .gte('voted_at', oneHourAgo);
+    .gte('created_at', oneHourAgo);
 
   if (error) throw error;
   return { count: count || 0, limit: RATE_LIMIT_MAX, voter_ip };
@@ -216,7 +216,7 @@ async function submitVote({
     .from('public_votes')
     .select('id', { count: 'exact', head: true })
     .eq('voter_email', voter_email)
-    .gte('voted_at', oneHourAgo);
+    .gte('created_at', oneHourAgo);
 
   if (rlError) throw rlError;
   if ((count || 0) >= RATE_LIMIT_MAX) {
@@ -231,7 +231,7 @@ async function submitVote({
       .from('public_votes')
       .select('id', { count: 'exact', head: true })
       .eq('voter_ip', normalizedIp)
-      .gte('voted_at', oneHourAgo);
+      .gte('created_at', oneHourAgo);
 
     if (ipRlError) {
       console.warn('[voting-proxy] IP rate-limit check failed (non-fatal):', ipRlError.message);
@@ -302,6 +302,24 @@ async function submitVote({
     throw insertError;
   }
 
+  // Atomic increment — a plain read-then-write here would race under concurrent votes.
+  // Best-effort: the vote itself is already recorded, so a missing/failing RPC
+  // (e.g. migration 075 not yet applied) must not fail the vote.
+  try {
+    const { error: incrementError } = await supabase.rpc('increment_entry_public_votes', { p_entry_id: entry_id });
+    if (incrementError) {
+      console.error(
+        '[voting-proxy] Failed to increment public_votes counter (non-fatal, vote already recorded):',
+        incrementError.message
+      );
+    }
+  } catch (rpcErr) {
+    console.error(
+      '[voting-proxy] increment_entry_public_votes RPC threw (non-fatal, vote already recorded):',
+      rpcErr.message
+    );
+  }
+
   return { success: true };
 }
 
@@ -363,7 +381,7 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
     .from('public_votes')
     .select('id', { count: 'exact', head: true })
     .eq('voter_email', voter_email)
-    .gte('voted_at', fiveMinAgo);
+    .gte('created_at', fiveMinAgo);
 
   if (checkErr) throw checkErr;
   if (!count || count === 0) {

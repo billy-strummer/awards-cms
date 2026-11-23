@@ -37,6 +37,24 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 const { hasMinimumRole, getUserRole, verifyAuth } = require('./_lib/auth');
 
 /**
+ * Can this role initiate payment actions (create a checkout session, issue
+ * a refund)? 'editor'+ via the normal role hierarchy, OR 'finance' — which
+ * sits below 'editor' in `_lib/auth.js`'s linear ROLE_HIERARCHY but is the
+ * one role rbac.js's own module grid (finance.modules includes 'payments')
+ * and api/data-proxy.js's own per-role table permissions (the `finance`
+ * entry explicitly grants write access to `invoices`/`payments`) both
+ * already trust with this exact area. Resolved BTA-047: this was a real
+ * inconsistency, not an intentional restriction — nothing anywhere
+ * documents "finance can manage payment records but not trigger a
+ * checkout or refund", and the role exists specifically for this module.
+ * @param {string} role - The user's role.
+ * @returns {boolean}
+ */
+function canManagePayments(role) {
+  return hasMinimumRole(role, 'editor') || (role || '').toLowerCase() === 'finance';
+}
+
+/**
  * Generate a unique invoice number (INV-YYYY-NNNNN).
  * @returns {Promise<string>}
  */
@@ -65,9 +83,9 @@ async function createCheckoutSession(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
-    // Role check: only editor+ can initiate payment sessions
+    // Role check: editor+ or finance can initiate payment sessions (BTA-047)
     const role = await getUserRole(user.email);
-    if (!hasMinimumRole(role, 'editor')) {
+    if (!canManagePayments(role)) {
       return res.status(403).json({ error: 'Insufficient permissions to create payment sessions' });
     }
 
@@ -840,6 +858,93 @@ async function verifyPayment(req, res) {
   }
 }
 
+// Simple rate limiting for the public payment-confirmation lookup
+// (read-only, but still worth bounding against enumeration attempts).
+const publicConfirmationLimits = new Map();
+function checkPublicConfirmationRate(ip) {
+  const now = Date.now();
+  const entry = publicConfirmationLimits.get(ip);
+  if (!entry || now - entry.start > 60000) {
+    publicConfirmationLimits.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= 20; // Max 20 lookups per minute per IP
+}
+
+/**
+ * Public, unauthenticated payment-confirmation lookup for
+ * payment-success.html (BTA-100). Replaces that page's former direct
+ * anon-key Supabase read of the `payments` table — which never worked in
+ * the first place, since `payments` has no `entry_id` column anywhere in
+ * this schema and nothing ever wrote a `payments` row for this checkout
+ * flow; the real, canonical payment reference for a public entry-fee
+ * payment is `entries.payment_reference`, set by
+ * handleCheckoutSessionCompleted() above.
+ *
+ * Authorisation is the possession of a genuine Stripe Checkout Session ID
+ * (`session_id`, the value Stripe itself substitutes into the
+ * `success_url` on redirect — never client-chosen, never guessable). The
+ * caller never supplies or controls an entry ID or filter: the only
+ * database lookup this performs is scoped to the `entry_id` found in that
+ * session's own server-recorded `metadata`, which Stripe returns
+ * verbatim and which cannot be forged by presenting someone else's
+ * session_id without actually possessing it.
+ *
+ * GET ?action=public-payment-confirmation&session_id=cs_...
+ * @param {Object} req - Request with query.session_id (or params.sessionId for direct calls).
+ * @param {Object} res - Response object.
+ * @returns {Promise<void>}
+ */
+async function getPublicPaymentConfirmation(req, res) {
+  try {
+    const rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+    const ip = rawIp.split(',')[0].trim();
+    if (!checkPublicConfirmationRate(ip)) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+
+    const sessionId = req.params?.sessionId || req.query?.session_id;
+
+    if (!sessionId || typeof sessionId !== 'string' || !/^cs_[a-zA-Z0-9_]+$/.test(sessionId)) {
+      return res.status(400).json({ error: 'A valid session_id is required' });
+    }
+
+    let session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId);
+    } catch (_stripeError) {
+      // Covers both "no such session" and any malformed-but-regex-passing
+      // value — never leak Stripe's own error text to the caller.
+      return res.status(404).json({ error: 'Payment confirmation not found' });
+    }
+
+    if (session.payment_status !== 'paid') {
+      return res.status(200).json({ status: 'pending' });
+    }
+
+    const entryId = session.metadata?.entry_id;
+    if (!entryId) {
+      // Paid, but not one of our entry-fee checkouts (e.g. an event-ticket
+      // session) — nothing to look up, but still a safe, generic response.
+      return res.status(200).json({ status: 'paid', paymentReference: session.payment_intent || null });
+    }
+
+    // Defense-in-depth cross-check against the CMS's own canonical record,
+    // scoped only by the entry_id Stripe itself recorded in this verified
+    // session's metadata — never by anything the caller supplied.
+    const { data: entry } = await supabase.from('entries').select('payment_reference').eq('id', entryId).single();
+
+    return res.status(200).json({
+      status: 'paid',
+      paymentReference: entry?.payment_reference || session.payment_intent || null,
+    });
+  } catch (error) {
+    console.error('Error looking up public payment confirmation:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
+  }
+}
+
 /**
  * Create a public Stripe Checkout Session for entry fee payment.
  * No auth required — validates entry exists by ID and is unpaid.
@@ -947,6 +1052,15 @@ async function createEventCheckout(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
+    // Same floor as createCheckoutSession above (BTA-047: editor+ or
+    // finance) — this is the admin-initiated event-ticket checkout path
+    // (called from ticket-management.js), not the unauthenticated public
+    // one (createPublicCheckout).
+    const role = await getUserRole(user.email);
+    if (!canManagePayments(role)) {
+      return res.status(403).json({ error: 'Insufficient permissions to create payment sessions' });
+    }
+
     const { eventId, tickets, success_url, cancel_url } = req.body;
 
     if (!eventId || !Array.isArray(tickets) || tickets.length === 0) {
@@ -1035,6 +1149,14 @@ async function processRefund(req, res) {
     const user = await verifyAuth(req, res);
     if (!user) return;
 
+    // Issuing a real, irreversible Stripe refund is at least as sensitive
+    // as creating the original checkout session above — same floor
+    // (BTA-047: editor+ or finance).
+    const role = await getUserRole(user.email);
+    if (!canManagePayments(role)) {
+      return res.status(403).json({ error: 'Insufficient permissions to process refunds' });
+    }
+
     const { ticketId, payment_intent, payment_reference } = req.body;
 
     // Determine the payment_intent to refund
@@ -1073,7 +1195,7 @@ async function processRefund(req, res) {
     res.json({ success: true, refundId: refund.id, status: refund.status });
   } catch (error) {
     console.error('Error processing refund:', error);
-    res.status(500).json({ error: error.message || 'Refund failed' });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -1086,6 +1208,7 @@ async function processRefund(req, res) {
  * POST ?action=webhook                 → handleStripeWebhook
  * GET  ?action=payment-status&entryId=... → getPaymentStatus
  * GET  ?action=verify-payment&sessionId=... → verifyPayment
+ * GET  ?action=public-payment-confirmation&session_id=... → getPublicPaymentConfirmation (no auth)
  */
 module.exports = async function handler(req, res) {
   // CORS headers for public-facing actions (public-checkout, webhook)
@@ -1131,6 +1254,10 @@ module.exports = async function handler(req, res) {
     return verifyPayment(req, res);
   }
 
+  if (req.method === 'GET' && action === 'public-payment-confirmation') {
+    return getPublicPaymentConfirmation(req, res);
+  }
+
   res.status(400).json({ error: 'Invalid action or method' });
 };
 
@@ -1142,6 +1269,7 @@ module.exports.processRefund = processRefund;
 module.exports.handleStripeWebhook = handleStripeWebhook;
 module.exports.getPaymentStatus = getPaymentStatus;
 module.exports.verifyPayment = verifyPayment;
+module.exports.getPublicPaymentConfirmation = getPublicPaymentConfirmation;
 
 /**
  * Example Express.js setup:

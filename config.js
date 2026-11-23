@@ -292,11 +292,12 @@ const COUNTIES_CITIES = Object.values(REGIONS_GROUPED).flat();
  * | allEvents              | events.js            |
  * | allEntries, filteredEntries | entries.js      |
  * | _loggingOut            | auth.js              |
+ * | unsavedChanges         | utils.js (markFormDirty/clearFormDirty/trackUnsavedChanges — BTA-116) |
  *
  * WARNING: Do not add cross-module race conditions by writing another
  * module's owned property. Use the owning module's load function instead.
  *
- * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array, _loggingOut: boolean }}
+ * @type {{ client: Object|null, currentUser: Object|null, inactivityTimer: number|null, allAwards: Array, filteredAwards: Array, allOrganisations: Array, filteredOrganisations: Array, allWinners: Array, filteredWinners: Array, allMedia: Array, filteredMedia: Array, allEvents: Array, allEntries: Array, filteredEntries: Array, _loggingOut: boolean, unsavedChanges: Object }}
  */
 const STATE = {
   client: null,
@@ -314,6 +315,7 @@ const STATE = {
   allEntries: [],
   filteredEntries: [],
   _loggingOut: false,
+  unsavedChanges: {},
 };
 
 // ============================================
@@ -377,6 +379,12 @@ if (typeof window !== 'undefined') {
   window.COUNTIES_CITIES = COUNTIES_CITIES;
   window.REGIONS = COUNTIES_CITIES;
   window.SECTORS = SECTORS;
+  // Same reasoning — judge-login.html/judge-portal.js, check-in-app.js,
+  // and reset-password.js all reference window.SUPABASE_CONFIG /
+  // window.STATE directly from non-module scripts, but nothing was ever
+  // attaching either to window, so those references were always undefined.
+  window.SUPABASE_CONFIG = SUPABASE_CONFIG;
+  window.STATE = STATE;
 }
 
 // REGIONS kept as backward-compat alias for COUNTIES_CITIES

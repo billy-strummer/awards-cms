@@ -48,7 +48,6 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadAllData() {
-    // console.debug('Loading CRM data...');
     try {
       // Load data based on current sub-tab
       switch (this.currentSubTab) {
@@ -85,8 +84,6 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadCompanies() {
-    // console.debug('Loading companies CRM view...');
-
     try {
       // Enable server-side pagination and fetch first page
       this._serverPagination = true;
@@ -878,8 +875,6 @@ const crmModule = {
    * @returns {Promise<void>}
    */
   async loadSegments() {
-    // console.debug('Loading segments...');
-
     try {
       // selectAll justified: contact_segments is a small lookup table for segment management (see pagination documentation)
       const segments = await apiClient.selectAll('contact_segments', {
@@ -3054,7 +3049,12 @@ const crmModule = {
       const modal = new bootstrap.Modal(document.getElementById('createMeetingNoteModal'));
       modal.show();
       utils.initInlineValidation('createMeetingNoteForm');
+      // BTA-116 (M1): track unsaved edits in this note form; the modal is
+      // rebuilt fresh each time (removed on close), so no stale flag can
+      // survive between opens.
+      utils.trackUnsavedChanges('createMeetingNoteForm', 'crmNotes');
       document.getElementById('createMeetingNoteModal').addEventListener('hidden.bs.modal', function () {
+        utils.clearFormDirty('crmNotes');
         this.remove();
       });
     } catch (error) {
@@ -3882,6 +3882,5 @@ const crmModule = {
 // INITIALIZATION
 // ============================================
 ModuleRegistry.register('crmModule', crmModule);
-// console.debug('CRM Module loaded');
 
 export { crmModule };

@@ -30,7 +30,11 @@ const areasManager = {
         return;
       }
 
-      const byCountry = { England: [], Scotland: [], Wales: [], 'Northern Ireland': [] };
+      // England/Scotland/Wales only -- Northern Ireland is permanently
+      // excluded from British Trade Awards' geographic coverage (BTA-070
+      // decision; see CLAUDE.md and BTA-CMS-PROJECT-TASKS.md Decision
+      // register item 23).
+      const byCountry = { England: [], Scotland: [], Wales: [] };
       areas.forEach((a) => {
         if (byCountry[a.country] !== undefined) byCountry[a.country].push(a);
       });
@@ -77,8 +81,7 @@ const areasManager = {
       container.innerHTML =
         renderSection('England', byCountry.England) +
         renderSection('Scotland', byCountry.Scotland) +
-        renderSection('Wales', byCountry.Wales) +
-        renderSection('Northern Ireland', byCountry['Northern Ireland']);
+        renderSection('Wales', byCountry.Wales);
     } catch (e) {
       container.innerHTML = `<div class="alert alert-warning small">Could not load areas: ${utils.escapeHtml(e.message)}</div>`;
     }
@@ -104,7 +107,7 @@ const areasManager = {
     document.getElementById('areasImportFormat').innerHTML = isRegions
       ? `<strong>Regions CSV format:</strong><br>
          <code>name,country,sort_order</code><br>
-         <span class="text-muted">country must be: England / Scotland / Wales / Northern Ireland<br>
+         <span class="text-muted">country must be: England / Scotland / Wales<br>
          sort_order is optional (integer). One header row required.</span>`
       : `<strong>Areas CSV format:</strong><br>
          <code>name,country,type,is_small,sort_order,region</code><br>
@@ -304,7 +307,7 @@ const areasManager = {
    * Open the edit modal pre-populated with an area's current values.
    * @param {string} areaId
    */
-  openEditModal(areaId) {
+  async openEditModal(areaId) {
     const area = (locationModule._cachedAreas || []).find((a) => a.id === areaId);
     if (!area) {
       utils.showToast('Area not found — try refreshing the list', 'error');
@@ -316,6 +319,17 @@ const areasManager = {
     document.getElementById('areasEditType').value = area.area_type || 'county';
     document.getElementById('areasEditSize').value = String(area.is_small ?? false);
     document.getElementById('areasEditOrder').value = area.sort_order ?? 0;
+
+    await locationModule.loadRegions().catch(() => {});
+
+    const countryEl = document.getElementById('areasEditCountry');
+    const country = area.country || 'England';
+    countryEl.value = country;
+    locationModule.populateRegionDropdown('areasEditRegion', country, 'No region', area.region_id || '');
+
+    countryEl.onchange = () => {
+      locationModule.populateRegionDropdown('areasEditRegion', countryEl.value, 'No region', '');
+    };
 
     bootstrap.Modal.getOrCreateInstance(document.getElementById('areasEditModal')).show();
   },
@@ -343,6 +357,8 @@ const areasManager = {
         area_type: document.getElementById('areasEditType').value,
         is_small: document.getElementById('areasEditSize').value === 'true',
         sort_order: parseInt(document.getElementById('areasEditOrder').value, 10) || 0,
+        country: document.getElementById('areasEditCountry').value,
+        region_id: document.getElementById('areasEditRegion').value || null,
       });
 
       bootstrap.Modal.getInstance(document.getElementById('areasEditModal'))?.hide();

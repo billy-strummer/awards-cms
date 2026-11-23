@@ -116,6 +116,7 @@ const {
   handleStripeWebhook,
   getPaymentStatus: _getPaymentStatus,
   verifyPayment,
+  getPublicPaymentConfirmation,
 } = require('../api/stripe-payment');
 
 // ==========================================
@@ -203,6 +204,19 @@ describe('Stripe Payment API - createCheckoutSession', () => {
     const res = createRes();
     await createCheckoutSession(req, res);
     expect(res.statusCode).toBe(403);
+  });
+
+  test('accepts "finance" role, not just "editor"+ (BTA-047)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'finance' }, error: null }));
+    const req = createReq({ body: { entryId: '123' } });
+    const res = createRes();
+    await createCheckoutSession(req, res);
+    expect(res.statusCode).not.toBe(403);
   });
 
   test('rejects missing entryId', async () => {
@@ -323,6 +337,60 @@ describe('Stripe Payment API - Webhook', () => {
     await handleStripeWebhook(req, res);
 
     expect(res.body).toEqual({ received: true });
+  });
+
+  test('checkout.session.completed creates the invoice already marked Paid (CMS-AUDIT-TODO 10.2)', async () => {
+    // NOTE: the "handles checkout.session.completed event" test above shares
+    // one resolveWith across every chained call, so its .maybeSingle() (the
+    // idempotency guard) also resolves truthy and the handler returns early
+    // before ever reaching the update/insert logic below — it only proves
+    // the webhook responds 200, not that an invoice gets created. This test
+    // sequences each from() call separately so the real path actually runs.
+    mockWebhooksConstruct.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          metadata: { entry_id: 'e-1' },
+          payment_intent: 'pi_456',
+          amount_total: 9999,
+        },
+      },
+    });
+
+    const entryData = {
+      id: 'e-1',
+      entry_number: 'BTA-002',
+      contact_email: 'test@test.com',
+      contact_name: 'Test',
+      entry_title: 'Best Plumber',
+      organisation_id: 'org-1',
+    };
+    const invoiceInsertChain = chainable();
+
+    mockFrom
+      .mockReturnValueOnce(chainable({ data: null, error: null })) // invoices.select.maybeSingle: no duplicate
+      .mockReturnValueOnce(chainable({ data: null, error: null })) // entries.update
+      .mockReturnValueOnce(chainable({ data: entryData, error: null })) // entries.select('*').single
+      .mockReturnValueOnce(chainable({ data: [], error: null })) // generateInvoiceNumber's invoices lookup
+      .mockReturnValueOnce(invoiceInsertChain); // invoices.insert — captured below
+    // Every subsequent from() call (activity_logs insert, email branding
+    // lookup, admin-notification lookup/insert) falls through to mockFrom's
+    // default implementation, a neutral chainable() — safe no-ops.
+
+    const req = createReq({ headers: { 'stripe-signature': 'valid-sig' } });
+    const res = createRes();
+    await handleStripeWebhook(req, res);
+
+    expect(res.body).toEqual({ received: true });
+    expect(invoiceInsertChain.insert).toHaveBeenCalledTimes(1);
+    expect(invoiceInsertChain.insert.mock.calls[0][0][0]).toMatchObject({
+      status: 'paid',
+      payment_status: 'paid',
+      balance_due: 0,
+      total_amount: 99.99,
+      paid_amount: 99.99,
+      payment_reference: 'pi_456',
+    });
   });
 
   test('handles payment_intent.payment_failed event', async () => {
@@ -519,6 +587,163 @@ describe('Stripe Payment API - verifyPayment', () => {
 });
 
 // ==========================================
+// getPublicPaymentConfirmation (BTA-100)
+// ==========================================
+
+describe('getPublicPaymentConfirmation', () => {
+  function confirmationReq(sessionId, overrides = {}) {
+    return {
+      query: { session_id: sessionId },
+      headers: { 'x-forwarded-for': '1.2.3.4', ...overrides.headers },
+      params: {},
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('missing session_id -> 400, no Stripe or Supabase call made', async () => {
+    const req = confirmationReq(undefined);
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(mockSessionRetrieve).not.toHaveBeenCalled();
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test.each(['', 'not-a-session-id', '../../etc/passwd', 'cs_valid; DROP TABLE payments', '  cs_123  '])(
+    'malformed session_id "%s" -> 400, rejected before any Stripe call',
+    async (badId) => {
+      const req = confirmationReq(badId);
+      const res = createRes();
+      await getPublicPaymentConfirmation(req, res);
+
+      expect(res.statusCode).toBe(400);
+      expect(mockSessionRetrieve).not.toHaveBeenCalled();
+    }
+  );
+
+  test('a well-formed but non-existent session_id -> 404, Stripe error text never leaked', async () => {
+    mockSessionRetrieve.mockRejectedValue(new Error('No such checkout.session: cs_fake_internal_detail'));
+    const req = confirmationReq('cs_test_doesnotexist');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(404);
+    expect(JSON.stringify(res.body)).not.toMatch(/cs_fake_internal_detail/);
+  });
+
+  test('unpaid session -> status "pending", no payment reference returned', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'unpaid', metadata: { entry_id: 'entry-1' } });
+    const req = confirmationReq('cs_test_unpaid');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('pending');
+    expect(res.body.paymentReference).toBeUndefined();
+    expect(mockFrom).not.toHaveBeenCalled(); // no DB lookup for an unpaid session
+  });
+
+  test('paid session with a matching entry returns only status + paymentReference, nothing else', async () => {
+    mockSessionRetrieve.mockResolvedValue({
+      payment_status: 'paid',
+      payment_intent: 'pi_123',
+      amount_total: 9500,
+      customer_email: 'buyer@test.com',
+      metadata: { entry_id: 'entry-1' },
+    });
+    currentChain = chainable({ data: { payment_reference: 'pi_123' }, error: null });
+    mockFrom.mockImplementation(() => currentChain);
+
+    const req = confirmationReq('cs_test_paid');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ status: 'paid', paymentReference: 'pi_123' });
+    expect(res.body.amount).toBeUndefined();
+    expect(res.body.amountTotal).toBeUndefined();
+    expect(res.body.customerEmail).toBeUndefined();
+    expect(res.body.entryId).toBeUndefined();
+  });
+
+  test("the entry_id used for the database lookup comes only from Stripe's verified session metadata, never from any client-supplied field", async () => {
+    mockSessionRetrieve.mockResolvedValue({
+      payment_status: 'paid',
+      payment_intent: 'pi_456',
+      metadata: { entry_id: 'real-entry-from-stripe' },
+    });
+    currentChain = chainable({ data: { payment_reference: 'pi_456' }, error: null });
+    mockFrom.mockImplementation(() => currentChain);
+
+    // Attempt to smuggle a different entry_id via the query string —
+    // the handler never reads req.query.entry_id at all.
+    const req = confirmationReq('cs_test_paid', {
+      query: { session_id: 'cs_test_paid', entry_id: 'someone-elses-entry' },
+    });
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(currentChain.eq).toHaveBeenCalledWith('id', 'real-entry-from-stripe');
+    expect(currentChain.eq).not.toHaveBeenCalledWith('id', 'someone-elses-entry');
+  });
+
+  test('a paid session with no entry_id in metadata (e.g. an event-ticket session) still returns a safe response', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'paid', payment_intent: 'pi_789', metadata: {} });
+    const req = confirmationReq('cs_test_noentry');
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('paid');
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  test('does not require an Authorization header or any client-side environment flag', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'paid', payment_intent: 'pi_999', metadata: {} });
+    const req = { query: { session_id: 'cs_test_noauth' }, headers: {}, params: {} }; // no authorization header at all
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  test('rate limits repeated requests from the same IP', async () => {
+    mockSessionRetrieve.mockResolvedValue({ payment_status: 'paid', payment_intent: 'pi_rl', metadata: {} });
+    const ip = '9.9.9.9';
+    let lastRes;
+    for (let i = 0; i < 25; i++) {
+      const req = confirmationReq('cs_test_ratelimit', { headers: { 'x-forwarded-for': ip } });
+      lastRes = createRes();
+      await getPublicPaymentConfirmation(req, lastRes);
+    }
+    expect(lastRes.statusCode).toBe(429);
+  });
+
+  test('unexpected internal exception returns a generic 500 without leaking detail', async () => {
+    mockSessionRetrieve.mockResolvedValue({
+      payment_status: 'paid',
+      payment_intent: 'pi_x',
+      metadata: { entry_id: 'e1' },
+    });
+    mockFrom.mockImplementation(() => {
+      throw new Error('internal secret connection detail');
+    });
+    const req = confirmationReq('cs_test_err', { headers: { 'x-forwarded-for': '5.5.5.5' } });
+    const res = createRes();
+    await getPublicPaymentConfirmation(req, res);
+
+    expect(res.statusCode).toBe(500);
+    expect(JSON.stringify(res.body)).not.toMatch(/internal secret connection detail/);
+  });
+});
+
+// ==========================================
 // createPublicCheckout
 // ==========================================
 
@@ -600,7 +825,21 @@ describe('createPublicCheckout', () => {
 describe('processRefund', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockReset (not just clearAllMocks) so no mockReturnValueOnce left
+    // queued by an earlier describe block's test can shift this block's
+    // call sequence — matches createCheckoutSession's own "insufficient
+    // role" test precedent above. Restore the module's base fallback
+    // implementation afterwards, since mockReset() clears that too.
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
     mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+    // First from() call after auth is the new role check (BTA-043) — default
+    // to a passing role; tests that care about a different role override
+    // this with their own mockReturnValueOnce before calling processRefund.
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'admin' }, error: null }));
   });
 
   test('returns 401 without auth token', async () => {
@@ -609,6 +848,29 @@ describe('processRefund', () => {
     const res = createRes();
     await processRefund(req, res);
     expect(res.statusCode).toBe(401);
+  });
+
+  test('rejects insufficient role (viewer cannot issue refunds) (BTA-043)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'viewer' }, error: null }));
+    const req = createReq({ body: { payment_intent: 'pi_test' } });
+    const res = createRes();
+    await processRefund(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test('accepts "finance" role, not just "editor"+ (BTA-047)', async () => {
+    mockRefundsCreate.mockResolvedValue({ id: 'ref_finance', status: 'succeeded' });
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'finance' }, error: null }));
+    const req = createReq({ body: { payment_intent: 'pi_test' } });
+    const res = createRes();
+    await processRefund(req, res);
+    expect(res.statusCode).not.toBe(403);
   });
 
   test('returns 400 when no payment reference provided', async () => {
@@ -655,7 +917,9 @@ describe('processRefund', () => {
     await processRefund(req, res);
 
     expect(res.statusCode).toBe(500);
-    expect(res.body.error).toMatch(/Refund failed/i);
+    // BTA-050: error.message is no longer leaked to the client, matching
+    // the sanitization already applied to this file's other handlers.
+    expect(res.body.error).toBe('An internal error occurred');
   });
 });
 
@@ -666,7 +930,20 @@ describe('processRefund', () => {
 describe('createEventCheckout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // mockReset (not just clearAllMocks) so no mockReturnValueOnce left
+    // queued by an earlier describe block's test can shift this block's
+    // call sequence. Restore the module's base fallback implementation
+    // afterwards, since mockReset() clears that too.
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
     mockGetUser.mockResolvedValue({ data: { user: { email: 'admin@test.com' } }, error: null });
+    // First from() call after auth is the new role check (BTA-043) — default
+    // to a passing role; tests that care about a different role override
+    // this with their own mockReturnValueOnce before calling createEventCheckout.
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'admin' }, error: null }));
   });
 
   test('returns 401 without auth', async () => {
@@ -675,6 +952,28 @@ describe('createEventCheckout', () => {
     const res = createRes();
     await createEventCheckout(req, res);
     expect(res.statusCode).toBe(401);
+  });
+
+  test('rejects insufficient role (viewer cannot create event checkout sessions) (BTA-043)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'viewer' }, error: null }));
+    const req = createReq({ body: { eventId: 'ev-1', tickets: [{ name: 'Alice' }] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).toBe(403);
+  });
+
+  test('accepts "finance" role, not just "editor"+ (BTA-047)', async () => {
+    mockFrom.mockReset();
+    mockFrom.mockImplementation(() => {
+      currentChain = chainable();
+      return currentChain;
+    });
+    mockFrom.mockReturnValueOnce(chainable({ data: { role: 'finance' }, error: null }));
+    const req = createReq({ body: { eventId: 'ev-1', tickets: [{ name: 'Alice' }] } });
+    const res = createRes();
+    await createEventCheckout(req, res);
+    expect(res.statusCode).not.toBe(403);
   });
 
   test('returns 400 when eventId missing', async () => {

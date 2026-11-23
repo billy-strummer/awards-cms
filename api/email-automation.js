@@ -19,7 +19,7 @@ const { assertEnv } = require('./_lib/env');
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'RESEND_API_KEY']);
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const { verifyAuth } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const crypto = require('crypto');
 
 // Initialize Resend (replacing SendGrid)
@@ -285,6 +285,7 @@ async function sendEntryConfirmation(entryId) {
     const formatDate = (d) =>
       d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'TBC';
 
+    const appUrl = process.env.APP_URL || 'https://admin.britishtradeawards.com';
     const variables = {
       contact_name: entry.contact_name,
       entry_number: entry.entry_number,
@@ -294,7 +295,19 @@ async function sendEntryConfirmation(entryId) {
       judging_start: formatDate(awardSeason.judging_start_date),
       judging_end: formatDate(awardSeason.judging_end_date),
       shortlist_date: formatDate(awardSeason.shortlist_date),
-      winner_date: formatDate(awardSeason.winner_announcement_date),
+      winner_date: formatDate(awardSeason.winners_announcement_date),
+      // The DB-backed "Entry Confirmation" template (email-templates.js's
+      // _defaultTemplates) also uses {SECTOR}/{REGION}/{UPLOAD_LINK}/
+      // {DEADLINE_DATE}/{ANNOUNCEMENT_DATE}/{CONTACT_EMAIL} - without these,
+      // real entrants received the literal unsubstituted placeholder text
+      // and a dead upload-document link once any DB row existed for this
+      // template type.
+      sector: entry.sector || '',
+      region: entry.county_city || '',
+      upload_link: `${appUrl}/upload-documents.html?entry=${entry.entry_number}`,
+      deadline_date: formatDate(awardSeason.entry_close_date),
+      announcement_date: formatDate(awardSeason.winners_announcement_date),
+      contact_email: process.env.CONTACT_EMAIL || process.env.FROM_EMAIL || '',
     };
 
     return await sendTemplateEmail('ENTRY_CONFIRMATION', entry.contact_email, variables);
@@ -706,9 +719,9 @@ async function sendShortlistNotifications(awardId = null) {
     // Get winner announcement date from the active award season
     const { data: activeSeason } = await supabase
       .from('award_years')
-      .select('winner_announcement_date')
+      .select('winners_announcement_date')
       .eq('is_active', true)
-      .not('winner_announcement_date', 'is', null)
+      .not('winners_announcement_date', 'is', null)
       .limit(1);
 
     for (const entry of shortlisted || []) {
@@ -716,7 +729,7 @@ async function sendShortlistNotifications(awardId = null) {
         contact_name: entry.contact_name,
         company_name: entry.organisations?.company_name || '',
         award_name: entry.awards?.award_name || 'British Trade Awards',
-        winner_date: formatDate(activeSeason?.[0]?.winner_announcement_date),
+        winner_date: formatDate(activeSeason?.[0]?.winners_announcement_date),
         ceremony_date: formatDate(ceremony?.event_date),
         ceremony_venue: ceremony?.venue || 'TBC',
         ceremony_tickets_link: `${process.env.APP_URL || 'https://admin.britishtradeawards.com'}/tickets`,
@@ -791,7 +804,8 @@ async function sendEmailEndpoint(req, res) {
     const result = await sendTemplateEmail(templateKey, toEmail, variables);
     res.json({ success: result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error sending templated email:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -801,7 +815,8 @@ async function sendDeadlineRemindersEndpoint(req, res) {
     const result = await sendDeadlineReminders();
     res.json({ success: result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error sending deadline reminders:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -812,7 +827,8 @@ async function sendWinnerAnnouncementsEndpoint(req, res) {
     const count = await sendWinnerAnnouncements(awardId);
     res.json({ success: true, sent: count });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error sending winner announcements:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -826,16 +842,24 @@ module.exports = async function handler(req, res) {
 
   const action = req.query.action || req.body?.action;
 
-  // Resend webhook actions bypass JWT auth — verified via shared secret instead
+  // Resend webhook actions bypass JWT auth — verified via shared secret instead.
+  // Without this secret configured, anyone could POST a fake bounce/complaint
+  // event to permanently suppress any email address (email_suppressions is an
+  // upsert keyed on email) — so a missing secret must refuse the request, not
+  // silently skip verification.
   if (action === 'resend-bounce' || action === 'resend-complaint') {
     const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      const signature = req.headers['x-resend-signature'] || '';
-      const payload = JSON.stringify(req.body);
-      const expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
-      if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
+    if (!webhookSecret) {
+      console.error('[email-automation] RESEND_WEBHOOK_SECRET is not configured — refusing webhook');
+      return res.status(500).json({ error: 'Webhook verification is not configured' });
+    }
+    const signature = req.headers['x-resend-signature'] || '';
+    const payload = JSON.stringify(req.body);
+    const expected = crypto.createHmac('sha256', webhookSecret).update(payload).digest('hex');
+    const signatureBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expected);
+    if (signatureBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
+      return res.status(401).json({ error: 'Invalid webhook signature' });
     }
     return handleResendSuppressionEvent(req, res);
   }
@@ -861,9 +885,23 @@ module.exports = async function handler(req, res) {
       return res.json({ success: result });
     }
     case 'send-deadline-reminders':
-      return sendDeadlineRemindersEndpoint(req, res);
-    case 'send-winner-announcements':
-      return sendWinnerAnnouncementsEndpoint(req, res);
+    case 'send-winner-announcements': {
+      // Both mass-send to every matching entry/winner, the same blast
+      // radius as send-campaign in api/resend-email.js, which requires
+      // 'admin' (matching the live UI's send_campaign_emails RPC in
+      // api/data-proxy.js's ALLOWED_RPCS map) — applying the same
+      // established floor here, not a new rule.
+      const role = await getUserRole(user.email);
+      if (!hasMinimumRole(role, 'admin')) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role "${role}" cannot run "${action}" (requires admin)`,
+        });
+      }
+      return action === 'send-deadline-reminders'
+        ? sendDeadlineRemindersEndpoint(req, res)
+        : sendWinnerAnnouncementsEndpoint(req, res);
+    }
     default:
       return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });
   }

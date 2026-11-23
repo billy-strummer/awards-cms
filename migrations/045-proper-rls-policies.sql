@@ -16,7 +16,7 @@
 -- ============================================
 -- HELPER: Create a function to check if user owns a record
 -- ============================================
-CREATE OR REPLACE FUNCTION auth.user_email()
+CREATE OR REPLACE FUNCTION public.user_email()
 RETURNS TEXT AS $$
   SELECT COALESCE(
     current_setting('request.jwt.claims', true)::json->>'email',
@@ -27,26 +27,10 @@ $$ LANGUAGE sql STABLE;
 -- ============================================
 -- 1. AWARDS — public read, admin write
 -- ============================================
-ALTER TABLE awards ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow all access to awards" ON awards;
-DROP POLICY IF EXISTS "awards_select" ON awards;
-DROP POLICY IF EXISTS "awards_insert" ON awards;
-DROP POLICY IF EXISTS "awards_update" ON awards;
-DROP POLICY IF EXISTS "awards_delete" ON awards;
-DROP POLICY IF EXISTS "awards_service" ON awards;
-
--- Service role: full access
-CREATE POLICY "awards_service" ON awards FOR ALL
-  TO service_role USING (true) WITH CHECK (true);
-
--- Authenticated users: read all
-CREATE POLICY "awards_select" ON awards FOR SELECT
-  TO authenticated USING (true);
-
--- Anon users: read all (awards are public info)
-CREATE POLICY "awards_anon_select" ON awards FOR SELECT
-  TO anon USING (true);
+-- 'awards' is an updatable VIEW over award_years (see
+-- migrations/000-complete-database-setup.sql), not a table — RLS and
+-- policies attach to the base table only; section 2 below (award_years)
+-- covers this, so skip enabling RLS/policies on the view itself.
 
 -- ============================================
 -- 2. AWARD_YEARS — public read, admin write
@@ -102,11 +86,11 @@ CREATE POLICY "entries_select" ON entries FOR SELECT
 
 -- Authenticated users: insert their own entries
 CREATE POLICY "entries_insert" ON entries FOR INSERT
-  TO authenticated WITH CHECK (contact_email = auth.user_email());
+  TO authenticated WITH CHECK (contact_email = public.user_email());
 
 -- Authenticated users: update their own entries
 CREATE POLICY "entries_update" ON entries FOR UPDATE
-  TO authenticated USING (contact_email = auth.user_email());
+  TO authenticated USING (contact_email = public.user_email());
 
 -- Anon: read published entries only (for public-facing pages)
 CREATE POLICY "entries_anon_select" ON entries FOR SELECT
@@ -206,23 +190,23 @@ DO $$ BEGIN
     EXECUTE 'DROP POLICY IF EXISTS "user_preferences_own" ON user_preferences';
 
     EXECUTE 'CREATE POLICY "user_preferences_service" ON user_preferences FOR ALL TO service_role USING (true) WITH CHECK (true)';
-    EXECUTE 'CREATE POLICY "user_preferences_own" ON user_preferences FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid())';
+    EXECUTE 'CREATE POLICY "user_preferences_own" ON user_preferences FOR ALL TO authenticated USING (user_email = public.user_email()) WITH CHECK (user_email = public.user_email())';
   END IF;
 END $$;
 
 -- ============================================
 -- 10. ACTIVITY LOG — authenticated read, service write
 -- ============================================
-ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Allow all access to activity_log" ON activity_log;
-DROP POLICY IF EXISTS "activity_log_service" ON activity_log;
-DROP POLICY IF EXISTS "activity_log_select" ON activity_log;
+DROP POLICY IF EXISTS "Allow all access to activity_logs" ON activity_logs;
+DROP POLICY IF EXISTS "activity_log_service" ON activity_logs;
+DROP POLICY IF EXISTS "activity_log_select" ON activity_logs;
 
-CREATE POLICY "activity_log_service" ON activity_log FOR ALL
+CREATE POLICY "activity_log_service" ON activity_logs FOR ALL
   TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY "activity_log_select" ON activity_log FOR SELECT
+CREATE POLICY "activity_log_select" ON activity_logs FOR SELECT
   TO authenticated USING (true);
 
 -- ============================================
@@ -367,7 +351,7 @@ DECLARE
   t TEXT;
   sensitive TEXT[] := ARRAY[
     'organisations', 'entries', 'winners', 'events',
-    'invoices', 'payments', 'activity_log', 'email_templates',
+    'invoices', 'payments', 'activity_logs', 'email_templates',
     'awards', 'award_assignments', 'contacts', 'judges'
   ];
 BEGIN

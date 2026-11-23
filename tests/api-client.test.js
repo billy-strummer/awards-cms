@@ -288,7 +288,11 @@ describe('apiClient', () => {
     });
 
     apiClient.MAX_RETRIES = 0;
-    await expect(apiClient.select('awards')).rejects.toThrow('API error 502: invalid response');
+    // BTA-116 (M2): non-technical admins should never see a raw HTTP status —
+    // this now throws a plain-English generic message instead.
+    await expect(apiClient.select('awards')).rejects.toThrow(
+      'Something went wrong on our end. Please try again in a moment.'
+    );
     apiClient.MAX_RETRIES = 2;
   });
 

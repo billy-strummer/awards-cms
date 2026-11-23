@@ -3,9 +3,19 @@
 -- Creates the regions table, adds region_id FK to areas,
 -- and seeds the full canonical area list.
 --
--- Run once in Supabase SQL Editor.
--- Safe to re-run: uses INSERT ... ON CONFLICT DO NOTHING for regions;
--- areas are truncated and re-seeded.
+-- SUPERSEDED by migrations/067-create-missing-areas-table.sql, which
+-- creates + seeds both `regions` and `areas` using the same canonical
+-- list, but safely (ON CONFLICT DO NOTHING throughout — no TRUNCATE).
+-- This file is no longer part of the recommended fresh-install order
+-- (see MIGRATION_ORDER.md) and does not need to be run.
+--
+-- It is kept only for historical reference and is now guarded so it
+-- can never run its original destructive reseed against a database
+-- that already has real data: `areas` is referenced by award_years.area_id
+-- and organisations.area_id, so `TRUNCATE areas ... CASCADE` would wipe
+-- those tables (and anything referencing them) on any database where
+-- awards or organisations already exist. The guard below makes this
+-- file a no-op once `areas` has any rows in it.
 -- ============================================================
 
 -- ── 1. REGIONS TABLE ─────────────────────────────────────────
@@ -51,11 +61,14 @@ INSERT INTO regions (display_name, country, sort_order) VALUES
   ('South Scotland',  'Scotland', 40)
 ON CONFLICT (display_name, country) DO NOTHING;
 
--- ── 4. RESEED areas ──────────────────────────────────────────
--- Wipe all existing areas and start clean.
--- awards.area_id and organisations.area_id will temporarily be
--- orphaned; re-assign them via the CMS after seeding.
-TRUNCATE areas RESTART IDENTITY CASCADE;
+-- ── 4. SEED areas (idempotent) ───────────────────────────────
+-- Previously this truncated `areas` before reseeding, which is
+-- destructive: award_years.area_id and organisations.area_id both
+-- reference areas(id), and `TRUNCATE ... CASCADE` also truncates any
+-- table with an FK into the truncated one — so on a database with
+-- real awards/organisations data this would wipe both. Insert-only
+-- with ON CONFLICT DO NOTHING (matching migrations/067) is safe to
+-- run at any point, including against an already-populated database.
 
 INSERT INTO areas (display_name, country, area_type, is_small, sort_order, is_active, region_id)
 SELECT v.display_name, v.country, v.area_type, v.is_small, v.sort_order, true,
@@ -192,4 +205,5 @@ FROM (VALUES
   ('Dumfries & Galloway','Scotland', 'region', true,  2402, 'South Scotland'),
   ('Scottish Borders',   'Scotland', 'region', true,  2403, 'South Scotland')
 
-) AS v(display_name, country, area_type, is_small, sort_order, region);
+) AS v(display_name, country, area_type, is_small, sort_order, region)
+ON CONFLICT (display_name, country) DO NOTHING;

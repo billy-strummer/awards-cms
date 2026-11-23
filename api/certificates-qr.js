@@ -20,8 +20,31 @@ const fs = require('fs');
 const path = require('path');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const { verifyAuth } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
 const { isUUID } = require('./_lib/validate');
+
+/**
+ * Minimum role required per action. rbac.js's own ROLES table already
+ * restricts create/update actions on the 'winners' and 'events' modules
+ * (where every one of these actions is used or would be used) to 'editor'
+ * and above — 'viewer' only has 'read'/'export' there. 'preview-certificate'
+ * is the one read-only, no-mutation, no-email action (renders a sample PDF
+ * in memory, writes nothing), so it matches 'viewer's existing rights
+ * instead. Every other action creates a file, mutates a check-in/ticket
+ * record, or sends a real email, so none of them were previously enforced
+ * beyond plain authentication.
+ */
+const CERTIFICATES_QR_ACTION_ROLES = {
+  'preview-certificate': 'viewer',
+  'generate-certificate': 'editor',
+  'generate-bulk-certificates': 'editor',
+  'generate-qr-ticket': 'editor',
+  'generate-badge': 'editor',
+  'generate-all-badges': 'editor',
+  'verify-qr': 'editor',
+  'generate-and-email': 'editor',
+  generate_and_email: 'editor',
+};
 
 /**
  * Parse a hex color string to pdf-lib rgb values.
@@ -621,7 +644,8 @@ async function generateCertificateEndpoint(req, res) {
     const result = await generateWinnerCertificate(winnerId, templateId, format);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating certificate:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -641,7 +665,8 @@ async function generateBulkCertificatesEndpoint(req, res) {
     const results = await generateBulkCertificates(winnerIds, templateId, format);
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating bulk certificates:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -658,7 +683,8 @@ async function previewCertificateEndpoint(req, res) {
     const base64Pdf = await previewCertificate(templateId, sampleData);
     res.json({ success: true, pdfBase64: base64Pdf });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error previewing certificate:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -677,7 +703,8 @@ async function generateQRTicketEndpoint(req, res) {
     const result = await generateEventTicketQR(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating QR ticket:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -696,7 +723,8 @@ async function generateBadgeEndpoint(req, res) {
     const result = await generateEventBadge(attendeeId);
     res.json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating badge:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -717,7 +745,8 @@ async function generateAllBadgesEndpoint(req, res) {
     const results = await generateAllEventBadges(eventId);
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating all badges:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -734,7 +763,8 @@ async function verifyQREndpoint(req, res) {
     const result = await verifyQRCode(qrData);
     res.json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error verifying QR code:', error);
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 }
 
@@ -747,6 +777,17 @@ module.exports = async function handler(req, res) {
   if (!user) return;
 
   const action = req.query.action || req.body?.action;
+
+  const requiredRole = CERTIFICATES_QR_ACTION_ROLES[action];
+  if (requiredRole) {
+    const role = await getUserRole(user.email);
+    if (!hasMinimumRole(role, requiredRole)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: `Role "${role}" cannot perform "${action}" (requires ${requiredRole})`,
+      });
+    }
+  }
 
   switch (action) {
     case 'generate-certificate':
@@ -776,11 +817,19 @@ module.exports = async function handler(req, res) {
           .eq('id', winner_id)
           .single();
         const recipientEmail = winnerRow?.organisations?.email;
+        let emailSent = false;
         if (recipientEmail) {
           const appUrl = process.env.APP_URL || '';
-          await fetch(`${appUrl}/api/email-automation`, {
+          // Forward the caller's own bearer token — email-automation.js
+          // requires JWT authentication on this action, and this was
+          // previously sent with no Authorization header at all, so the
+          // downstream request always failed (401, silently ignored since
+          // the response was never checked) and no email was ever actually
+          // sent, despite the success response and certificate_sent_at
+          // stamp below implying otherwise.
+          const emailRes = await fetch(`${appUrl}/api/email-automation`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: req.headers.authorization || '' },
             body: JSON.stringify({
               action: 'sendTemplate',
               templateKey: 'WINNER_ANNOUNCEMENT',
@@ -791,11 +840,17 @@ module.exports = async function handler(req, res) {
               },
             }),
           });
+          emailSent = emailRes.ok;
+          if (!emailSent) {
+            console.error(`[certificates-qr] generate_and_email: email send failed for winner ${winner_id}`);
+          }
         } else {
           console.warn(`[certificates-qr] generate_and_email: no recipient email for winner ${winner_id}`);
         }
-        await supabase.from('winners').update({ certificate_sent_at: new Date().toISOString() }).eq('id', winner_id);
-        return res.json({ success: true, certificate_url: cert.publicUrl });
+        if (emailSent) {
+          await supabase.from('winners').update({ certificate_sent_at: new Date().toISOString() }).eq('id', winner_id);
+        }
+        return res.json({ success: true, certificate_url: cert.publicUrl, email_sent: emailSent });
       } catch (err) {
         console.error('[certificates-qr] generate_and_email error:', err.message);
         return res.status(500).json({ error: 'Certificate generation failed' });

@@ -9,8 +9,16 @@ const settingsModule = {
   async init() {
     this.applyDensity();
 
-    // Initialize all sections independently so one failure doesn't block the rest
-    const safe = (fn) => fn().catch((e) => console.error('Settings init error:', e));
+    // Initialize all sections independently so one failure doesn't block the
+    // rest. A 15s timeout guards against a section that never settles at all
+    // (e.g. a stuck request) — without it, a single hung call here silently
+    // stops every section listed after it from ever initializing, since nothing
+    // downstream of `await Promise.all(...)` runs until every entry resolves.
+    const safe = (fn) =>
+      Promise.race([
+        fn(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Settings section timed out')), 15000)),
+      ]).catch((e) => console.error('Settings init error:', e));
 
     await Promise.all([
       safe(() => this.updateSystemInfo()),
@@ -41,6 +49,21 @@ const settingsModule = {
     this.renderCurrentUserRole();
     this.loadMfaStatus();
     this.loadWebhooks();
+
+    // Users sub-tab is Super Admin only — hidden by default in the HTML,
+    // revealed here rather than relying on the generic sidebar module-gating
+    // (which only covers top-level tabs, not sub-tabs within Settings).
+    const usersNavItem = document.getElementById('settingsUsersNavItem');
+    if (usersNavItem) {
+      const isSuperAdmin = typeof rbacModule !== 'undefined' && rbacModule.currentRole === 'super_admin';
+      usersNavItem.classList.toggle('d-none', !isSuperAdmin);
+      // Awaited (not fire-and-forget like the rest of this tail section) so it
+      // runs after the ~8 concurrent calls above have already fired, rather
+      // than piling a 9th simultaneous request onto them — supabase-js's
+      // client-side session lock can be forcibly stolen from a pending
+      // request when too many callers contend for it at the same instant.
+      if (isSuperAdmin) await safe(() => this.loadUsers());
+    }
   },
 
   /**
@@ -800,6 +823,8 @@ const settingsModule = {
 
     const id = document.getElementById('seasonFormId').value;
     const isDefault = document.getElementById('seasonFormDefault').checked;
+    const existingSeason = id ? (this.allSeasons || []).find((s) => s.id === id) : null;
+    const becomingDefault = isDefault && !(existingSeason && existingSeason.is_default);
 
     const seasonData = {
       name: document.getElementById('seasonFormName').value.trim(),
@@ -824,6 +849,19 @@ const settingsModule = {
         utils.showToast('Date order error: ' + dateError, 'error');
         return;
       }
+    }
+
+    if (becomingDefault) {
+      if (
+        !(await utils.confirmDialog({
+          title: 'Set as Default Season',
+          message:
+            "Setting this as the default season will change the dates shown on the public homepage's Key Dates and Vote sections. Continue?",
+          confirmText: 'Set as Default',
+          danger: false,
+        }))
+      )
+        return;
     }
 
     try {
@@ -862,7 +900,8 @@ const settingsModule = {
     if (
       !(await utils.confirmDialog({
         title: 'Delete Season',
-        message: 'Delete this season?',
+        message:
+          "Delete this season? Awards that previously copied dates from it will keep those dates unchanged. If this is the default season, the public homepage's Key Dates and Vote sections will show no season dates until a new default is set.",
         confirmText: 'Delete',
         danger: true,
       }))
@@ -1050,6 +1089,157 @@ const settingsModule = {
     utils.showToast('Notification preference saved', 'success');
   },
 
+  // BTA-069 Priority A: the keys this card manages in cms_config, beyond
+  // sponsors_visible (handled separately below for backward compatibility
+  // with its existing toggle markup/tests).
+  WEBSITE_SETTINGS_KEYS: [
+    'company_name',
+    'company_registration_number',
+    'company_address',
+    'contact_email',
+    'contact_phone',
+    'social_links',
+    'footer_contact_url',
+    'footer_sitemap_url',
+    'nav_labels',
+    'page_seo',
+    'form_content',
+  ],
+
+  // BTA-071: public pages with genuinely business-relevant SEO copy
+  // (marketing-style descriptions, not placeholder text) -- keyed by the
+  // page's own HTML filename without the extension, matching how
+  // public-site-settings.js identifies the current page.
+  SEO_PAGES: [
+    { slug: 'home', label: 'Homepage (home.html)' },
+    { slug: 'about', label: 'About (about.html)' },
+    { slug: 'become-a-sponsor', label: 'Become a Sponsor (become-a-sponsor.html)' },
+    { slug: 'public-voting', label: 'Vote Now (public-voting.html)' },
+    { slug: 'public-winners', label: 'Winners (public-winners.html)' },
+    { slug: 'vote', label: 'Vote for Nominee (vote.html)' },
+  ],
+
+  // BTA-071: label text for home.html's 5 main nav items. Destinations are
+  // deliberately not configurable here (see api/entry-proxy.js's comment on
+  // the same decision) -- only the visible text.
+  NAV_LABEL_FIELDS: [
+    { key: 'categories', label: 'Nav: "Categories"', placeholder: 'Categories' },
+    { key: 'regions', label: 'Nav: "Regions"', placeholder: 'Regions' },
+    { key: 'findATrade', label: 'Nav: "Find a Trade"', placeholder: 'Find a Trade' },
+    { key: 'about', label: 'Nav: "About"', placeholder: 'About' },
+    { key: 'enterNow', label: 'Nav/CTA: "Enter Now"', placeholder: 'Enter Now' },
+  ],
+
+  SOCIAL_PLATFORMS: [
+    { key: 'linkedin', label: 'LinkedIn' },
+    { key: 'instagram', label: 'Instagram' },
+    { key: 'facebook', label: 'Facebook' },
+    { key: 'twitter', label: 'X (Twitter)' },
+  ],
+
+  // BTA-072: step headings/subtitles and confirmation copy for the 3 public
+  // entry/nomination forms. Each field's placeholder is the page's own
+  // existing hardcoded text -- leaving a field blank keeps that default,
+  // it never shows a blank heading on the public page.
+  FORM_CONTENT_FORMS: [
+    {
+      key: 'submit_entry',
+      label: 'Entry Form (submit-entry.html)',
+      steps: [
+        { id: 'step0', label: 'Entry Type', defaultTitle: 'Entry Type', defaultSubtitle: 'Choose your option below' },
+        {
+          id: 'step1',
+          label: 'Location',
+          defaultTitle: 'Where are you based?',
+          defaultSubtitle: 'Select your Country, then your County or City.',
+        },
+        {
+          id: 'step2',
+          label: 'Sector',
+          defaultTitle: 'What sector are you in?',
+          defaultSubtitle: 'Choose the trade sector that best fits your work.',
+        },
+        {
+          id: 'step3',
+          label: 'Award Category',
+          defaultTitle: 'Select your award category',
+          defaultSubtitle: 'Choose the category that best fits your business',
+        },
+        { id: 'step4', label: 'Company Details', defaultTitle: 'Company Details', defaultSubtitle: null },
+        {
+          id: 'step5',
+          label: 'About Your Business',
+          defaultTitle: 'Tell us about your Business',
+          defaultSubtitle: 'Help us understand what makes your company stand out',
+        },
+        {
+          id: 'step8',
+          label: 'Review',
+          defaultTitle: 'Review your entry',
+          defaultSubtitle: 'Please check all details before submitting',
+        },
+      ],
+      defaultConfirmationTitle: 'Entry Submitted!',
+      defaultConfirmationMessage:
+        "Thank you for entering the British Trade Awards. We'll be in touch soon with next steps.",
+      defaultPageTitle: 'Submit Your Entry - British Trade Awards',
+    },
+    {
+      key: 'industry_leader',
+      label: 'Industry Leader Nomination (industry-leader.html)',
+      steps: [
+        {
+          id: 'step1',
+          label: 'Award Category',
+          defaultTitle: 'Which award are you nominating for?',
+          defaultSubtitle: 'Select the category that best fits your nominee',
+        },
+        {
+          id: 'step2',
+          label: 'Location',
+          defaultTitle: 'Where is the nominee based?',
+          defaultSubtitle: 'Select their country, then region, then town or borough.',
+        },
+        {
+          id: 'step3',
+          label: 'About the Nominee',
+          defaultTitle: 'About the nominee',
+          defaultSubtitle: 'Tell us about the company or trade professional you are nominating',
+        },
+        {
+          id: 'step4',
+          label: 'Why They Deserve to Enter',
+          defaultTitle: 'Why do they deserve to enter British Trade Awards?',
+          defaultSubtitle: 'Tell us what makes this nominee stand out',
+        },
+        {
+          id: 'step5',
+          label: 'Contact Details',
+          defaultTitle: 'Your contact details',
+          defaultSubtitle: 'So we can contact you about this nomination',
+        },
+        {
+          id: 'step6',
+          label: 'Review',
+          defaultTitle: 'Review your nomination',
+          defaultSubtitle: 'Please check all details before submitting',
+        },
+      ],
+      defaultConfirmationTitle: 'Nomination Submitted!',
+      defaultConfirmationMessage:
+        "Thank you for your nomination for the British Trade Awards. We'll be in touch soon with next steps.",
+      defaultPageTitle: 'Industry Leader Nomination - British Trade Awards',
+    },
+    {
+      key: 'nominate',
+      label: 'Simple Nomination (nominate.html)',
+      steps: [],
+      defaultConfirmationTitle: 'Nomination Received',
+      defaultConfirmationMessage: "Thank you for your nomination. We'll review it and be in touch shortly.",
+      defaultPageTitle: 'Nominate a Company or Trade Professional - British Trade Awards',
+    },
+  ],
+
   async renderPublicSiteSettings() {
     const container = document.getElementById('publicSiteSettingsContainer');
     if (!container) return;
@@ -1057,9 +1247,58 @@ const settingsModule = {
     try {
       const { data } = await apiClient.select('cms_config', {
         select: 'key, value',
-        filters: { key: { eq: 'sponsors_visible' } },
+        filters: { key: { in: [...this.WEBSITE_SETTINGS_KEYS, 'sponsors_visible'] } },
       });
-      const sponsorsVisible = (data || []).some((r) => r.key === 'sponsors_visible' && r.value === 'true');
+      const config = {};
+      for (const row of data || []) config[row.key] = row.value;
+      const sponsorsVisible = config.sponsors_visible === 'true';
+
+      let socialLinks = [];
+      if (config.social_links) {
+        try {
+          const parsed = JSON.parse(config.social_links);
+          if (Array.isArray(parsed)) socialLinks = parsed;
+        } catch (_e) {
+          socialLinks = [];
+        }
+      }
+      const socialByPlatform = {};
+      socialLinks.forEach((s) => {
+        if (s && s.platform) socialByPlatform[s.platform] = s;
+      });
+
+      let navLabels = {};
+      if (config.nav_labels) {
+        try {
+          const parsed = JSON.parse(config.nav_labels);
+          if (parsed && typeof parsed === 'object') navLabels = parsed;
+        } catch (_e) {
+          navLabels = {};
+        }
+      }
+
+      let pageSeo = {};
+      if (config.page_seo) {
+        try {
+          const parsed = JSON.parse(config.page_seo);
+          if (parsed && typeof parsed === 'object') pageSeo = parsed;
+        } catch (_e) {
+          pageSeo = {};
+        }
+      }
+
+      let formContent = {};
+      if (config.form_content) {
+        try {
+          const parsed = JSON.parse(config.form_content);
+          if (parsed && typeof parsed === 'object') formContent = parsed;
+        } catch (_e) {
+          formContent = {};
+        }
+      }
+
+      const esc = (v) => utils.escapeHtml(v || '');
+
       container.innerHTML = `
         <div class="content-card">
           <h5 class="mb-1"><i class="bi bi-globe me-2"></i>Public Site Settings</h5>
@@ -1079,6 +1318,174 @@ const settingsModule = {
               </label>
             </div>
           </div>
+        </div>
+
+        <div class="content-card mt-3">
+          <h5 class="mb-1"><i class="bi bi-building me-2"></i>Company Details</h5>
+          <p class="text-muted small mb-3">Shown in the footer of every public page. Leave a field blank to omit it rather than show a placeholder.</p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="wsCompanyName" class="form-label small">Company / Business Name</label>
+              <input type="text" class="form-control" id="wsCompanyName" value="${esc(config.company_name)}" placeholder="e.g. British Trade Awards Ltd">
+            </div>
+            <div class="col-md-6">
+              <label for="wsCompanyRegNumber" class="form-label small">Registration Number</label>
+              <input type="text" class="form-control" id="wsCompanyRegNumber" value="${esc(config.company_registration_number)}" placeholder="e.g. 12345678">
+            </div>
+            <div class="col-12">
+              <label for="wsCompanyAddress" class="form-label small">Registered / Trading Address</label>
+              <input type="text" class="form-control" id="wsCompanyAddress" value="${esc(config.company_address)}" placeholder="e.g. 1 Example Street, London">
+            </div>
+            <div class="col-md-6">
+              <label for="wsContactEmail" class="form-label small">Public Contact Email</label>
+              <input type="email" class="form-control" id="wsContactEmail" value="${esc(config.contact_email)}" placeholder="e.g. info@britishtradeawards.com">
+              <div class="form-text">Used for the footer's "Contact Us" link where it isn't already a working address.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="wsContactPhone" class="form-label small">Public Contact Phone</label>
+              <input type="text" class="form-control" id="wsContactPhone" value="${esc(config.contact_phone)}" placeholder="e.g. +44 20 1234 5678">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm mt-3" data-action="settingsModule.saveCompanyInfo">
+            <i class="bi bi-save me-1"></i>Save Company Details
+          </button>
+        </div>
+
+        <div class="content-card mt-3">
+          <h5 class="mb-1"><i class="bi bi-share me-2"></i>Social Media Links</h5>
+          <p class="text-muted small mb-3">Shown as icons in the footer of every public page. An icon is hidden on the public site until its URL is set here.</p>
+          ${this.SOCIAL_PLATFORMS.map((p) => {
+            const entry = socialByPlatform[p.key] || {};
+            return `
+            <div class="row g-2 align-items-center mb-2">
+              <div class="col-md-2"><span class="fw-semibold small">${p.label}</span></div>
+              <div class="col-md-8">
+                <input type="url" class="form-control form-control-sm" id="wsSocial_${p.key}" value="${esc(entry.url)}" placeholder="https://...">
+              </div>
+              <div class="col-md-2">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" id="wsSocialVisible_${p.key}" ${entry.visible !== false && entry.url ? 'checked' : ''}>
+                  <label class="form-check-label small" for="wsSocialVisible_${p.key}">Visible</label>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+          <button type="button" class="btn btn-primary btn-sm mt-2" data-action="settingsModule.saveSocialLinks">
+            <i class="bi bi-save me-1"></i>Save Social Links
+          </button>
+        </div>
+
+        <div class="content-card mt-3">
+          <h5 class="mb-1"><i class="bi bi-link-45deg me-2"></i>Footer Links</h5>
+          <p class="text-muted small mb-3">Optional overrides for the footer's "Contact Us" and "Sitemap" links. "Sitemap" stays hidden until a real destination is set here.</p>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="wsFooterContactUrl" class="form-label small">Contact Us link (overrides the default mailto link)</label>
+              <input type="url" class="form-control" id="wsFooterContactUrl" value="${esc(config.footer_contact_url)}" placeholder="https://...">
+            </div>
+            <div class="col-md-6">
+              <label for="wsFooterSitemapUrl" class="form-label small">Sitemap link</label>
+              <input type="url" class="form-control" id="wsFooterSitemapUrl" value="${esc(config.footer_sitemap_url)}" placeholder="https://...">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm mt-3" data-action="settingsModule.saveFooterLinks">
+            <i class="bi bi-save me-1"></i>Save Footer Links
+          </button>
+        </div>
+
+        <div class="content-card mt-3">
+          <h5 class="mb-1"><i class="bi bi-list me-2"></i>Homepage Navigation Labels</h5>
+          <p class="text-muted small mb-3">The wording of the 5 links in home.html's header menu (and its mobile equivalent). Leave a field blank to keep the current default text. Only the label text is editable here — the destinations are fixed (3 are in-page links to sections that only exist on the homepage).</p>
+          <div class="row g-3">
+            ${this.NAV_LABEL_FIELDS.map(
+              (f) => `
+              <div class="col-md-4">
+                <label for="wsNav_${f.key}" class="form-label small">${utils.escapeHtml(f.label)}</label>
+                <input type="text" class="form-control" id="wsNav_${f.key}" value="${esc(navLabels[f.key])}" placeholder="${utils.escapeHtml(f.placeholder)}">
+              </div>`
+            ).join('')}
+          </div>
+          <button type="button" class="btn btn-primary btn-sm mt-3" data-action="settingsModule.saveNavLabels">
+            <i class="bi bi-save me-1"></i>Save Navigation Labels
+          </button>
+        </div>
+
+        <div class="content-card mt-3">
+          <h5 class="mb-1"><i class="bi bi-search me-2"></i>Page SEO (Titles &amp; Meta Descriptions)</h5>
+          <p class="text-muted small mb-3">Overrides the browser-tab title and search-result description for each page below. Leave both fields blank to keep that page's existing built-in text.</p>
+          ${this.SEO_PAGES.map((p) => {
+            const entry = pageSeo[p.slug] || {};
+            return `
+            <div class="mb-3 pb-3 border-bottom">
+              <div class="fw-semibold small mb-2">${utils.escapeHtml(p.label)}</div>
+              <div class="row g-2">
+                <div class="col-md-5">
+                  <label for="wsSeoTitle_${p.slug}" class="form-label small">Page Title</label>
+                  <input type="text" class="form-control form-control-sm" id="wsSeoTitle_${p.slug}" value="${esc(entry.title)}" maxlength="70">
+                </div>
+                <div class="col-md-7">
+                  <label for="wsSeoDesc_${p.slug}" class="form-label small">Meta Description</label>
+                  <input type="text" class="form-control form-control-sm" id="wsSeoDesc_${p.slug}" value="${esc(entry.description)}" maxlength="160">
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+          <button type="button" class="btn btn-primary btn-sm" data-action="settingsModule.savePageSeo">
+            <i class="bi bi-save me-1"></i>Save Page SEO
+          </button>
+        </div>
+
+        <div class="content-card mt-3">
+          <h5 class="mb-1"><i class="bi bi-ui-checks-grid me-2"></i>Entry &amp; Nomination Form Content</h5>
+          <p class="text-muted small mb-3">Step headings, subtitles and confirmation messages for the public entry and nomination forms. Leave a field blank to keep the text shown as its placeholder (the form's current default).</p>
+          ${this.FORM_CONTENT_FORMS.map((form) => {
+            const formEntry = formContent[form.key] || {};
+            const stepsEntry = formEntry.steps || {};
+            return `
+            <div class="mb-4 pb-3 border-bottom">
+              <div class="fw-semibold mb-2">${utils.escapeHtml(form.label)}</div>
+              ${form.steps
+                .map((step) => {
+                  const stepEntry = stepsEntry[step.id] || {};
+                  return `
+                <div class="row g-2 align-items-start mb-2">
+                  <div class="col-md-2 pt-2"><span class="small text-muted">${utils.escapeHtml(step.label)}</span></div>
+                  <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm" id="wsForm_${form.key}_${step.id}_title" value="${esc(stepEntry.title)}" placeholder="${utils.escapeHtml(step.defaultTitle)}">
+                  </div>
+                  <div class="col-md-5">
+                    ${
+                      step.defaultSubtitle !== null
+                        ? `<input type="text" class="form-control form-control-sm" id="wsForm_${form.key}_${step.id}_subtitle" value="${esc(stepEntry.subtitle)}" placeholder="${utils.escapeHtml(step.defaultSubtitle)}">`
+                        : ''
+                    }
+                  </div>
+                </div>`;
+                })
+                .join('')}
+              <div class="row g-2 align-items-start mt-2">
+                <div class="col-md-2 pt-2"><span class="small text-muted">Confirmation</span></div>
+                <div class="col-md-5">
+                  <input type="text" class="form-control form-control-sm" id="wsForm_${form.key}_confirmTitle" value="${esc(formEntry.confirmationTitle)}" placeholder="${utils.escapeHtml(form.defaultConfirmationTitle)}">
+                </div>
+                <div class="col-md-5">
+                  <input type="text" class="form-control form-control-sm" id="wsForm_${form.key}_confirmMessage" value="${esc(formEntry.confirmationMessage)}" placeholder="${utils.escapeHtml(form.defaultConfirmationMessage)}">
+                </div>
+              </div>
+              <div class="row g-2 align-items-start mt-2">
+                <div class="col-md-2 pt-2"><span class="small text-muted">Page title / search &amp; share preview</span></div>
+                <div class="col-md-5">
+                  <input type="text" class="form-control form-control-sm" id="wsForm_${form.key}_pageTitle" value="${esc(formEntry.pageTitle)}" placeholder="${utils.escapeHtml(form.defaultPageTitle)}" maxlength="70">
+                </div>
+                <div class="col-md-5">
+                  <input type="text" class="form-control form-control-sm" id="wsForm_${form.key}_metaDescription" value="${esc(formEntry.metaDescription)}" placeholder="Shown in search results and social previews" maxlength="160">
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+          <button type="button" class="btn btn-primary btn-sm" data-action="settingsModule.saveFormContent">
+            <i class="bi bi-save me-1"></i>Save Form Content
+          </button>
         </div>`;
     } catch (e) {
       container.innerHTML = '<div class="alert alert-warning py-2">Could not load public site settings.</div>';
@@ -1104,6 +1511,193 @@ const settingsModule = {
       );
     } catch (e) {
       utils.showToast('Failed to save setting', 'error');
+    }
+  },
+
+  /**
+   * Validate an optional URL field: empty is fine, otherwise must be http(s).
+   * @param {string} value - Raw field value
+   * @returns {boolean} true if the value is acceptable to save
+   */
+  isValidOptionalUrl(value) {
+    if (!value) return true;
+    return /^https?:\/\//i.test(value.trim());
+  },
+
+  async saveCompanyInfo() {
+    const fields = {
+      company_name: document.getElementById('wsCompanyName').value.trim(),
+      company_registration_number: document.getElementById('wsCompanyRegNumber').value.trim(),
+      company_address: document.getElementById('wsCompanyAddress').value.trim(),
+      contact_email: document.getElementById('wsContactEmail').value.trim(),
+      contact_phone: document.getElementById('wsContactPhone').value.trim(),
+    };
+
+    if (fields.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.contact_email)) {
+      utils.showToast('Please enter a valid contact email address', 'error');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const now = new Date().toISOString();
+      const rows = Object.entries(fields).map(([key, value]) => ({ key, value, updated_at: now }));
+      await apiClient.upsert('cms_config', rows, { onConflict: 'key' });
+      utils.showToast('Company details saved', 'success');
+    } catch (e) {
+      utils.showToast('Failed to save company details: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async saveSocialLinks() {
+    const links = this.SOCIAL_PLATFORMS.map((p) => {
+      const url = document.getElementById(`wsSocial_${p.key}`).value.trim();
+      const visible = document.getElementById(`wsSocialVisible_${p.key}`).checked;
+      return { platform: p.key, url, visible };
+    });
+
+    const invalid = links.find((l) => !this.isValidOptionalUrl(l.url));
+    if (invalid) {
+      utils.showToast(`The ${invalid.platform} URL must start with http:// or https:// (or be left blank)`, 'error');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      await apiClient.upsert(
+        'cms_config',
+        { key: 'social_links', value: JSON.stringify(links), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      utils.showToast('Social media links saved', 'success');
+    } catch (e) {
+      utils.showToast('Failed to save social links: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async saveFooterLinks() {
+    const contactUrl = document.getElementById('wsFooterContactUrl').value.trim();
+    const sitemapUrl = document.getElementById('wsFooterSitemapUrl').value.trim();
+
+    if (!this.isValidOptionalUrl(contactUrl) || !this.isValidOptionalUrl(sitemapUrl)) {
+      utils.showToast('Footer links must start with http:// or https:// (or be left blank)', 'error');
+      return;
+    }
+
+    try {
+      utils.showLoading();
+      const now = new Date().toISOString();
+      await apiClient.upsert(
+        'cms_config',
+        [
+          { key: 'footer_contact_url', value: contactUrl, updated_at: now },
+          { key: 'footer_sitemap_url', value: sitemapUrl, updated_at: now },
+        ],
+        { onConflict: 'key' }
+      );
+      utils.showToast('Footer links saved', 'success');
+    } catch (e) {
+      utils.showToast('Failed to save footer links: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async saveNavLabels() {
+    const labels = {};
+    this.NAV_LABEL_FIELDS.forEach((f) => {
+      const value = document.getElementById(`wsNav_${f.key}`).value.trim();
+      if (value) labels[f.key] = value;
+    });
+
+    try {
+      utils.showLoading();
+      await apiClient.upsert(
+        'cms_config',
+        { key: 'nav_labels', value: JSON.stringify(labels), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      utils.showToast('Navigation labels saved', 'success');
+    } catch (e) {
+      utils.showToast('Failed to save navigation labels: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async savePageSeo() {
+    const pageSeo = {};
+    this.SEO_PAGES.forEach((p) => {
+      const title = document.getElementById(`wsSeoTitle_${p.slug}`).value.trim();
+      const description = document.getElementById(`wsSeoDesc_${p.slug}`).value.trim();
+      if (title || description) {
+        pageSeo[p.slug] = {};
+        if (title) pageSeo[p.slug].title = title;
+        if (description) pageSeo[p.slug].description = description;
+      }
+    });
+
+    try {
+      utils.showLoading();
+      await apiClient.upsert(
+        'cms_config',
+        { key: 'page_seo', value: JSON.stringify(pageSeo), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      utils.showToast('Page SEO saved', 'success');
+    } catch (e) {
+      utils.showToast('Failed to save page SEO: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  async saveFormContent() {
+    const formContent = {};
+    this.FORM_CONTENT_FORMS.forEach((form) => {
+      const entry = {};
+      const steps = {};
+      form.steps.forEach((step) => {
+        const title = document.getElementById(`wsForm_${form.key}_${step.id}_title`).value.trim();
+        const subtitleEl = document.getElementById(`wsForm_${form.key}_${step.id}_subtitle`);
+        const subtitle = step.defaultSubtitle !== null && subtitleEl ? subtitleEl.value.trim() : '';
+        if (title || subtitle) {
+          steps[step.id] = {};
+          if (title) steps[step.id].title = title;
+          if (subtitle) steps[step.id].subtitle = subtitle;
+        }
+      });
+      if (Object.keys(steps).length > 0) entry.steps = steps;
+
+      const confirmationTitle = document.getElementById(`wsForm_${form.key}_confirmTitle`).value.trim();
+      const confirmationMessage = document.getElementById(`wsForm_${form.key}_confirmMessage`).value.trim();
+      if (confirmationTitle) entry.confirmationTitle = confirmationTitle;
+      if (confirmationMessage) entry.confirmationMessage = confirmationMessage;
+
+      const pageTitle = document.getElementById(`wsForm_${form.key}_pageTitle`).value.trim();
+      const metaDescription = document.getElementById(`wsForm_${form.key}_metaDescription`).value.trim();
+      if (pageTitle) entry.pageTitle = pageTitle;
+      if (metaDescription) entry.metaDescription = metaDescription;
+
+      if (Object.keys(entry).length > 0) formContent[form.key] = entry;
+    });
+
+    try {
+      utils.showLoading();
+      await apiClient.upsert(
+        'cms_config',
+        { key: 'form_content', value: JSON.stringify(formContent), updated_at: new Date().toISOString() },
+        { onConflict: 'key' }
+      );
+      utils.showToast('Entry & nomination form content saved', 'success');
+    } catch (e) {
+      utils.showToast('Failed to save form content: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
     }
   },
 
@@ -1682,6 +2276,11 @@ const settingsModule = {
               <td class="ps-3">${utils.escapeHtml(c.name)}${locationBadge(c)}</td>
               <td>${c.available_for_small ? '<span class="badge bg-warning text-dark" style="font-size:.65rem">Small areas</span>' : ''}</td>
               <td class="text-end pe-2">
+                <button class="btn btn-sm btn-outline-secondary py-0 px-1 me-1"
+                  data-action="settingsModule.editCustomCategory"
+                  data-id="${c.id}" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-danger py-0 px-1"
                   data-action="settingsModule.deleteCustomCategory"
                   data-id="${c.id}" data-name="${utils.escapeHtml(c.name)}" title="Delete">
@@ -1730,6 +2329,11 @@ const settingsModule = {
             <a href="#" class="link-primary small" data-action="settingsModule.openAddCategoryModal" data-args='${addArgs}'>
               <i class="bi bi-plus-lg"></i> Add category
             </a>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-1"
+              data-action="settingsModule.editCustomSector"
+              data-id="${s.id}" data-name="${utils.escapeHtml(s.name)}" title="Rename sector">
+              <i class="bi bi-pencil"></i>
+            </button>
             <button class="btn btn-sm btn-outline-danger py-0 px-1"
               data-action="settingsModule.deleteCustomSector"
               data-id="${s.id}" data-name="${utils.escapeHtml(s.name)}" title="Delete sector">
@@ -1750,7 +2354,23 @@ const settingsModule = {
   },
 
   openAddSectorModal() {
+    this._editSectorId = null;
     document.getElementById('newSectorName').value = '';
+    const title = document.getElementById('addSectorModalTitle');
+    if (title) title.textContent = 'Add Sector';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addSectorModal')).show();
+  },
+
+  /**
+   * Open the sector modal pre-filled for renaming an existing custom sector.
+   * @param {string} id - custom_sectors row id
+   * @param {string} name - current sector name
+   */
+  editCustomSector(id, name) {
+    this._editSectorId = id;
+    document.getElementById('newSectorName').value = name;
+    const title = document.getElementById('addSectorModalTitle');
+    if (title) title.textContent = 'Rename Sector';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addSectorModal')).show();
   },
 
@@ -1770,18 +2390,27 @@ const settingsModule = {
       return;
     }
 
+    const editId = this._editSectorId;
     try {
-      await apiClient.insert('custom_sectors', { name, sort_order: 0, is_active: true });
+      if (editId) {
+        await apiClient.update('custom_sectors', editId, { name });
+      } else {
+        await apiClient.insert('custom_sectors', { name, sort_order: 0, is_active: true });
+      }
+      this._editSectorId = null;
       bootstrap.Modal.getOrCreateInstance(document.getElementById('addSectorModal')).hide();
-      utils.showToast(`Sector "${name}" added`, 'success');
+      utils.showToast(editId ? `Sector renamed to "${name}"` : `Sector "${name}" added`, 'success');
       await this.loadCustomSectorsCategories();
     } catch (err) {
-      utils.showToast('Failed to add sector: ' + err.message, 'error');
+      utils.showToast(`Failed to ${editId ? 'rename' : 'add'} sector: ` + err.message, 'error');
     }
   },
 
   async openAddCategoryModal(preselectSectorOrEvent = null) {
     const preselectSector = typeof preselectSectorOrEvent === 'string' ? preselectSectorOrEvent : null;
+    this._editCategoryId = null;
+    const modalTitle = document.getElementById('addCategoryModalTitle');
+    if (modalTitle) modalTitle.textContent = 'Add Category';
 
     // Populate sector dropdown: hardcoded + custom
     const select = document.getElementById('newCategorySector');
@@ -1862,6 +2491,51 @@ const settingsModule = {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).show();
   },
 
+  /**
+   * Open the category modal pre-filled for editing an existing custom
+   * category (name, small-area flag, and country/region/area scope).
+   * @param {string} id - custom_categories row id
+   */
+  async editCustomCategory(id) {
+    let row;
+    try {
+      const result = await apiClient.select('custom_categories', { select: '*', filters: { id: { eq: id } } });
+      row = (result?.data || [])[0];
+    } catch (err) {
+      utils.showToast('Failed to load category: ' + err.message, 'error');
+      return;
+    }
+    if (!row) {
+      utils.showToast('Category not found', 'error');
+      return;
+    }
+
+    await this.openAddCategoryModal(row.sector_name);
+    this._editCategoryId = id;
+
+    const modalTitle = document.getElementById('addCategoryModalTitle');
+    if (modalTitle) modalTitle.textContent = 'Edit Category';
+
+    document.getElementById('newCategoryName').value = row.name || '';
+    document.getElementById('newCategorySmall').checked = !!row.available_for_small;
+
+    const countryEl = document.getElementById('newCategoryCountry');
+    const regionEl = document.getElementById('newCategoryRegion');
+    const areaEl = document.getElementById('newCategoryArea');
+
+    if (row.country && countryEl) {
+      countryEl.value = row.country;
+      if (typeof countryEl.onchange === 'function') countryEl.onchange();
+    }
+    if (row.region_id && regionEl) {
+      regionEl.value = row.region_id;
+      if (typeof regionEl.onchange === 'function') regionEl.onchange();
+    }
+    if (row.area_id && areaEl) {
+      areaEl.value = row.area_id;
+    }
+  },
+
   async saveNewCategory() {
     const sectorEl = document.getElementById('newCategorySector');
     const nameEl = document.getElementById('newCategoryName');
@@ -1887,22 +2561,28 @@ const settingsModule = {
     }
     if (!valid) return;
 
+    const editId = this._editCategoryId;
+    const payload = {
+      sector_name: sectorName,
+      name,
+      available_for_small: availableForSmall,
+      country: country || null,
+      region_id: regionId || null,
+      area_id: areaId || null,
+    };
+
     try {
-      await apiClient.insert('custom_categories', {
-        sector_name: sectorName,
-        name,
-        available_for_small: availableForSmall,
-        sort_order: 0,
-        is_active: true,
-        ...(country ? { country } : {}),
-        ...(regionId ? { region_id: regionId } : {}),
-        ...(areaId ? { area_id: areaId } : {}),
-      });
+      if (editId) {
+        await apiClient.update('custom_categories', editId, payload);
+      } else {
+        await apiClient.insert('custom_categories', { ...payload, sort_order: 0, is_active: true });
+      }
+      this._editCategoryId = null;
       bootstrap.Modal.getOrCreateInstance(document.getElementById('addCategoryModal')).hide();
-      utils.showToast(`Category "${name}" added to ${sectorName}`, 'success');
+      utils.showToast(editId ? `Category "${name}" updated` : `Category "${name}" added to ${sectorName}`, 'success');
       await this.loadCustomSectorsCategories();
     } catch (err) {
-      utils.showToast('Failed to add category: ' + err.message, 'error');
+      utils.showToast(`Failed to ${editId ? 'update' : 'add'} category: ` + err.message, 'error');
     }
   },
 
@@ -2009,6 +2689,213 @@ const settingsModule = {
         .join('');
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Error loading activity log: ${e.message}</td></tr>`;
+    }
+  },
+
+  // ============================================
+  // USER MANAGEMENT (Settings > Users) — Super Admin only
+  // ============================================
+  _users: [],
+  _userRoleLabels: {
+    super_admin: 'Super Admin',
+    admin: 'Admin',
+    editor: 'Editor',
+    viewer: 'Viewer',
+    judge: 'Judge',
+    marketing: 'Marketing',
+    finance: 'Finance',
+  },
+
+  /**
+   * Load every CMS user (Supabase Auth account + assigned role + status).
+   * @returns {Promise<void>}
+   */
+  async loadUsers() {
+    const tbody = document.getElementById('settingsUsersTableBody');
+    if (!tbody) return;
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center py-4"><span class="spinner-border spinner-border-sm text-muted" role="status" aria-label="Loading"></span></td></tr>';
+    try {
+      const result = await apiClient.post('user_list');
+      this._users = result.users || [];
+      this._renderUsersTable();
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">Error loading users: ${utils.escapeHtml(e.message)}</td></tr>`;
+    }
+  },
+
+  /**
+   * Render the loaded user list into the Users table.
+   * @returns {void}
+   */
+  _renderUsersTable() {
+    const tbody = document.getElementById('settingsUsersTableBody');
+    const countEl = document.getElementById('settingsUsersCount');
+    if (!tbody) return;
+    if (countEl) countEl.textContent = String(this._users.length);
+
+    if (this._users.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="5" class="text-center text-muted py-4">No users yet — click "Invite User" to add your first team member.</td></tr>';
+      return;
+    }
+
+    const statusBadge = {
+      active: '<span class="badge bg-success">Active</span>',
+      invited: '<span class="badge bg-warning text-dark">Invited — pending</span>',
+      disabled: '<span class="badge bg-secondary">Disabled</span>',
+    };
+
+    tbody.innerHTML = this._users
+      .map((u) => {
+        const lastSignIn = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('en-GB') : 'Never';
+        const roleOptions = Object.entries(this._userRoleLabels)
+          .map(([val, label]) => `<option value="${val}" ${u.role === val ? 'selected' : ''}>${label}</option>`)
+          .join('');
+        const isDisabled = u.status === 'disabled';
+        return `<tr>
+        <td>${utils.escapeHtml(u.email)}</td>
+        <td>
+          <select class="form-select form-select-sm" style="width:auto;"
+                  data-on-change="settingsModule.changeUserRole" data-args='["${utils.escapeHtml(u.email)}"]'
+                  aria-label="Role for ${utils.escapeHtml(u.email)}">
+            ${roleOptions}
+          </select>
+        </td>
+        <td>${statusBadge[u.status] || utils.escapeHtml(u.status)}</td>
+        <td class="small text-muted">${lastSignIn}</td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary" data-action="settingsModule.resetUserPassword"
+                    data-args='["${utils.escapeHtml(u.email)}"]' title="Send password reset email">
+              <i class="bi bi-key"></i>
+            </button>
+            <button class="btn btn-outline-${isDisabled ? 'success' : 'danger'}" data-action="settingsModule.toggleUserStatus"
+                    data-args='["${u.id}", "${utils.escapeHtml(u.email)}", ${isDisabled}]'
+                    title="${isDisabled ? 'Reactivate' : 'Disable'} this user">
+              <i class="bi bi-${isDisabled ? 'unlock' : 'lock'}"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+      })
+      .join('');
+  },
+
+  /**
+   * Open the "Invite User" modal with blank defaults.
+   * @returns {void}
+   */
+  openInviteUserModal() {
+    const emailEl = document.getElementById('inviteUserEmail');
+    const roleEl = document.getElementById('inviteUserRole');
+    if (emailEl) emailEl.value = '';
+    if (roleEl) roleEl.value = 'viewer';
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('inviteUserModal'));
+    modal.show();
+  },
+
+  /**
+   * Send an invitation email to a new user and assign their initial role.
+   * @returns {Promise<void>}
+   */
+  async inviteUser() {
+    const email = document.getElementById('inviteUserEmail')?.value.trim();
+    const role = document.getElementById('inviteUserRole')?.value;
+    if (!email) {
+      utils.showToast('Enter an email address', 'error');
+      return;
+    }
+    try {
+      utils.showLoading();
+      await apiClient.post('user_invite', { email, role });
+      bootstrap.Modal.getInstance(document.getElementById('inviteUserModal'))?.hide();
+      utils.showToast(`Invitation sent to ${email}`, 'success');
+      await this.loadUsers();
+    } catch (e) {
+      utils.showToast('Failed to invite user: ' + e.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  /**
+   * Change an existing user's role via the inline dropdown in the Users table.
+   * @param {string} email
+   * @param {string} role - New role value (from the select's data-on-change).
+   * @returns {Promise<void>}
+   */
+  async changeUserRole(email, role) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Change Role',
+        message: `Change ${email}'s role to "${this._userRoleLabels[role] || role}"?`,
+        confirmText: 'Change Role',
+      }))
+    ) {
+      this._renderUsersTable(); // revert the dropdown to its previous value
+      return;
+    }
+    try {
+      await apiClient.post('user_set_role', { email, role });
+      utils.showToast(`${email}'s role updated`, 'success');
+      await this.loadUsers();
+    } catch (e) {
+      utils.showToast('Failed to change role: ' + e.message, 'error');
+      await this.loadUsers();
+    }
+  },
+
+  /**
+   * Disable or reactivate a user's ability to sign in.
+   * @param {string} userId
+   * @param {string} email
+   * @param {boolean} isCurrentlyDisabled
+   * @returns {Promise<void>}
+   */
+  async toggleUserStatus(userId, email, isCurrentlyDisabled) {
+    const disable = !isCurrentlyDisabled;
+    if (
+      !(await utils.confirmDialog({
+        title: disable ? 'Disable User' : 'Reactivate User',
+        message: disable
+          ? `Disable ${email}? They will immediately lose the ability to sign in. Their account and data are kept — you can reactivate at any time.`
+          : `Reactivate ${email}? They will be able to sign in again immediately.`,
+        confirmText: disable ? 'Disable' : 'Reactivate',
+        danger: disable,
+      }))
+    ) {
+      return;
+    }
+    try {
+      await apiClient.post('user_set_status', { userId, disable });
+      utils.showToast(`${email} ${disable ? 'disabled' : 'reactivated'}`, 'success');
+      await this.loadUsers();
+    } catch (e) {
+      utils.showToast(`Failed to ${disable ? 'disable' : 'reactivate'} user: ` + e.message, 'error');
+    }
+  },
+
+  /**
+   * Send a password reset email to a user.
+   * @param {string} email
+   * @returns {Promise<void>}
+   */
+  async resetUserPassword(email) {
+    if (
+      !(await utils.confirmDialog({
+        title: 'Reset Password',
+        message: `Send a password reset email to ${email}?`,
+        confirmText: 'Send Reset Email',
+      }))
+    ) {
+      return;
+    }
+    try {
+      await apiClient.post('user_reset_password', { email });
+      utils.showToast(`Password reset email sent to ${email}`, 'success');
+    } catch (e) {
+      utils.showToast('Failed to send reset email: ' + e.message, 'error');
     }
   },
 };

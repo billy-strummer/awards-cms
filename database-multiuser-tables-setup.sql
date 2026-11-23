@@ -143,6 +143,10 @@ CREATE TABLE IF NOT EXISTS event_templates (
   created_by    VARCHAR(255),
   created_at    TIMESTAMP    DEFAULT NOW()
 );
+-- migrations/000-complete-database-setup.sql already created a minimal event_templates
+-- table; backfill columns missing from that stub version.
+ALTER TABLE event_templates ADD COLUMN IF NOT EXISTS created_by VARCHAR(255);
+
 
 
 -- ── Event room fixtures ───────────────────────────────────────────────────────

@@ -19,9 +19,12 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { verifyAuth, hasMinimumRole, getUserRole } = require('./_lib/auth');
+const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
+const { resolveCategory } = require('./_lib/award-categories');
+const { findMatchingOrganisation, escapeLikePattern } = require('./_lib/organisation-matching');
+const { createTestDataFixtures } = require('./_lib/test-data-fixtures');
 
 assertEnv(['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']);
 
@@ -56,6 +59,31 @@ const TENANT_SCOPED_TABLES = new Set([
   'banners',
 ]);
 
+/**
+ * SECURITY (BTA-047): reject any client-supplied tenantId other than
+ * 'default'. The tenant-scoping mechanism below (TENANT_SCOPED_TABLES,
+ * isTenantScoped) was built to one day support real multi-tenancy, but
+ * nothing anywhere in this codebase independently verifies that the
+ * authenticated user actually belongs to the tenant they name — there is
+ * no membership table, no app_metadata tenant claim, and the client's own
+ * value comes from an unauthenticated localStorage read
+ * (multi-tenancy.js's getTenantId()). Confirmed this task: no live UI
+ * path ever sets a tenant other than 'default' anyway (switchTenant() has
+ * no caller), so this only ever disables a currently-unused passthrough —
+ * it changes no real workflow. Without this, any authenticated user could
+ * read or write another tenant's scoped rows merely by naming its UUID.
+ * Remove this check only once a real server-side user-to-tenant binding
+ * exists to replace it.
+ * @param {*} tenantId - The client-supplied tenantId value from the request body.
+ * @returns {string|null} An error message if tenantId is untrusted, otherwise null.
+ */
+function rejectUntrustedTenantId(tenantId) {
+  if (tenantId && typeof tenantId === 'string' && tenantId !== 'default') {
+    return '"tenantId" other than "default" is not currently supported — no server-side tenant membership check exists yet';
+  }
+  return null;
+}
+
 // ============================================
 // ALLOWED RPC FUNCTIONS
 // ============================================
@@ -63,6 +91,7 @@ const TENANT_SCOPED_TABLES = new Set([
 /** RPC functions that can be called via the proxy, mapped to required minimum role */
 const ALLOWED_RPCS = {
   anonymize_organisation: 'super_admin',
+  erase_organisation_gdpr: 'super_admin',
   send_test_email: 'admin',
   check_email_config: 'admin',
   send_campaign_emails: 'admin',
@@ -215,6 +244,7 @@ const ALLOWED_TABLES = new Set([
   'nominee_upload_rows',
   'custom_sectors',
   'custom_categories',
+  'sponsorship_catalogue_packages',
 ]);
 
 /** Tables that can be mutated (insert/update/delete/upsert) */
@@ -334,6 +364,7 @@ const MUTABLE_TABLES = new Set([
   'custom_categories',
   'areas',
   'regions',
+  'sponsorship_catalogue_packages',
 ]);
 
 /** Maximum page size to prevent abuse */
@@ -408,6 +439,7 @@ const ROLE_PERMISSIONS = {
       'user_preferences',
       'sponsors',
       'sponsor_contracts',
+      'sponsorship_catalogue_packages',
       'communications',
       'deals',
       'meeting_notes',
@@ -476,6 +508,7 @@ const ROLE_PERMISSIONS = {
       'sponsors',
       'sponsor_contracts',
       'sponsor_impressions',
+      'sponsorship_catalogue_packages',
       'social_media_posts',
       'social_media_templates',
       'banners',
@@ -562,11 +595,11 @@ function validateQueryParams(body) {
     errors.push('Operation must be one of: select, insert, update, delete, count, upsert');
   }
 
-  // Validate tenantId format if provided
-  if (tenantId && typeof tenantId === 'string' && tenantId !== 'default') {
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId)) {
-      errors.push('"tenantId" must be a valid UUID or "default"');
-    }
+  // SECURITY (BTA-047): reject any tenantId other than 'default' — see
+  // rejectUntrustedTenantId()'s own comment for why.
+  const tenantIdError = rejectUntrustedTenantId(tenantId);
+  if (tenantIdError) {
+    errors.push(tenantIdError);
   }
 
   if (['insert', 'update', 'delete', 'upsert'].includes(operation) && table && !MUTABLE_TABLES.has(table)) {
@@ -1293,6 +1326,434 @@ async function executeNomineeUpload(body, user) {
   return { batchId, csvRowCount, storedRowCount, verified: storedRowCount === csvRowCount };
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Award Areas CSV import — the CMS's single pipeline for bulk-importing
+ * nominees into a specific Area (county/city/London borough). Every row
+ * becomes a real organisation + a published entry, never a staging/raw-data
+ * blob — this is what makes the import actually show up on the website.
+ *
+ * mode: 'validate' — run every check, return row-indexed errors, write nothing.
+ * mode: 'import'   — re-validate (never trust the client) then commit; refuses
+ *                     to write anything if validation still fails.
+ *
+ * Award (award_years) records are found-or-created per category+area+year —
+ * that's the one thing this auto-creates, since "the administrator should
+ * never need to create these manually" per area. Categories themselves are
+ * never auto-created: an unrecognised category is always a validation error.
+ */
+async function executeAwardAreaImport(body, user) {
+  const { mode, areaId, rows, filename } = body;
+  const duplicateStrategy = ['skip', 'update', 'replace'].includes(body.duplicateStrategy)
+    ? body.duplicateStrategy
+    : 'skip';
+  // Same convention as executeQuery's insert path: only stamp tenant_id when
+  // the caller is in a real (non-'default') tenant context, so rows created
+  // here are visible in the same tenant-scoped list views as everything else.
+  const tenantId = body.tenantId && body.tenantId !== 'default' ? body.tenantId : null;
+
+  if (mode !== 'validate' && mode !== 'import') {
+    throw new Error('award_area_import: mode must be "validate" or "import"');
+  }
+  if (!areaId) throw new Error('award_area_import: areaId is required');
+  if (!Array.isArray(rows) || rows.length === 0) throw new Error('award_area_import: rows must be a non-empty array');
+  if (rows.length > 2000) throw new Error('award_area_import: maximum 2000 rows per import');
+
+  const { data: area, error: areaErr } = await supabase
+    .from('areas')
+    .select('id, display_name, country, area_type')
+    .eq('id', areaId)
+    .maybeSingle();
+  if (areaErr) throw areaErr;
+  if (!area) throw new Error('award_area_import: unknown area — it may have been deleted');
+
+  // ── Validate every row ──────────────────────────────────────────
+  const errors = [];
+  const seenCompanyNames = new Map(); // normalised name -> first row number
+  const validatedRows = [];
+
+  rows.forEach((raw, idx) => {
+    const rowNum = idx + 1;
+    const companyName = String(raw.company_name || '').trim();
+    const category = String(raw.category || '').trim();
+    const email = String(raw.email || '').trim();
+
+    if (!companyName) errors.push({ row: rowNum, field: 'company_name', message: 'Missing organisation name' });
+    if (!category) errors.push({ row: rowNum, field: 'category', message: 'Missing award category' });
+
+    let resolvedCategory = null;
+    if (category) {
+      resolvedCategory = resolveCategory(category);
+      if (!resolvedCategory) {
+        errors.push({
+          row: rowNum,
+          field: 'category',
+          message: `Unknown award category "${category}" — it doesn't match any existing category`,
+        });
+      }
+    }
+
+    if (email && !EMAIL_RE.test(email)) {
+      errors.push({ row: rowNum, field: 'email', message: `Invalid email address "${email}"` });
+    }
+
+    // Keyed on company+category, not company alone — the same organisation
+    // legitimately appears on multiple rows when it's nominated in more than
+    // one category (a common, expected pattern), so only an exact repeat of
+    // the same company AND the same category is a true duplicate row.
+    if (companyName && category) {
+      const key = `${companyName.toLowerCase()}::${(resolvedCategory ? resolvedCategory.category : category).toLowerCase()}`;
+      if (seenCompanyNames.has(key)) {
+        errors.push({
+          row: rowNum,
+          field: 'company_name',
+          message: `Duplicate of row ${seenCompanyNames.get(key)} in this file ("${companyName}" — "${category}")`,
+        });
+      } else {
+        seenCompanyNames.set(key, rowNum);
+      }
+    }
+
+    validatedRows.push({
+      row: rowNum,
+      companyName,
+      category,
+      resolvedCategory,
+      email: email || null,
+      contactName: raw.contact_name ? String(raw.contact_name).trim().slice(0, 255) : null,
+      phone: raw.phone ? String(raw.phone).trim().slice(0, 50) : null,
+      website: raw.website ? String(raw.website).trim().slice(0, 500) : null,
+      notes: raw.notes ? String(raw.notes).trim().slice(0, 2000) : null,
+    });
+  });
+
+  if (mode === 'validate' || errors.length > 0) {
+    return { mode: 'validate', valid: errors.length === 0, errors, rowCount: rows.length, area };
+  }
+
+  // ── Import — errors is empty at this point ──────────────────────
+  const countrySlug = (area.country || 'england').toLowerCase().replace(/\s+/g, '-');
+  const yearNow = new Date().getFullYear();
+  const awardCache = new Map(); // category name -> award_id (found-or-created once per import)
+
+  async function getOrCreateAward(resolved) {
+    if (awardCache.has(resolved.category)) return awardCache.get(resolved.category);
+
+    // Match on area_id (always populated, including for awards created via the
+    // Add Award form) rather than the legacy free-text `county` column, which
+    // that form never fills in — matching on county here would miss existing
+    // awards and create duplicates.
+    const { data: existing, error: findErr } = await supabase
+      .from('award_years')
+      .select('id')
+      .eq('award_name', resolved.category)
+      .eq('area_id', area.id)
+      .eq('year', yearNow)
+      .maybeSingle();
+    if (findErr) throw findErr;
+    if (existing) {
+      awardCache.set(resolved.category, existing.id);
+      return existing.id;
+    }
+
+    const { data: created, error: createErr } = await supabase
+      .from('award_years')
+      .insert({
+        award_name: resolved.category,
+        sector: resolved.sector,
+        county: area.display_name,
+        country: area.country,
+        area_id: area.id,
+        year: yearNow,
+        status: 'Active',
+        is_active: true,
+        show_on_website: true,
+        tenant_id: tenantId,
+      })
+      .select('id')
+      .single();
+    if (createErr) throw createErr;
+    awardCache.set(resolved.category, created.id);
+    return created.id;
+  }
+
+  // Sequential entry numbers: BTA-<year>-0001, continuing from the highest
+  // existing number this year (best-effort — a rare race against a
+  // simultaneous import could skip/reuse a number, which is harmless since
+  // entry_number has no uniqueness constraint).
+  const prefix = `BTA-${yearNow}-`;
+  const { data: lastEntryRows } = await supabase
+    .from('entries')
+    .select('entry_number')
+    .ilike('entry_number', `${prefix}%`)
+    .order('entry_number', { ascending: false })
+    .limit(1);
+  let nextNum = 1;
+  if (lastEntryRows && lastEntryRows[0]) {
+    const n = parseInt(String(lastEntryRows[0].entry_number).replace(prefix, ''), 10);
+    if (!isNaN(n)) nextNum = n + 1;
+  }
+
+  let orgsCreated = 0;
+  let orgsUpdated = 0;
+  let orgsReplaced = 0;
+  let orgsSkipped = 0;
+  const rowResults = [];
+
+  for (const r of validatedRows) {
+    let orgId = await findMatchingOrganisation(supabase, r.companyName, area.id);
+
+    const orgFields = {
+      company_name: r.companyName,
+      website: r.website,
+      email: r.email,
+      contact_name: r.contactName,
+      contact_phone: r.phone,
+      county_city: area.display_name,
+      country: area.country,
+      area_id: area.id,
+      sector: r.resolvedCategory.sector,
+      status: 'active',
+      tenant_id: tenantId,
+    };
+
+    if (!orgId) {
+      const { data: newOrg, error: insErr } = await supabase
+        .from('organisations')
+        .insert(orgFields)
+        .select('id')
+        .single();
+      if (insErr) throw insErr;
+      orgId = newOrg.id;
+      orgsCreated++;
+    } else if (duplicateStrategy === 'update') {
+      const { data: currentOrg } = await supabase.from('organisations').select('*').eq('id', orgId).maybeSingle();
+      const patch = {};
+      for (const [k, v] of Object.entries(orgFields)) {
+        if (v != null && (currentOrg?.[k] == null || currentOrg[k] === '')) patch[k] = v;
+      }
+      if (Object.keys(patch).length) await supabase.from('organisations').update(patch).eq('id', orgId);
+      orgsUpdated++;
+    } else if (duplicateStrategy === 'replace') {
+      await supabase.from('organisations').update(orgFields).eq('id', orgId);
+      orgsReplaced++;
+    } else {
+      // duplicateStrategy === 'skip' and the organisation already existed —
+      // leave its fields untouched, but still proceed to create this row's
+      // entry below. "Skip" means don't overwrite the organisation, not
+      // "ignore every nomination after this company's first row" — the same
+      // company legitimately gets its own entry per category it's entered in.
+      orgsSkipped++;
+    }
+
+    const awardId = await getOrCreateAward(r.resolvedCategory);
+
+    const { data: existingEntry } = await supabase
+      .from('entries')
+      .select('id')
+      .eq('organisation_id', orgId)
+      .eq('award_id', awardId)
+      .maybeSingle();
+    if (existingEntry) {
+      rowResults.push({ row: r.row, action: 'entry_exists', organisationId: orgId, awardId });
+      continue;
+    }
+
+    const entryNumber = `${prefix}${String(nextNum).padStart(4, '0')}`;
+    nextNum++;
+
+    const { error: entryErr } = await supabase.from('entries').insert({
+      entry_number: entryNumber,
+      organisation_id: orgId,
+      award_id: awardId,
+      entry_title: `${r.companyName} — ${r.resolvedCategory.category}`,
+      contact_name: r.contactName,
+      contact_email: r.email,
+      contact_phone: r.phone,
+      award_category: r.resolvedCategory.category,
+      sector: r.resolvedCategory.sector,
+      county_city: area.display_name,
+      selected_country: countrySlug,
+      supporting_information: r.notes,
+      status: 'shortlisted',
+      is_public: true,
+      allow_public_voting: true,
+      is_self_nomination: false,
+      year: yearNow,
+      submission_date: new Date().toISOString(),
+      payment_status: 'waived',
+      public_votes: 0,
+      tenant_id: tenantId,
+    });
+    if (entryErr) throw entryErr;
+
+    rowResults.push({ row: r.row, action: 'imported', organisationId: orgId, awardId, entryNumber });
+  }
+
+  const entriesCreated = rowResults.filter((r) => r.action === 'imported').length;
+
+  // Audit trail — best-effort, doesn't fail the import if it errors.
+  try {
+    await supabase.from('nominee_upload_batches').insert({
+      filename: filename ? String(filename).slice(0, 255) : 'upload.csv',
+      area: area.display_name,
+      country: area.country,
+      category: null,
+      csv_row_count: rows.length,
+      stored_row_count: entriesCreated,
+      uploaded_by: user.email || null,
+    });
+  } catch (_auditErr) {
+    /* audit trail is best-effort */
+  }
+
+  return {
+    mode: 'import',
+    valid: true,
+    area,
+    totals: {
+      rows: rows.length,
+      entriesCreated,
+      organisationsCreated: orgsCreated,
+      organisationsUpdated: orgsUpdated,
+      organisationsReplaced: orgsReplaced,
+      skipped: orgsSkipped,
+      alreadyEntered: rowResults.filter((r) => r.action === 'entry_exists').length,
+    },
+    rowResults,
+  };
+}
+
+// ============================================
+// USER MANAGEMENT — super_admin only
+// ============================================
+// Uses Supabase's own Auth Admin API (service-role client already
+// initialised above) plus the existing user_roles table that rbacModule
+// already reads from — no separate/duplicate auth system. Roles come from
+// the same ROLE_HIERARCHY used everywhere else in this file.
+
+const VALID_ROLES = new Set(ROLE_HIERARCHY);
+
+/**
+ * List every Supabase Auth user alongside their CMS role and derived status.
+ * @returns {Promise<{users: Array<Object>}>}
+ */
+async function executeUserList() {
+  const { data: authData, error: authErr } = await supabase.auth.admin.listUsers({ perPage: 200 });
+  if (authErr) throw authErr;
+
+  const { data: roleRows, error: roleErr } = await supabase.from('user_roles').select('email, role');
+  if (roleErr) throw roleErr;
+  const roleMap = new Map((roleRows || []).map((r) => [(r.email || '').toLowerCase(), r.role]));
+
+  const now = Date.now();
+  const users = (authData?.users || [])
+    .map((u) => {
+      const isBanned = u.banned_until && new Date(u.banned_until).getTime() > now;
+      const status = isBanned ? 'disabled' : u.email_confirmed_at ? 'active' : 'invited';
+      return {
+        id: u.id,
+        email: u.email,
+        role: roleMap.get((u.email || '').toLowerCase()) || 'viewer',
+        status,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at || null,
+      };
+    })
+    .sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+
+  return { users };
+}
+
+/**
+ * Invite a new user by email via Supabase's built-in invite email, and
+ * assign their initial CMS role.
+ * @param {{email: string, role: string}} body
+ * @returns {Promise<{invited: boolean, userId: string}>}
+ */
+async function executeUserInvite(body) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const role = String(body.role || 'viewer').toLowerCase();
+
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+  if (!VALID_ROLES.has(role)) throw new Error(`Invalid role "${role}"`);
+
+  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+  if (error) throw error;
+
+  const { error: roleErr } = await supabase.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (roleErr) throw roleErr;
+
+  return { invited: true, userId: data.user.id };
+}
+
+/**
+ * Change an existing user's CMS role.
+ * @param {{email: string, role: string}} body
+ * @param {Object} actingUser - The authenticated caller making this change.
+ * @returns {Promise<{updated: boolean}>}
+ */
+async function executeUserSetRole(body, actingUser) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const role = String(body.role || '').toLowerCase();
+
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+  if (!VALID_ROLES.has(role)) throw new Error(`Invalid role "${role}"`);
+  if (email === (actingUser.email || '').toLowerCase() && role !== 'super_admin') {
+    throw new Error('You cannot change your own role away from Super Admin — ask another Super Admin to do this');
+  }
+
+  const { error } = await supabase.from('user_roles').upsert({ email, role }, { onConflict: 'email' });
+  if (error) throw error;
+  return { updated: true };
+}
+
+/**
+ * Disable or reactivate a user's ability to sign in, without deleting their
+ * account or any data. Uses Supabase Auth's native ban mechanism (reversible).
+ * @param {{userId: string, disable: boolean}} body
+ * @param {Object} actingUser - The authenticated caller making this change.
+ * @returns {Promise<{updated: boolean, disabled: boolean}>}
+ */
+async function executeUserSetStatus(body, actingUser) {
+  const userId = body.userId;
+  const disable = !!body.disable;
+  if (!userId || typeof userId !== 'string') throw new Error('userId is required');
+
+  const { data: targetData, error: getErr } = await supabase.auth.admin.getUserById(userId);
+  if (getErr) throw getErr;
+  if ((targetData?.user?.email || '').toLowerCase() === (actingUser.email || '').toLowerCase()) {
+    throw new Error('You cannot disable your own account');
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    ban_duration: disable ? '876000h' : 'none', // ~100 years, matches Supabase's own convention for an effectively-indefinite ban
+  });
+  if (error) throw error;
+  return { updated: true, disabled: disable };
+}
+
+/**
+ * Send a password reset email to a user via Supabase Auth.
+ * @param {{email: string}} body
+ * @returns {Promise<{sent: boolean}>}
+ */
+async function executeUserResetPassword(body) {
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_RE.test(email)) throw new Error('Invalid email address');
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+  return { sent: true };
+}
+
 /**
  * Execute a smart segment query against the organisations table.
  * Queries ALL organisations in the database (not just the current page).
@@ -1337,7 +1798,10 @@ async function executeSegmentQuery(rules, logic) {
           q = q.neq(col, r.val);
           break;
         case 'contains':
-          q = q.ilike(col, `%${r.val}%`);
+          // BTA-116 (M3): escape %/_ in the user-supplied term so a literal
+          // wildcard character in r.val can't widen the match beyond a true
+          // substring search.
+          q = q.ilike(col, `%${escapeLikePattern(r.val)}%`);
           break;
         case 'gt':
           q = q.gt(col, r.val);
@@ -1449,6 +1913,172 @@ async function executeSegmentQuery(rules, logic) {
       awards_count: o.awards_count,
     })),
   };
+}
+
+// ============================================
+// TEST-DATA FIXTURE OPERATION
+// ============================================
+// Server-defined, non-client-influenceable replacement for
+// test-data-manager.js's former direct-browser-client writes to
+// email_lists/email_list_subscribers. The client may only name one of the
+// two actions below — every table name, row ID, and filter used here is a
+// fixed constant; nothing from the request body other than `action` is
+// ever read by executeTestDataFixture() or isTestDataEnvironmentSafe().
+
+/**
+ * The 3 deterministic email-list fixtures, matching the long-standing
+ * EMAIL_LIST_PREFIX ('B1000000-0000-0000-0000-') ids 1/2/3 convention in
+ * test-data-manager.js. These are the ONLY email_lists rows this operation
+ * will ever touch.
+ */
+const EMAIL_FIXTURE_LISTS = [
+  {
+    id: 'B1000000-0000-0000-0000-000000000001',
+    list_name: 'TEST_MODE_All Entrants 2025',
+    list_type: 'entrants',
+    is_active: true,
+    color: '#007bff',
+    icon: 'bi-file-earmark-text',
+    description: 'All organisations that submitted entries in 2025',
+    subscriber_count: 15,
+    active_subscriber_count: 14,
+  },
+  {
+    id: 'B1000000-0000-0000-0000-000000000002',
+    list_name: 'TEST_MODE_Sponsors & Partners',
+    list_type: 'sponsors',
+    is_active: true,
+    color: '#28a745',
+    icon: 'bi-star',
+    description: 'Current sponsors and strategic partners',
+    subscriber_count: 8,
+    active_subscriber_count: 8,
+  },
+  {
+    id: 'B1000000-0000-0000-0000-000000000003',
+    list_name: 'TEST_MODE_Event Guests',
+    list_type: 'general',
+    is_active: true,
+    color: '#6f42c1',
+    icon: 'bi-calendar-event',
+    description: 'Invited guests for the awards ceremony',
+    subscriber_count: 20,
+    active_subscriber_count: 18,
+  },
+];
+
+const EMAIL_FIXTURE_LIST_IDS = EMAIL_FIXTURE_LISTS.map((l) => l.id);
+
+/**
+ * Build the fixed set of fixture subscriber rows for the 3 email-list
+ * fixtures. Synthetic data only: unlike the legacy browser-side generator,
+ * this operation deliberately does not read the `organisations` table
+ * (out of scope — restricted to email_lists/email_list_subscribers only),
+ * so the "All Entrants 2025" list's subscribers use synthetic names/emails
+ * rather than real TEST_MODE_ organisation rows. Row counts and the
+ * active/unsubscribed ratio match the original generator exactly; the
+ * "Event Guests" fixture intentionally has no subscriber rows, also
+ * matching the original.
+ * @returns {Object[]} Subscriber rows ready for insert.
+ */
+function buildEmailFixtureSubscribers() {
+  const entrants = Array.from({ length: 15 }, (_, i) => ({
+    list_id: EMAIL_FIXTURE_LIST_IDS[0],
+    email: `entrant${i + 1}@example.com`,
+    first_name: 'Contact',
+    last_name: `Entrant ${i + 1}`,
+    company_name: `TEST_MODE_Entrant Company ${i + 1}`,
+    status: i < 14 ? 'active' : 'unsubscribed',
+    source: 'entry_submission',
+  }));
+
+  const sponsorNames = [
+    { first: 'Sarah', last: 'Platinum', company: 'Platinum Corp' },
+    { first: 'James', last: 'Gold', company: 'Gold Industries' },
+    { first: 'Emma', last: 'Silver', company: 'Silver Solutions' },
+    { first: 'Tom', last: 'Bronze', company: 'Bronze Partners' },
+    { first: 'Lisa', last: 'Partner', company: 'Community Partner' },
+  ];
+  const sponsors = sponsorNames.map((s, i) => ({
+    list_id: EMAIL_FIXTURE_LIST_IDS[1],
+    email: `sponsor${i + 1}@example.com`,
+    first_name: s.first,
+    last_name: s.last,
+    company_name: s.company,
+    status: 'active',
+    source: 'manual',
+  }));
+
+  return [...entrants, ...sponsors];
+}
+
+/**
+ * Known-safe test Supabase project URL, independently verified for this
+ * project (not a secret — a public project API endpoint, not a key).
+ * Used only to confirm the server is actually pointed at the test
+ * project before allowing any destructive fixture operation.
+ */
+const TEST_DATA_ALLOWED_SUPABASE_URLS = new Set(['https://htcsewpztvxafksdzuhp.supabase.co']);
+
+/**
+ * Fail-closed environment guard for the test-data fixture operation only.
+ * Reads exclusively from trusted server-side process.env values — never
+ * from the request body or headers, which a caller fully controls.
+ * @returns {boolean} true only if this is confirmed to be a non-production
+ *   deployment whose configured SUPABASE_URL matches the known test project.
+ */
+function isTestDataEnvironmentSafe() {
+  if (process.env.NODE_ENV === 'production') return false;
+  const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  if (!url || !TEST_DATA_ALLOWED_SUPABASE_URLS.has(url)) return false;
+  return true;
+}
+
+/**
+ * Execute the test-data fixture operation. Restricted to exactly the two
+ * named actions and exactly the two tables (email_lists,
+ * email_list_subscribers) — every ID and filter is one of the fixed
+ * constants above, never anything derived from the request.
+ * @param {string} action - 'generate_email_fixtures' | 'clear_email_fixtures'
+ * @returns {Promise<{success: boolean, errors: string[]}>}
+ */
+async function executeTestDataFixture(action) {
+  const errors = [];
+
+  async function runStep(label, fn) {
+    const { error } = await fn();
+    if (error) {
+      console.error(`[data-proxy] test_data_fixture(${action}) — ${label} failed:`, error.message);
+      errors.push(label);
+    }
+  }
+
+  if (action === 'clear_email_fixtures' || action === 'generate_email_fixtures') {
+    // Always clear subscribers for the fixed fixture lists first, whether
+    // generating (so inserts start from a clean slate, matching the
+    // original generator's own "clear existing test subscribers" step) or
+    // clearing outright.
+    await runStep('clear fixture subscribers', () =>
+      supabase.from('email_list_subscribers').delete().in('list_id', EMAIL_FIXTURE_LIST_IDS)
+    );
+  }
+
+  if (action === 'clear_email_fixtures') {
+    await runStep('clear fixture lists', () => supabase.from('email_lists').delete().in('id', EMAIL_FIXTURE_LIST_IDS));
+    return { success: errors.length === 0, errors };
+  }
+
+  if (action === 'generate_email_fixtures') {
+    await runStep('create fixture lists', () => supabase.from('email_lists').upsert(EMAIL_FIXTURE_LISTS));
+    await runStep('create fixture subscribers', () =>
+      supabase.from('email_list_subscribers').insert(buildEmailFixtureSubscribers())
+    );
+    return { success: errors.length === 0, errors };
+  }
+
+  // Unreachable given the handler's own action allowlist check below, but
+  // fail safe rather than silently no-op if ever reached some other way.
+  return { success: false, errors: ['Unknown action'] };
 }
 
 /**
@@ -1591,6 +2221,136 @@ module.exports = async function handler(req, res) {
       await supabase.from('nominee_upload_rows').delete().eq('batch_id', batchId);
       await supabase.from('nominee_upload_batches').delete().eq('id', batchId);
       return res.status(200).json({ deleted: true });
+    }
+
+    // 7a2. Test-data email-list fixtures — server-derived IDs only, never
+    // a client-supplied table/id/filter. Super-admin only, and refused
+    // outright unless the server can confirm this is a non-production
+    // deployment pointed at the known test Supabase project.
+    if (body.operation === 'test_data_fixture') {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Test-data fixture operations require super_admin role' });
+      }
+      if (!isTestDataEnvironmentSafe()) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Test-data fixture operations are disabled in this environment',
+        });
+      }
+      const fixtureAction = body.action;
+      if (fixtureAction !== 'generate_email_fixtures' && fixtureAction !== 'clear_email_fixtures') {
+        return res.status(400).json({ error: `Unknown test_data_fixture action: "${fixtureAction}"` });
+      }
+      const fixtureResult = await executeTestDataFixture(fixtureAction);
+      return res.status(200).json(fixtureResult);
+    }
+
+    // 7a3. Admin Test Data Manager (BTA-098) — generate/remove comprehensive
+    // test fixtures and mock orders across every admin tab. Moved here
+    // from a direct browser-side Supabase client (test-data-manager.js)
+    // because migration 093 would otherwise have been incompatible with
+    // that tool's direct table access (BTA-097). Same two-gate pattern as
+    // test_data_fixture above: super_admin only, and refused outright
+    // unless the server can confirm this is a non-production deployment
+    // pointed at the known test Supabase project. Every table/filter used
+    // is hardcoded server-side in api/_lib/test-data-fixtures.js — no
+    // table name, column, filter, or deletion criterion is ever accepted
+    // from the request body.
+    if (body.operation === 'test_data_manager') {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Test Data Manager operations require super_admin role' });
+      }
+      if (!isTestDataEnvironmentSafe()) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: 'Test Data Manager operations are disabled in this environment',
+        });
+      }
+      const tdmAction = body.action;
+      const allowedTdmActions = [
+        'status',
+        'generate_test_data',
+        'remove_test_data',
+        'generate_mock_order',
+        'remove_mock_order',
+      ];
+      if (!allowedTdmActions.includes(tdmAction)) {
+        return res.status(400).json({ error: `Unknown test_data_manager action: "${tdmAction}"` });
+      }
+
+      const fixtures = createTestDataFixtures(supabase, {
+        emailFixtures: {
+          generate: () => executeTestDataFixture('generate_email_fixtures'),
+          clear: () => executeTestDataFixture('clear_email_fixtures'),
+        },
+      });
+
+      try {
+        let tdmResult;
+        if (tdmAction === 'status') {
+          tdmResult = await fixtures.getStatus();
+        } else if (tdmAction === 'generate_test_data') {
+          tdmResult = await fixtures.generateTestData();
+        } else if (tdmAction === 'remove_test_data') {
+          tdmResult = await fixtures.removeTestData();
+        } else if (tdmAction === 'generate_mock_order') {
+          tdmResult = await fixtures.generateMockOrder();
+        } else {
+          tdmResult = await fixtures.removeMockOrders();
+        }
+        return res.status(200).json(tdmResult);
+      } catch (tdmError) {
+        console.error(`[data-proxy] test_data_manager(${tdmAction}) failed:`, tdmError.message);
+        return res.status(500).json({ error: 'Test Data Manager operation failed' });
+      }
+    }
+
+    // 7b. Award Areas CSV import — validates and/or imports nominees into a
+    // specific area, creating real organisations + entries.
+    if (body.operation === 'award_area_import') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Award Areas import requires editor role or above' });
+      }
+      // SECURITY (BTA-047): this operation derives its own tenantId
+      // independently of validateQueryParams (it doesn't go through that
+      // path) — apply the same rejection here.
+      const importTenantIdError = rejectUntrustedTenantId(body.tenantId);
+      if (importTenantIdError) {
+        return res.status(400).json({ error: 'Validation failed', details: [importTenantIdError] });
+      }
+      const importResult = await executeAwardAreaImport(body, user);
+      return res.status(200).json(importResult);
+    }
+
+    // 7c. User management — invite, role changes, disable/reactivate, password
+    // reset. Super Admin only, regardless of what any other check would allow.
+    if (
+      ['user_list', 'user_invite', 'user_set_role', 'user_set_status', 'user_reset_password'].includes(body.operation)
+    ) {
+      if (!hasMinimumRole(role, 'super_admin')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'User management requires Super Admin role' });
+      }
+      if (body.operation === 'user_list') {
+        return res.status(200).json(await executeUserList());
+      }
+      if (body.operation === 'user_invite') {
+        return res.status(200).json(await executeUserInvite(body));
+      }
+      if (body.operation === 'user_set_role') {
+        return res.status(200).json(await executeUserSetRole(body, user));
+      }
+      if (body.operation === 'user_set_status') {
+        return res.status(200).json(await executeUserSetStatus(body, user));
+      }
+      if (body.operation === 'user_reset_password') {
+        return res.status(200).json(await executeUserResetPassword(body));
+      }
     }
 
     // 8. Handle smart segment server-side query

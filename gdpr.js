@@ -341,7 +341,7 @@ const gdprModule = {
           ${
             r.status === 'pending'
               ? `
-            <button class="btn btn-sm btn-outline-success" data-action="gdprModule.processRequest" data-id="${r.id}" data-type="${r.request_type}" data-entity="${r.entity_id}" aria-label="Process request">
+            <button class="btn btn-sm btn-outline-success" data-action="gdprModule.processRequest" data-id="${r.id}" data-type="${r.request_type}" data-entity="${r.entity_id}" data-entity-type="${utils.escapeHtml(r.entity_type)}" aria-label="Process request">
               <i class="bi bi-check"></i>
             </button>
             <button class="btn btn-sm btn-outline-danger" data-action="gdprModule.rejectRequest" data-id="${r.id}" aria-label="Reject request">
@@ -366,7 +366,12 @@ const gdprModule = {
         const action = actionEl.getAttribute('data-action');
         const id = actionEl.getAttribute('data-id');
         if (action === 'gdprModule.processRequest') {
-          this.processRequest(id, actionEl.getAttribute('data-type'), actionEl.getAttribute('data-entity'));
+          this.processRequest(
+            id,
+            actionEl.getAttribute('data-type'),
+            actionEl.getAttribute('data-entity'),
+            actionEl.getAttribute('data-entity-type')
+          );
         } else if (action === 'gdprModule.rejectRequest') {
           this.rejectRequest(id);
         }
@@ -417,13 +422,62 @@ const gdprModule = {
   },
 
   /**
+   * BTA-074: every current processing path below (_exportEntityData,
+   * _deleteEntityData, anonymize_organisation) is written against an
+   * organisation id. A "contact" request's entity_id is a different ID
+   * space (organisation_contacts.id, not organisations.id) -- passing it
+   * through unchanged would match zero rows everywhere, be reported as
+   * "completed", and give a false signal that the request was honoured.
+   * @param {string} entityId - The id to validate as a UUID
+   * @returns {boolean} true if entityId looks like a well-formed UUID
+   */
+  _isValidUuid(entityId) {
+    return (
+      typeof entityId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId)
+    );
+  },
+
+  /**
    * Process a GDPR request (export, delete, or anonymise)
    * @param {string} requestId - The GDPR request ID
    * @param {string} requestType - Type of request ('export', 'delete', or 'anonymize')
    * @param {string} entityId - The entity ID to process
+   * @param {string} [entityType] - The request's entity_type ('organisation' or 'contact')
    * @returns {Promise<void>}
    */
-  async processRequest(requestId, requestType, entityId) {
+  async processRequest(requestId, requestType, entityId, entityType) {
+    // BTA-074: only organisation-scoped requests can be processed by the
+    // paths below. Reject anything else up front, before the confirm
+    // dialog or any status change, rather than silently no-op-succeeding.
+    if (entityType && entityType !== 'organisation') {
+      utils.showToast(
+        `Processing "${entityType}" requests is not yet supported here -- only organisation requests can be processed automatically. Handle this request manually and reject or complete it once done.`,
+        'error'
+      );
+      return;
+    }
+    if (!this._isValidUuid(entityId)) {
+      utils.showToast('Cannot process this request: the entity id is missing or not a valid identifier.', 'error');
+      return;
+    }
+
+    // BTA-076: guard against reprocessing a request that isn't actually
+    // pending any more. _renderRequests only shows the Process button for
+    // status === 'pending', but processRequest itself previously trusted
+    // the caller's state blindly -- a stale UI, a double-click, or a
+    // second open tab could otherwise re-run an already-completed
+    // erasure's RPC call and create a second, misleading audit-log entry
+    // for an operation that was already done.
+    const current = await apiClient.select('gdpr_requests', { filters: { id: { eq: requestId } }, pageSize: 1 });
+    const currentStatus = current?.data?.[0]?.status;
+    if (currentStatus && currentStatus !== 'pending') {
+      utils.showToast(
+        `This request is already "${currentStatus}" -- refresh the list before processing it again.`,
+        'error'
+      );
+      return;
+    }
+
     if (
       !(await utils.confirmDialog({
         title: 'Process GDPR Request',
@@ -445,8 +499,17 @@ const gdprModule = {
       } else if (requestType === 'delete') {
         await this._deleteEntityData(entityId);
       } else if (requestType === 'anonymize') {
-        // Use the database function
-        await apiClient.rpc('anonymize_organisation', { p_org_id: entityId });
+        await this._anonymizeEntityData(entityId);
+      } else {
+        // BTA-077: gdpr_requests.request_type has a DB-level CHECK
+        // constraint (migrations/015) limiting it to export/delete/
+        // anonymize, so this should be unreachable through the normal
+        // submit flow -- but falling through here previously meant an
+        // unrecognised type did nothing at all and was still marked
+        // 'completed', the same "nothing threw, so it must have worked"
+        // failure mode already fixed above for a missing organisation.
+        // Fail loudly instead of silently no-op-succeeding.
+        throw new Error(`Unsupported GDPR request type: "${requestType}"`);
       }
 
       // Mark as completed
@@ -459,7 +522,22 @@ const gdprModule = {
       utils.showToast('GDPR request processed', 'success');
       this.loadPendingRequests();
     } catch (e) {
+      // BTA-074: revert to 'pending' (not left stuck at 'processing' with
+      // no retry path) -- 'pending' is the only other status this schema's
+      // CHECK constraint allows that also keeps the request visible with
+      // its Process/Reject actions still available (migrations/015's
+      // gdpr_requests.status CHECK permits only pending/processing/
+      // completed/rejected -- there is no 'failed' value to use instead).
+      try {
+        await apiClient.update('gdpr_requests', requestId, {
+          status: 'pending',
+          notes: 'Processing failed: ' + e.message,
+        });
+      } catch (_revertErr) {
+        // Best-effort revert -- the original failure is still reported below.
+      }
       utils.showToast('Failed to process: ' + e.message, 'error');
+      this.loadPendingRequests();
     } finally {
       utils.hideLoading();
     }
@@ -467,87 +545,122 @@ const gdprModule = {
 
   /**
    * Export all data for an entity as JSON download
+   *
+   * BTA-076: the CRM tables here were previously named `crm_communications`/
+   * `crm_deals`/`crm_meetings` -- names that do not exist anywhere in this
+   * project's schema (confirmed by BTA-075 and re-verified directly this
+   * task: the canonical, consistently-used names everywhere else in the
+   * codebase -- crm.js's own CRUD operations, api/data-proxy.js's
+   * ALLOWED_TABLES/MUTABLE_TABLES/ROLE_PERMISSIONS -- are `communications`,
+   * `deals`, `meeting_notes`). Every one of these selectAll() calls was
+   * therefore rejected by the data-proxy's table allow-list before ever
+   * reaching the database, for every export request, always.
+   *
+   * This function also no longer swallows its own errors: a query failure
+   * (including the table-name defect above, before this fix) was caught
+   * and shown as its own toast here, then silently treated as success by
+   * the caller (processRequest), which has no way to see an error that
+   * never left this function -- it would still mark the request
+   * 'completed' and show "GDPR request processed". Errors now propagate to
+   * processRequest's own catch block, which reverts the request to
+   * 'pending' and reports the failure accurately.
    * @param {string} entityId - The entity (organisation) ID to export
    * @returns {Promise<void>}
    */
   async _exportEntityData(entityId) {
-    try {
-      const orgResult = await apiClient.select('organisations', { filters: { id: entityId }, pageSize: 1 });
-      const org = orgResult.data?.[0] || null;
-      // selectAll justified: GDPR data export intentionally fetches all records for the entity (see pagination documentation)
-      const contacts = await apiClient.selectAll('organisation_contacts', { filters: { organisation_id: entityId } });
-      const assignments = await apiClient.selectAll('award_assignments', { filters: { organisation_id: entityId } });
-      const entries = await apiClient.selectAll('entries', { filters: { organisation_id: entityId } });
-      const invoices = await apiClient.selectAll('invoices', { filters: { organisation_id: entityId } });
-      const payments = await apiClient.selectAll('payments', { filters: { organisation_id: entityId } });
-      const communications = await apiClient.selectAll('crm_communications', {
-        filters: { organisation_id: entityId },
-      });
-      const deals = await apiClient.selectAll('crm_deals', { filters: { organisation_id: entityId } });
-      const meetings = await apiClient.selectAll('crm_meetings', { filters: { organisation_id: entityId } });
-      const notes = await apiClient.selectAll('organisation_notes', { filters: { organisation_id: entityId } });
-      const followUps = await apiClient.selectAll('organisation_follow_ups', {
-        filters: { organisation_id: entityId },
-      });
-
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        type: 'GDPR Subject Access Request',
-        organisation: org,
-        contacts: contacts || [],
-        award_assignments: assignments || [],
-        entries: entries || [],
-        invoices: invoices || [],
-        payments: payments || [],
-        communications: communications || [],
-        deals: deals || [],
-        meetings: meetings || [],
-        notes: notes || [],
-        followUps: followUps || [],
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `gdpr_export_${entityId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('GDPR export failed:', err);
-      utils.showToast('Data export failed: ' + err.message, 'error');
+    const orgResult = await apiClient.select('organisations', { filters: { id: entityId }, pageSize: 1 });
+    const org = orgResult.data?.[0] || null;
+    if (!org) {
+      throw new Error('Organisation not found -- nothing to export.');
     }
+    // selectAll justified: GDPR data export intentionally fetches all records for the entity (see pagination documentation)
+    const contacts = await apiClient.selectAll('organisation_contacts', { filters: { organisation_id: entityId } });
+    const assignments = await apiClient.selectAll('award_assignments', { filters: { organisation_id: entityId } });
+    const entries = await apiClient.selectAll('entries', { filters: { organisation_id: entityId } });
+    const invoices = await apiClient.selectAll('invoices', { filters: { organisation_id: entityId } });
+    const payments = await apiClient.selectAll('payments', { filters: { organisation_id: entityId } });
+    const communications = await apiClient.selectAll('communications', { filters: { organisation_id: entityId } });
+    const deals = await apiClient.selectAll('deals', { filters: { organisation_id: entityId } });
+    const meetings = await apiClient.selectAll('meeting_notes', { filters: { organisation_id: entityId } });
+    const notes = await apiClient.selectAll('organisation_notes', { filters: { organisation_id: entityId } });
+    const followUps = await apiClient.selectAll('organisation_follow_ups', {
+      filters: { organisation_id: entityId },
+    });
+
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      type: 'GDPR Subject Access Request',
+      organisation: org,
+      contacts: contacts || [],
+      award_assignments: assignments || [],
+      entries: entries || [],
+      invoices: invoices || [],
+      payments: payments || [],
+      communications: communications || [],
+      deals: deals || [],
+      meetings: meetings || [],
+      notes: notes || [],
+      followUps: followUps || [],
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `gdpr_export_${entityId.slice(0, 8)}_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 
   /**
-   * Delete all data for an entity across related tables
+   * Delete all data for an entity across related tables.
+   *
+   * GDPR Article 17: cascade must cover ALL tables that hold personal data
+   * for this entity. Runs as a single atomic database transaction (the
+   * erase_organisation_gdpr RPC, migrations/089-secure-gdpr-erasure-rpc.sql
+   * — NOT YET APPLIED to any database as of this commit, see that file's
+   * own header) so a failure partway through the cascade leaves no
+   * partially-erased record: either every table is cleared, or none are.
+   * This replaces a previous client-side loop of 13 separate, unguarded
+   * deleteByFilters() calls with no rollback on a mid-cascade failure.
+   *
+   * BTA-076: the RPC returns 'erased' or 'not_found' (previously VOID,
+   * which gave no way to tell a real erasure apart from a no-op against a
+   * non-existent or already-erased organisation id -- both would
+   * "succeed" identically). Anything other than 'erased' is now treated
+   * as a failure here, so processRequest's own catch block reverts the
+   * request to 'pending' and reports it accurately instead of marking a
+   * no-op "completed".
    * @param {string} entityId - The entity (organisation) ID to delete
    * @returns {Promise<void>}
    */
   async _deleteEntityData(entityId) {
-    // Delete in correct order (children first) — abort on failure to prevent orphaned data
-    // GDPR Article 17: cascade must cover ALL tables that hold personal data for this entity
-    const tables = [
-      { table: 'email_logs', col: 'organisation_id' },
-      { table: 'event_guests', col: 'organisation_id' },
-      { table: 'public_votes', col: 'organisation_id' },
-      { table: 'organisation_contacts', col: 'organisation_id' },
-      { table: 'award_assignments', col: 'organisation_id' },
-      { table: 'entries', col: 'organisation_id' },
-      { table: 'organisation_images', col: 'organisation_id' },
-      { table: 'crm_communications', col: 'organisation_id' },
-      { table: 'crm_deals', col: 'organisation_id' },
-      { table: 'crm_meetings', col: 'organisation_id' },
-      { table: 'organisation_notes', col: 'organisation_id' },
-      { table: 'organisation_follow_ups', col: 'organisation_id' },
-      { table: 'organisations', col: 'id' },
-    ];
-    for (const { table, col } of tables) {
-      try {
-        await apiClient.deleteByFilters(table, { [col]: entityId });
-      } catch (error) {
-        throw new Error(`Failed to delete from ${table}: ${error.message}`);
-      }
+    const result = await apiClient.rpc('erase_organisation_gdpr', { p_org_id: entityId });
+    if (result?.data !== 'erased') {
+      throw new Error('Organisation not found or already erased -- nothing to erase.');
+    }
+  },
+
+  /**
+   * Anonymise an organisation's personal data via the database function.
+   *
+   * BTA-077: anonymize_organisation (migrations/015 and 046's identical
+   * authoring, corrected by migrations/092-fix-anonymize-organisation-
+   * return-contract.sql -- NOT YET APPLIED to any database as of this
+   * commit) had the exact same silent-no-op defect BTA-076 fixed for
+   * erase_organisation_gdpr: RETURNS VOID gave no way to tell "the
+   * organisation existed and was redacted" apart from "p_org_id matched
+   * nothing", and this caller never inspected the result either way. The
+   * RPC now returns 'anonymized' or 'not_found'; anything else is treated
+   * as a failure so processRequest reverts the request to 'pending'
+   * instead of marking a no-op "completed".
+   * @param {string} entityId - The entity (organisation) ID to anonymise
+   * @returns {Promise<void>}
+   */
+  async _anonymizeEntityData(entityId) {
+    const result = await apiClient.rpc('anonymize_organisation', { p_org_id: entityId });
+    if (result?.data !== 'anonymized') {
+      throw new Error('Organisation not found or already anonymised -- nothing to anonymise.');
     }
   },
 

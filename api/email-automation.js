@@ -89,6 +89,7 @@ const HEADER_SUBTITLES = {
   GENERAL: 'Notification',
   NOTIFICATION: 'Notification',
   INVITE: 'Invitation',
+  NOMINEE_OUTREACH: 'Official Nominee',
 };
 
 /**
@@ -832,6 +833,91 @@ async function sendWinnerAnnouncementsEndpoint(req, res) {
   }
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// POST /api/email-automation?action=send-nominee-outreach
+/**
+ * Region-level nominee outreach (Roadmap 2.2). The recipient list is
+ * recomputed here from areaName+season rather than trusting a
+ * client-supplied entry ID list — a caller can state which area/season it
+ * wants, but can't be made to mass-send to entries outside that scope.
+ * By default only entries with no `nominee_outreach_sent_at` yet are sent
+ * to; `includeAlreadySent` opts into re-sending to everyone matched.
+ * Tracking is a single column on `entries` (migrations/097), not a new
+ * table — `email_log` already records every send for audit purposes, but
+ * has no entry_id/area/season linkage to safely derive "already sent for
+ * THIS area+season" from.
+ * @param {Object} req
+ * @param {Object} res
+ * @returns {Promise<void>}
+ */
+async function sendNomineeOutreachEndpoint(req, res) {
+  const { areaName, season, subject, introCopy, includeAlreadySent } = req.body || {};
+  if (!areaName || !season || !subject || !introCopy) {
+    return res.status(400).json({ error: 'areaName, season, subject and introCopy are required' });
+  }
+  const seasonNum = Number(season);
+  if (!Number.isInteger(seasonNum)) {
+    return res.status(400).json({ error: 'season must be a whole number' });
+  }
+
+  try {
+    const { data: entries, error } = await supabase
+      .from('entries')
+      .select(
+        'id, contact_name, contact_email, award_category, entry_title, nominee_outreach_sent_at, organisations(company_name)'
+      )
+      .eq('county_city', areaName)
+      .eq('year', seasonNum);
+    if (error) throw error;
+
+    const candidates = (entries || []).filter((e) => e.contact_email && EMAIL_RE.test(e.contact_email));
+    const recipients = includeAlreadySent ? candidates : candidates.filter((e) => !e.nominee_outreach_sent_at);
+
+    let sentCount = 0;
+    const sentIds = [];
+    const BATCH = 5;
+    for (let i = 0; i < recipients.length; i += BATCH) {
+      const batch = recipients.slice(i, i + BATCH);
+      const results = await Promise.all(
+        batch.map((entry) =>
+          sendTemplateEmail('NOMINEE_OUTREACH', entry.contact_email, {
+            recipient_name: entry.contact_name || 'there',
+            subject_line: subject,
+            intro_copy: introCopy,
+            nominee_name: entry.organisations?.company_name || entry.entry_title || entry.contact_name || '',
+            award_category: entry.award_category || '',
+            area_name: areaName,
+            season: String(seasonNum),
+          }).then((ok) => ({ ok, entryId: entry.id }))
+        )
+      );
+      results.forEach((r) => {
+        if (r.ok) {
+          sentCount++;
+          sentIds.push(r.entryId);
+        }
+      });
+    }
+
+    if (sentIds.length > 0) {
+      await supabase.from('entries').update({ nominee_outreach_sent_at: new Date().toISOString() }).in('id', sentIds);
+    }
+
+    return res.json({
+      success: true,
+      sent: sentCount,
+      failed: recipients.length - sentCount,
+      skippedNoEmail: (entries || []).length - candidates.length,
+      skippedAlreadySent: candidates.length - recipients.length,
+      sentEntryIds: sentIds,
+    });
+  } catch (error) {
+    console.error('Error sending nominee outreach:', error);
+    return res.status(500).json({ error: 'An internal error occurred' });
+  }
+}
+
 /**
  * Vercel serverless handler — routes by query action.
  */
@@ -901,6 +987,17 @@ module.exports = async function handler(req, res) {
       return action === 'send-deadline-reminders'
         ? sendDeadlineRemindersEndpoint(req, res)
         : sendWinnerAnnouncementsEndpoint(req, res);
+    }
+    case 'send-nominee-outreach': {
+      // Same mass-send blast radius and 'admin' floor as above.
+      const role = await getUserRole(user.email);
+      if (!hasMinimumRole(role, 'admin')) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: `Role "${role}" cannot run "${action}" (requires admin)`,
+        });
+      }
+      return sendNomineeOutreachEndpoint(req, res);
     }
     default:
       return res.status(400).json({ error: `Unknown action: ${action || 'none'}` });

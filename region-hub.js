@@ -11,6 +11,14 @@ const regionHubModule = (() => {
   let _season = null; // the year this hub is scoped to
   let _entries = []; // {award_category, status, is_shortlisted} for this area + season
   let _categoriesConfigured = []; // distinct award_category values set up for this area + season
+  // Outreach (Roadmap 2.2) data is fetched separately from _entries above,
+  // in its own try/catch -- it depends on entries.nominee_outreach_sent_at
+  // (migrations/097), a column that may not exist yet in every environment
+  // this code runs against. A missing column must only disable the
+  // Outreach section, never break the metrics/category breakdown this
+  // drawer already had working.
+  let _outreachEntries = null; // [{id, contact_name, contact_email, award_category/entry_title/organisations, nominee_outreach_sent_at}] or null if unavailable
+  let _pendingOutreach = null; // {recipients, subject, introCopy, includeAlreadySent} set by openOutreachModal/updateOutreachPreview
 
   function _typeLabel(areaType) {
     if (areaType === 'borough') return 'London Borough';
@@ -49,6 +57,27 @@ const regionHubModule = (() => {
     return !!entry.is_shortlisted || entry.status === 'shortlisted' || entry.status === 'winner';
   }
 
+  const OUTREACH_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  /**
+   * Outreach counts for this area + season, or null when outreach data
+   * couldn't be loaded (e.g. migrations/097 hasn't been applied yet in
+   * this environment). "Opened"/"Claimed" are deliberately not included —
+   * there is no open-tracking webhook wired in this codebase, and
+   * "Claimed" has no agreed operational definition yet.
+   * @returns {{total: number, withEmail: number, notContacted: number, sent: number}|null}
+   */
+  function _outreachStats() {
+    if (!_outreachEntries) return null;
+    const withEmail = _outreachEntries.filter((e) => e.contact_email && OUTREACH_EMAIL_RE.test(e.contact_email));
+    const sent = withEmail.filter((e) => !!e.nominee_outreach_sent_at).length;
+    return { total: _outreachEntries.length, withEmail: withEmail.length, notContacted: withEmail.length - sent, sent };
+  }
+
+  function _nomineeDisplayName(entry) {
+    return entry.organisations?.company_name || entry.entry_title || entry.contact_name || '';
+  }
+
   /**
    * Category breakdown: every category configured for this area + season,
    * plus any category that actually has entries even if it isn't (or isn't
@@ -84,6 +113,8 @@ const regionHubModule = (() => {
         : new Date().getFullYear();
     _entries = [];
     _categoriesConfigured = [];
+    _outreachEntries = null;
+    _pendingOutreach = null;
 
     const offcanvasEl = document.getElementById('regionHubOffcanvas');
     const contentEl = document.getElementById('regionHubContent');
@@ -109,6 +140,21 @@ const regionHubModule = (() => {
       ]);
       _entries = entriesResult || [];
       _categoriesConfigured = [...new Set((awardsResult || []).map((a) => a.award_category).filter(Boolean))].sort();
+
+      // Independent of the Promise.all above, deliberately: a 400 from a
+      // not-yet-migrated nominee_outreach_sent_at column must only disable
+      // the Outreach section below, not the whole drawer.
+      try {
+        _outreachEntries = await apiClient.selectAll('entries', {
+          select:
+            'id, contact_name, contact_email, award_category, entry_title, nominee_outreach_sent_at, organisations(company_name)',
+          filters: { county_city: displayName, year: _season },
+        });
+      } catch (outreachError) {
+        console.warn('[regionHubModule] Outreach data unavailable (has migrations/097 been applied?):', outreachError);
+        _outreachEntries = null;
+      }
+
       _render();
     } catch (error) {
       contentEl.innerHTML = `
@@ -192,6 +238,11 @@ const regionHubModule = (() => {
         }
       </div>
 
+      <div class="mb-3">
+        <h6 class="small text-uppercase text-muted mb-2">Outreach &amp; Engagement</h6>
+        ${_renderOutreachSection()}
+      </div>
+
       <div class="d-grid gap-2 mt-4">
         <button class="btn btn-primary btn-sm" data-action="regionHubModule.uploadSpreadsheet">
           <i class="bi bi-cloud-upload me-1"></i>Upload / Re-upload Spreadsheet
@@ -203,6 +254,39 @@ const regionHubModule = (() => {
           <i class="bi bi-globe me-1"></i>View on Live Site <i class="bi bi-box-arrow-up-right ms-1 small"></i>
         </button>
       </div>
+    `;
+  }
+
+  function _renderOutreachSection() {
+    const stats = _outreachStats();
+    if (!stats) {
+      return '<p class="text-muted small">Outreach data unavailable right now — please try reopening this area.</p>';
+    }
+    return `
+      <div class="row g-2 mb-2">
+        <div class="col-4">
+          <div class="border rounded p-2 text-center h-100">
+            <div class="fs-6 fw-bold">${stats.total}</div>
+            <div class="text-muted small">Total Nominees</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="border rounded p-2 text-center h-100">
+            <div class="fs-6 fw-bold">${stats.notContacted}</div>
+            <div class="text-muted small">Not Yet Contacted</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="border rounded p-2 text-center h-100">
+            <div class="fs-6 fw-bold">${stats.sent}</div>
+            <div class="text-muted small">Sent</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-outline-primary btn-sm w-100" data-action="regionHubModule.openOutreachModal" ${stats.withEmail === 0 ? 'disabled' : ''}>
+        <i class="bi bi-megaphone me-1"></i>Send Nominee Outreach
+      </button>
+      ${stats.withEmail === 0 ? '<p class="text-muted small mt-1 mb-0">No nominees with a valid email address yet.</p>' : ''}
     `;
   }
 
@@ -233,6 +317,122 @@ const regionHubModule = (() => {
     window.open('public-voting.html?city=' + encodeURIComponent(_area.display_name), '_blank');
   }
 
+  // ── Nominee outreach (Roadmap 2.2) ──────────────────────────────
+
+  function _computeOutreachRecipients(includeAlreadySent) {
+    if (!_outreachEntries) return [];
+    const withEmail = _outreachEntries.filter((e) => e.contact_email && OUTREACH_EMAIL_RE.test(e.contact_email));
+    return includeAlreadySent ? withEmail : withEmail.filter((e) => !e.nominee_outreach_sent_at);
+  }
+
+  /**
+   * Open the outreach preview/confirmation modal, pre-filled with a
+   * sensible default subject + intro copy the operator can edit before
+   * sending.
+   */
+  function openOutreachModal() {
+    if (!_area || !_outreachEntries) return;
+    const subjectEl = document.getElementById('outreachSubject');
+    const introEl = document.getElementById('outreachIntro');
+    const includeEl = document.getElementById('outreachIncludeAlreadySent');
+    const modalEl = document.getElementById('outreachModal');
+    if (!subjectEl || !introEl || !includeEl || !modalEl) {
+      utils.showToast('Outreach panel not found — please reload the page.', 'error');
+      return;
+    }
+
+    subjectEl.value = `Official Nominee — ${_area.display_name} — ${_season}`;
+    introEl.value = `Congratulations — you've been officially nominated for the British Trade Awards ${_season} in ${_area.display_name}. We're excited to have you in the running!`;
+    includeEl.checked = false;
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    updateOutreachPreview();
+  }
+
+  /**
+   * Recompute the recipient count and rendered preview whenever the
+   * subject, intro copy, or "include already sent" toggle changes.
+   * Stores the result in `_pendingOutreach` for confirmSendOutreach().
+   */
+  function updateOutreachPreview() {
+    if (!_area || !_outreachEntries) return;
+    const subjectEl = document.getElementById('outreachSubject');
+    const introEl = document.getElementById('outreachIntro');
+    const includeEl = document.getElementById('outreachIncludeAlreadySent');
+    const summaryEl = document.getElementById('outreachRecipientSummary');
+    const previewEl = document.getElementById('outreachPreview');
+    const sendBtn = document.getElementById('outreachSendBtn');
+    if (!subjectEl || !introEl || !includeEl || !summaryEl || !previewEl || !sendBtn) return;
+
+    const subject = subjectEl.value.trim();
+    const introCopy = introEl.value.trim();
+    const includeAlreadySent = includeEl.checked;
+    const recipients = _computeOutreachRecipients(includeAlreadySent);
+
+    _pendingOutreach = { recipients, subject, introCopy, includeAlreadySent };
+
+    summaryEl.textContent = `${recipients.length} nominee${recipients.length === 1 ? '' : 's'} will receive this email.`;
+
+    const sampleEntry = recipients[0];
+    const sampleName = sampleEntry ? _nomineeDisplayName(sampleEntry) || 'there' : _area.display_name;
+    previewEl.innerHTML = `
+      <p class="small text-muted mb-1">Subject</p>
+      <p class="fw-semibold mb-3">${utils.escapeHtml(subject || '(no subject)')}</p>
+      <p class="small text-muted mb-1">Body (example for "${utils.escapeHtml(sampleName)}")</p>
+      <p class="mb-0">${utils.escapeHtml(introCopy || '(no intro copy)')}</p>
+    `;
+
+    sendBtn.disabled = recipients.length === 0 || !subject || !introCopy;
+  }
+
+  /**
+   * Dispatch the outreach batch via the existing email-automation proxy,
+   * then reflect the send locally (updating nominee_outreach_sent_at on
+   * the in-memory recipients the server confirms it sent to) so the
+   * Outreach counters refresh without a full re-fetch of the drawer.
+   * @returns {Promise<void>}
+   */
+  async function confirmSendOutreach() {
+    const pending = _pendingOutreach;
+    if (!_area || !pending || pending.recipients.length === 0) return;
+
+    bootstrap.Modal.getInstance(document.getElementById('outreachModal'))?.hide();
+
+    try {
+      utils.showLoading();
+      const token = await apiClient._getToken();
+      const resp = await fetch('/api/email-automation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: 'send-nominee-outreach',
+          areaName: _area.display_name,
+          season: _season,
+          subject: pending.subject,
+          introCopy: pending.introCopy,
+          includeAlreadySent: pending.includeAlreadySent,
+        }),
+      });
+      const result = await resp.json();
+      if (!resp.ok || !result.success) throw new Error(result.error || 'Failed to send outreach');
+
+      const sentIds = new Set(result.sentEntryIds || []);
+      const sentAt = new Date().toISOString();
+      _outreachEntries = (_outreachEntries || []).map((e) =>
+        sentIds.has(e.id) ? { ...e, nominee_outreach_sent_at: sentAt } : e
+      );
+      _pendingOutreach = null;
+      _render();
+
+      utils.showToast(`Sent outreach to ${result.sent} nominee${result.sent === 1 ? '' : 's'}`, 'success');
+    } catch (error) {
+      console.error('Error sending nominee outreach:', error);
+      utils.showToast('Failed to send outreach: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  }
+
   return {
     open,
     close,
@@ -240,11 +440,17 @@ const regionHubModule = (() => {
     viewFilteredEntries,
     viewFilteredEntriesForCategory,
     viewOnLiveSite,
+    openOutreachModal,
+    updateOutreachPreview,
+    confirmSendOutreach,
     // Exposed for unit testing
     _deriveLifecycleStage,
     _categoryBreakdown,
     _isApproved,
     _typeLabel,
+    _outreachStats,
+    _nomineeDisplayName,
+    _computeOutreachRecipients,
   };
 })();
 

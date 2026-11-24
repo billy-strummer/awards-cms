@@ -184,3 +184,42 @@
           </div>
         </div>
       </div>
+
+      <!-- ==================================================== -->
+      <!-- REGION HUB — NOMINEE OUTREACH MODAL (Roadmap 2.2) -->
+      <!-- ==================================================== -->
+      <div class="modal fade" id="outreachModal" tabindex="-1" aria-labelledby="outreachModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header">
+              <h5 class="modal-title" id="outreachModalLabel"><i class="bi bi-megaphone text-primary me-2"></i>Send Nominee Outreach</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="outreachIncludeAlreadySent" data-on-change="regionHubModule.updateOutreachPreview">
+                <label class="form-check-label small" for="outreachIncludeAlreadySent">Include nominees already sent outreach</label>
+              </div>
+              <p class="small mb-3" id="outreachRecipientSummary"></p>
+
+              <div class="mb-3">
+                <label for="outreachSubject" class="form-label fw-semibold small">Subject</label>
+                <input type="text" class="form-control" id="outreachSubject" data-on-change="regionHubModule.updateOutreachPreview">
+              </div>
+              <div class="mb-3">
+                <label for="outreachIntro" class="form-label fw-semibold small">Intro copy</label>
+                <textarea class="form-control" id="outreachIntro" rows="3" data-on-change="regionHubModule.updateOutreachPreview"></textarea>
+              </div>
+
+              <h6 class="small text-uppercase text-muted mb-2">Preview</h6>
+              <div class="border rounded p-3" id="outreachPreview" style="background:#fafafa;"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" id="outreachSendBtn" data-action="regionHubModule.confirmSendOutreach">
+                <i class="bi bi-send me-1"></i>Send Nominee Outreach
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>

@@ -80,7 +80,8 @@
     "TradingView": "readonly",
     "locationModule": "readonly",
     "areasManager": "readonly",
-    "nomineeUploads": "readonly"
+    "nomineeUploads": "readonly",
+    "nomineeBadgeModule": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2022,

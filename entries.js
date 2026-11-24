@@ -482,6 +482,9 @@ const entriesModule = {
               <button class="btn btn-outline-info" data-action="entriesModule.showVotingLink" data-id="${entry.id}" title="Get public voting link for this entry">
                 <i class="bi bi-link-45deg me-1"></i>Vote Link
               </button>
+              <button class="btn btn-outline-warning" data-action="entriesModule.openMediaKit" data-id="${entry.id}" title="Generate a shareable social badge and voting link for this nominee">
+                <i class="bi bi-award me-1"></i>Media Kit
+              </button>
               <button class="btn btn-outline-danger" data-action="entriesModule.deleteEntry" data-id="${entry.id}" title="Permanently delete this entry">
                 <i class="bi bi-trash me-1"></i>Delete
               </button>
@@ -1261,6 +1264,9 @@ const entriesModule = {
               </button>
               <button type="button" class="btn btn-outline-secondary" data-action="entriesModule.cloneEntryToCategory" data-id="${entry.id}" title="Duplicate this entry to another award category">
                 <i class="bi bi-copy me-1"></i>Duplicate to Category
+              </button>
+              <button type="button" class="btn btn-outline-warning" data-action="entriesModule.openMediaKit" data-id="${entry.id}" title="Generate a shareable social badge and voting link for this nominee">
+                <i class="bi bi-award me-1"></i>Media Kit
               </button>
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
               <button type="button" class="btn btn-primary" data-action="entriesModule.updateEntryStatus" data-id="${entry.id}">
@@ -2729,6 +2735,25 @@ const entriesModule = {
    */
   openVotingLinkInNewTab(url) {
     window.open(url, '_blank');
+  },
+
+  /**
+   * Open the Nominee Media Kit modal (Roadmap 2.3) for an entry already
+   * loaded in this.allEntries (the table's own '*'-selected query already
+   * carries every field the badge/link needs — no extra fetch).
+   * @param {string} entryId
+   */
+  openMediaKit(entryId) {
+    const entry = this.allEntries.find((e) => e.id === entryId);
+    if (!entry) {
+      utils.showToast('Entry not found', 'error');
+      return;
+    }
+    if (typeof nomineeBadgeModule === 'undefined') {
+      utils.showToast('Media Kit is unavailable right now — please reload the page.', 'error');
+      return;
+    }
+    nomineeBadgeModule.showMediaKitModal(entry, entry.year, entry.county_city);
   },
 
   /**

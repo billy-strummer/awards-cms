@@ -2144,3 +2144,37 @@ describe('Entries Module - showVotingLink', () => {
     spy.mockRestore();
   });
 });
+
+describe('Entries Module - openMediaKit() (Roadmap 2.3)', () => {
+  afterEach(() => {
+    delete global.nomineeBadgeModule;
+    delete global.window.nomineeBadgeModule;
+  });
+
+  test('warns when entry not found', () => {
+    const spy = jest.spyOn(utils, 'showToast');
+    entriesModule.allEntries = [];
+    entriesModule.openMediaKit('nonexistent-id');
+    expect(spy).toHaveBeenCalledWith('Entry not found', 'error');
+    spy.mockRestore();
+  });
+
+  test('warns when nomineeBadgeModule is not loaded', () => {
+    entriesModule.allEntries = [{ id: 'entry-1', year: 2027, county_city: 'Cardiff' }];
+    const spy = jest.spyOn(utils, 'showToast');
+    entriesModule.openMediaKit('entry-1');
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('unavailable'), 'error');
+    spy.mockRestore();
+  });
+
+  test('passes the already-loaded entry, its year and county_city through to nomineeBadgeModule', () => {
+    const entry = { id: 'entry-1', year: 2027, county_city: 'Cardiff', entry_title: 'Acme Ltd' };
+    entriesModule.allEntries = [entry];
+    global.nomineeBadgeModule = { showMediaKitModal: jest.fn() };
+    global.window.nomineeBadgeModule = global.nomineeBadgeModule;
+
+    entriesModule.openMediaKit('entry-1');
+
+    expect(nomineeBadgeModule.showMediaKitModal).toHaveBeenCalledWith(entry, 2027, 'Cardiff');
+  });
+});

@@ -563,6 +563,16 @@ const EMAIL_TEMPLATES = {
           </table>
         </div>
 
+        <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0;">
+          <tr>
+            <td style="background: #D4AF37; border-radius: 6px;">
+              <a href="{{voting_link}}" style="color: #1a1a1a; padding: 12px 24px; text-decoration: none; display: inline-block; font-family: Arial, sans-serif; font-weight: bold;">
+                Share Your Voting Link
+              </a>
+            </td>
+          </tr>
+        </table>
+
         <p style="margin-top: 24px;">Kind regards,<br><strong>{{brand_name}} Team</strong></p>
       </div>
     `,

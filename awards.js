@@ -1153,6 +1153,20 @@ const awardsModule = {
         pageSize: 1000,
       });
 
+      // Category Sponsor (Roadmap 3.1) — isolated from the fetches above so
+      // a failure here never blocks the rest of this view from loading.
+      let categorySponsor = null;
+      try {
+        const { data: sponsorRows } = await apiClient.select('sponsor_assignments', {
+          select: 'sponsors(company_name, logo_url, website)',
+          filters: { award_id: awardId },
+          pageSize: 1,
+        });
+        categorySponsor = sponsorRows?.[0]?.sponsors || null;
+      } catch (e) {
+        console.warn('Could not load the category sponsor:', e.message);
+      }
+
       // Create and show modal
       let modal = bootstrap.Modal.getInstance(document.getElementById('awardDetailsModal'));
       if (!modal) {
@@ -1197,6 +1211,10 @@ const awardsModule = {
               <tr>
                 <th>Nominees:</th>
                 <td><strong>${assignments?.length || 0}</strong></td>
+              </tr>
+              <tr>
+                <th>Sponsor:</th>
+                <td>${categorySponsor ? utils.escapeHtml(categorySponsor.company_name) : '<span class="text-muted">No Sponsor Assigned</span>'}</td>
               </tr>
             </table>
           </div>
@@ -1542,6 +1560,7 @@ const awardsModule = {
     // Hint if no seasons configured
     this._updateSeasonHint();
     this._clearDateErrors();
+    this._populateAwardSponsorSelect(null);
 
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('awardFormModal'));
     modal.show();
@@ -1755,6 +1774,7 @@ const awardsModule = {
 
     // Populate season dropdown
     this.populateSeasonDropdown();
+    this._populateAwardSponsorSelect(award.id);
 
     // Enable area dropdown (award has a country)
     const areaElEdit = document.getElementById('awardFormArea');
@@ -1902,6 +1922,54 @@ const awardsModule = {
   },
 
   /**
+   * Populate the Category Sponsor dropdown with active sponsors, pre-
+   * selecting the sponsor currently assigned to this award via
+   * sponsor_assignments (the same join table and "delete existing
+   * assignments then insert the selected one" convention Marketing ->
+   * Sponsors' own category-sponsorship picker already uses, from the
+   * award's side instead of the sponsor's side) — Roadmap 3.1.
+   * @param {string|null} awardId - Award ID (null for a new, unsaved award)
+   * @returns {Promise<void>}
+   */
+  async _populateAwardSponsorSelect(awardId) {
+    const select = document.getElementById('awardFormSponsor');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">No Sponsor</option>';
+    try {
+      const sponsors = await apiClient.selectAll('sponsors', {
+        select: 'id, company_name',
+        filters: { is_active: true },
+        sort: { column: 'company_name', ascending: true },
+      });
+
+      let assignedSponsorId = null;
+      if (awardId) {
+        try {
+          const assignResult = await apiClient.select('sponsor_assignments', {
+            select: 'sponsor_id',
+            filters: { award_id: awardId },
+            pageSize: 1,
+          });
+          assignedSponsorId = assignResult?.data?.[0]?.sponsor_id || null;
+        } catch (e) {
+          console.warn('Could not load the current category sponsor:', e.message);
+        }
+      }
+
+      select.innerHTML +=
+        (sponsors || [])
+          .map(
+            (s) =>
+              `<option value="${utils.escapeHtml(s.id)}" ${s.id === assignedSponsorId ? 'selected' : ''}>${utils.escapeHtml(s.company_name)}</option>`
+          )
+          .join('') || '';
+    } catch (e) {
+      console.warn('Could not populate sponsors:', e.message);
+    }
+  },
+
+  /**
    * Save award (create or update) from the form modal
    * @returns {Promise<void>}
    */
@@ -1995,12 +2063,33 @@ const awardsModule = {
           }
         }
 
+        let savedAwardId = id;
         if (id) {
           // Update existing
           await apiClient.update('awards', id, awardData);
         } else {
           // Create new
-          await apiClient.insert('awards', awardData);
+          const insertResult = await apiClient.insert('awards', awardData);
+          savedAwardId = insertResult?.data?.[0]?.id || null;
+        }
+
+        // Category Sponsor (Roadmap 3.1): delete-then-insert, same
+        // convention Marketing -> Sponsors' own assignment code uses.
+        // Only possible once the award actually has an id (a brand-new
+        // award whose insert result didn't carry one back is not worth
+        // failing the whole save over -- the operator can still set the
+        // sponsor on their next edit).
+        if (savedAwardId) {
+          const sponsorSelect = document.getElementById('awardFormSponsor');
+          const sponsorId = sponsorSelect ? sponsorSelect.value : '';
+          try {
+            await apiClient.delete('sponsor_assignments', { award_id: savedAwardId });
+            if (sponsorId) {
+              await apiClient.insert('sponsor_assignments', { sponsor_id: sponsorId, award_id: savedAwardId });
+            }
+          } catch (sponsorErr) {
+            console.warn('Could not save the category sponsor assignment:', sponsorErr.message);
+          }
         }
 
         // Clear auto-save draft on successful save

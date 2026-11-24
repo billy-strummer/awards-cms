@@ -323,6 +323,66 @@ async function submitVote({
   return { success: true };
 }
 
+const PUBLIC_SPONSOR_FIELDS = 'company_name, logo_url, website, is_active';
+
+/**
+ * Map a sponsors row to the explicit, public-safe allowlist (Roadmap
+ * 3.1) -- never the admin-only fields on that same row (contact_name,
+ * email, phone, sponsorship_amount), and never anything at all when the
+ * sponsor isn't active.
+ * @param {Object|null} sponsor
+ * @returns {{sponsor_name: string, sponsor_logo_url: string|null, sponsor_website: string|null}|null}
+ */
+function toPublicSponsor(sponsor) {
+  if (!sponsor || !sponsor.is_active) return null;
+  return { sponsor_name: sponsor.company_name, sponsor_logo_url: sponsor.logo_url, sponsor_website: sponsor.website };
+}
+
+/**
+ * Safe, allowlisted sponsor branding for the public voting page (Roadmap
+ * 3.1): the category sponsor (sponsor_assignments.award_id) and the
+ * region/headline sponsor (sponsor_assignments.area_id + year), each only
+ * when assigned and active. Resolves the entry's area by the same
+ * county_city <-> areas.display_name match this project already uses
+ * throughout (entries has no area_id column of its own). Callers wrap
+ * this in their own try/catch -- a failure here (e.g. migrations/098 not
+ * yet applied) must never block the entry itself from loading.
+ * @param {Object} entry - needs award_id, county_city, year
+ * @returns {Promise<{region: Object|null, category: Object|null}>}
+ */
+async function loadSponsorBranding(entry) {
+  const result = { region: null, category: null };
+
+  if (entry.award_id) {
+    const { data } = await supabase
+      .from('sponsor_assignments')
+      .select(`sponsors(${PUBLIC_SPONSOR_FIELDS})`)
+      .eq('award_id', entry.award_id)
+      .limit(1);
+    result.category = toPublicSponsor(data?.[0]?.sponsors);
+  }
+
+  if (entry.county_city && entry.year) {
+    const { data: areaRow } = await supabase
+      .from('areas')
+      .select('id')
+      .eq('display_name', entry.county_city)
+      .maybeSingle();
+    if (areaRow) {
+      const { data } = await supabase
+        .from('sponsor_assignments')
+        .select(`sponsors(${PUBLIC_SPONSOR_FIELDS})`)
+        .eq('area_id', areaRow.id)
+        .eq('year', entry.year)
+        .eq('assignment_type', 'region')
+        .limit(1);
+      result.region = toPublicSponsor(data?.[0]?.sponsors);
+    }
+  }
+
+  return result;
+}
+
 /**
  * load_entry — load a single entry by entry_number or entry_id
  */
@@ -363,7 +423,16 @@ async function loadEntry({ entry_number, entry_id }) {
     throw error;
   }
 
-  return { entry: data };
+  // Isolated deliberately: a 400 from not-yet-migrated sponsor_assignments
+  // columns (migrations/098) must never block the entry itself from loading.
+  let sponsors = { region: null, category: null };
+  try {
+    sponsors = await loadSponsorBranding(data);
+  } catch (sponsorError) {
+    console.warn('[voting-proxy] Sponsor branding unavailable:', sponsorError.message);
+  }
+
+  return { entry: data, sponsors };
 }
 
 /**

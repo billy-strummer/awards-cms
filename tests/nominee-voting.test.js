@@ -35,6 +35,7 @@ const dom = new JSDOM(
   <span id="voteCount">0</span>
   <div id="whyShouldWin" style="display:none;"><span id="whyShouldWinText"></span></div>
   <div id="websiteLinkSection" style="display:none;"><a id="websiteLink" href="#"></a></div>
+  <div id="sponsorSection" style="display:none;"></div>
   <button id="voteButton"></button>
   <div id="publicToastContainer"></div>
   <form id="verificationForm"><input id="voterEmail" type="email"><button type="submit">Verify</button></form>
@@ -280,6 +281,104 @@ describe('Nominee Voting - loadEntry', () => {
     nomineeVoting.voterEmail = 'test@test.com';
     await nomineeVoting.loadEntry('BTA-003', null);
     expect(nomineeVoting.displayEntry).toHaveBeenCalled();
+  });
+
+  test('stores the sponsors payload from the API response (Roadmap 3.1)', async () => {
+    const mockEntry = { id: 'e4', entry_number: 'BTA-004', organisations: {}, awards: {} };
+    const mockSponsors = { region: { sponsor_name: 'Acme Corp' }, category: null };
+    global.fetch = jest.fn(() =>
+      Promise.resolve({ ok: true, json: () => Promise.resolve({ entry: mockEntry, sponsors: mockSponsors }) })
+    );
+    nomineeVoting.displayEntry = jest.fn();
+    nomineeVoting.voterEmail = null;
+    await nomineeVoting.loadEntry('BTA-004', null);
+    expect(nomineeVoting.sponsors).toEqual(mockSponsors);
+  });
+
+  test('defaults sponsors to {region: null, category: null} when the API response has no sponsors field', async () => {
+    const mockEntry = { id: 'e5', entry_number: 'BTA-005', organisations: {}, awards: {} };
+    global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ entry: mockEntry }) }));
+    nomineeVoting.displayEntry = jest.fn();
+    nomineeVoting.voterEmail = null;
+    await nomineeVoting.loadEntry('BTA-005', null);
+    expect(nomineeVoting.sponsors).toEqual({ region: null, category: null });
+  });
+});
+
+describe('Nominee Voting - renderSponsors() (Roadmap 3.1)', () => {
+  beforeEach(() => {
+    document.getElementById('sponsorSection').innerHTML = '';
+    document.getElementById('sponsorSection').style.display = 'none';
+  });
+
+  test('stays hidden when there is no sponsor at all', () => {
+    nomineeVoting.renderSponsors({ region: null, category: null });
+    expect(document.getElementById('sponsorSection').style.display).toBe('none');
+  });
+
+  test('stays hidden when given no sponsors object', () => {
+    nomineeVoting.renderSponsors(undefined);
+    expect(document.getElementById('sponsorSection').style.display).toBe('none');
+  });
+
+  test('renders a visible Category Sponsor row', () => {
+    nomineeVoting.renderSponsors({
+      category: { sponsor_name: 'Acme Corp', sponsor_logo_url: null, sponsor_website: null },
+      region: null,
+    });
+    const container = document.getElementById('sponsorSection');
+    expect(container.style.display).toBe('block');
+    expect(container.textContent).toContain('Category Sponsor');
+    expect(container.textContent).toContain('Acme Corp');
+  });
+
+  test('renders both Category and Region Sponsor rows when both are assigned', () => {
+    nomineeVoting.renderSponsors({
+      category: { sponsor_name: 'Acme Corp', sponsor_logo_url: null, sponsor_website: null },
+      region: { sponsor_name: 'Beta Co', sponsor_logo_url: null, sponsor_website: null },
+    });
+    const container = document.getElementById('sponsorSection');
+    expect(container.textContent).toContain('Category Sponsor');
+    expect(container.textContent).toContain('Acme Corp');
+    expect(container.textContent).toContain('Region Sponsor');
+    expect(container.textContent).toContain('Beta Co');
+  });
+
+  test('renders a logo image when sponsor_logo_url is set', () => {
+    nomineeVoting.renderSponsors({
+      category: { sponsor_name: 'Acme Corp', sponsor_logo_url: 'https://example.com/logo.png', sponsor_website: null },
+      region: null,
+    });
+    const img = document.getElementById('sponsorSection').querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img.src).toBe('https://example.com/logo.png');
+    expect(img.alt).toBe('Acme Corp');
+  });
+
+  test('wraps the sponsor in a link only when sponsor_website is a valid http(s) URL', () => {
+    nomineeVoting.renderSponsors({
+      category: { sponsor_name: 'Acme Corp', sponsor_logo_url: null, sponsor_website: 'https://acme.example.com' },
+      region: null,
+    });
+    const link = document.getElementById('sponsorSection').querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link.href).toBe('https://acme.example.com/');
+  });
+
+  test('does not render a link for an invalid/non-http sponsor_website value', () => {
+    nomineeVoting.renderSponsors({
+      category: { sponsor_name: 'Acme Corp', sponsor_logo_url: null, sponsor_website: 'javascript:alert(1)' },
+      region: null,
+    });
+    expect(document.getElementById('sponsorSection').querySelector('a')).toBeNull();
+  });
+
+  test('is a safe no-op when the sponsorSection element is missing', () => {
+    document.getElementById('sponsorSection').remove();
+    expect(() => nomineeVoting.renderSponsors({ category: { sponsor_name: 'Acme' }, region: null })).not.toThrow();
+    const el = document.createElement('div');
+    el.id = 'sponsorSection';
+    document.body.appendChild(el);
   });
 });
 

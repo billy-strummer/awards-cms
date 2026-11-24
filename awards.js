@@ -940,8 +940,11 @@ const awardsModule = {
           : 'Click "+ Add Award" in the toolbar to create your first award',
         isFiltered: hasFilters,
         clearAction: hasFilters ? 'awardsModule.resetFilters' : '',
-        actionLabel: hasFilters ? '' : 'Add Award',
-        actionAction: hasFilters ? '' : 'awardsModule.openCreateModal',
+        // No actionLabel/actionAction here: the toolbar's own persistent
+        // "+ Add Award" button (always visible above this table) is
+        // already the single primary CTA, and the description text above
+        // already points to it -- a second button in the empty state
+        // itself duplicated it.
       });
       // Clear pagination
       const pagEl = document.getElementById('awardsPagination');

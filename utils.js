@@ -3451,10 +3451,13 @@ const apiClient = {
     if (!res.ok) {
       // BTA-116 (M2): prefer the server's own message/error; only fall back to
       // a plain-English generic message, never a raw "API error <status>" string.
+      // `details` (when present) is the specific reason behind a generic error
+      // label like "Validation failed" -- show that instead of the label, or
+      // callers only ever see the unhelpful generic text.
       const errorMsg =
         json.message ||
+        (Array.isArray(json.details) && json.details.length > 0 ? json.details.join('; ') : null) ||
         json.error ||
-        (json.details && json.details[0]) ||
         'Something went wrong — please try again, or contact support if this continues.';
       // Append the Postgres/PostgREST error code when the server sent one —
       // turns a bare "Internal server error" toast into something a future

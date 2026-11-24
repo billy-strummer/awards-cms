@@ -14118,7 +14118,18 @@ const eventsModule = {
    */
   async renderFinancialOverview() {
     const events = STATE.allEvents || [];
-    if (events.length === 0) return;
+    if (events.length === 0) {
+      // The table body starts with a static "Loading..." placeholder in the
+      // HTML; with no events there are no rows to replace it, so it would
+      // otherwise stay stuck on "Loading..." forever.
+      const tbody = document.getElementById('financialBreakdownBody');
+      const tfoot = document.getElementById('financialBreakdownFoot');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-2">No events yet</td></tr>';
+      }
+      if (tfoot) tfoot.innerHTML = '';
+      return;
+    }
 
     const rows = [];
     let grandRevenue = 0,

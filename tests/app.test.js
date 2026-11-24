@@ -208,7 +208,11 @@ global.bootstrap = {
       return { hide() {} };
     }
   },
-  Tooltip: class {},
+  Tooltip: class {
+    static getInstance() {
+      return null;
+    }
+  },
 };
 
 // Mock crypto
@@ -1982,6 +1986,41 @@ describe('App Module - Table Dropdown z-index Fix', () => {
 
     expect(tr.classList.contains('dropdown-row-active')).toBe(false);
     expect(tr.closest('.table-responsive').classList.contains('dropdown-open')).toBe(false);
+  });
+});
+
+describe('App Module - Tooltip Cleanup on Tab Switch', () => {
+  // Bootstrap tooltips are appended to <body> and only auto-hide on the
+  // trigger's own mouseleave/blur. Switching tabs hides the trigger's
+  // ancestor pane via CSS without firing either, which can leave an open
+  // tooltip floating over the newly-shown tab's content. A `hide.bs.tab`
+  // listener should hide any currently-visible tooltip instances.
+  test('hide.bs.tab hides any currently-visible tooltip instances', () => {
+    const trigger = document.createElement('button');
+    trigger.setAttribute('data-bs-toggle', 'tooltip');
+    document.body.appendChild(trigger);
+
+    const hideSpy = jest.fn();
+    const getInstanceSpy = jest
+      .spyOn(bootstrap.Tooltip, 'getInstance')
+      .mockImplementation((el) => (el === trigger ? { hide: hideSpy } : null));
+
+    trigger.dispatchEvent(new Event('hide.bs.tab', { bubbles: true }));
+
+    expect(hideSpy).toHaveBeenCalled();
+
+    getInstanceSpy.mockRestore();
+    trigger.remove();
+  });
+
+  test('hide.bs.tab does nothing when no tooltip instance exists', () => {
+    const trigger = document.createElement('button');
+    trigger.setAttribute('data-bs-toggle', 'tooltip');
+    document.body.appendChild(trigger);
+
+    expect(() => trigger.dispatchEvent(new Event('hide.bs.tab', { bubbles: true }))).not.toThrow();
+
+    trigger.remove();
   });
 });
 

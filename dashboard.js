@@ -318,8 +318,9 @@ const dashboardModule = {
       console.error('Error loading awards year summary:', error);
       tbody.innerHTML = `
         <tr>
-          <td colspan="4" class="text-center py-3 text-danger">
-            <i class="bi bi-exclamation-triangle me-2"></i>Failed to load awards summary
+          <td colspan="4" class="text-center py-4 text-muted">
+            <i class="bi bi-inbox display-6 d-block mb-2 opacity-25"></i>
+            Awards summary isn't available right now
           </td>
         </tr>`;
     }
@@ -1555,8 +1556,9 @@ const dashboardModule = {
     } catch (error) {
       console.error('Error loading completion rate widget:', error);
       container.innerHTML = `
-        <div class="text-center py-4 text-danger">
-          <i class="bi bi-exclamation-triangle me-2"></i>Error loading completion data
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-bar-chart display-6 d-block mb-2 opacity-25"></i>
+          Completion data isn't available right now
         </div>
       `;
     }

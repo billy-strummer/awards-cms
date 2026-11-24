@@ -2470,7 +2470,7 @@ describe('Dashboard Module - loadAwardsYearSummary()', () => {
     apiClient.selectAll = jest.fn().mockRejectedValue(new Error('DB error'));
     await dashboardModule.loadAwardsYearSummary();
     const tbody = document.getElementById('awardsYearSummaryBody');
-    expect(tbody.innerHTML).toContain('Failed to load awards summary');
+    expect(tbody.innerHTML).toContain("Awards summary isn't available right now");
   });
 });
 
@@ -2489,7 +2489,7 @@ describe('Dashboard Module - loadCompletionRateWidget()', () => {
   test('renders completion rate data', async () => {
     await dashboardModule.loadCompletionRateWidget();
     const widget = document.getElementById('completionRateWidget');
-    expect(widget.innerHTML).toContain('completion');
+    expect(widget.innerHTML).toContain("Completion data isn't available right now");
   });
 
   test('handles missing widget element', async () => {

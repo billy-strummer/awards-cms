@@ -91,6 +91,11 @@ const winnersModule = {
     const filters = {};
     const year = document.getElementById('winnerYearFilterSelect')?.value;
     if (year) filters.year = year;
+    // The filter dropdown's id/label say "status", but the actual column is
+    // winner_status (migration 025) — sending "status" directly would ask
+    // the server to filter on a column that doesn't exist on this table.
+    const status = document.getElementById('winnerStatusFilter')?.value;
+    if (status) filters.winner_status = status;
     return filters;
   },
 

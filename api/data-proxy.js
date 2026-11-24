@@ -2422,8 +2422,14 @@ module.exports = async function handler(req, res) {
     const result = await executeQuery(body, user);
     return res.status(200).json(result);
   } catch (error) {
-    console.error('[data-proxy] Error:', error.message, error.details || '', error.hint || '');
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('[data-proxy] Error:', error.message, error.details || '', error.hint || '', error.code || '');
+    // Surface the Postgres/PostgREST error code (e.g. 42703 "column does not
+    // exist", PGRST201 "ambiguous relationship") so a schema-drift or query
+    // bug is diagnosable from the browser's own error toast, without a live
+    // database session — the code alone names no table, column or row data.
+    const safePgCode =
+      typeof error.code === 'string' && /^[A-Za-z0-9]{2,10}$/.test(error.code) ? error.code : undefined;
+    return res.status(500).json({ error: 'Internal server error', code: safePgCode });
   }
 };
 

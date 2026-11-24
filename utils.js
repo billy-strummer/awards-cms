@@ -3456,7 +3456,11 @@ const apiClient = {
         json.error ||
         (json.details && json.details[0]) ||
         'Something went wrong — please try again, or contact support if this continues.';
-      throw new Error(errorMsg);
+      // Append the Postgres/PostgREST error code when the server sent one —
+      // turns a bare "Internal server error" toast into something a future
+      // session can actually trace (e.g. "[42703]" = a missing/renamed column)
+      // without needing a live database session to reproduce it.
+      throw new Error(json.code ? `${errorMsg} [${json.code}]` : errorMsg);
     }
     // BTA-116 (M1): a successful save while the Settings tab is open is treated
     // as "saved" — clears the generic dirty flag without needing to patch each

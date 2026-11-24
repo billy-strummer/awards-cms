@@ -264,6 +264,50 @@ describe('Data Proxy API', () => {
     expect(res.statusCode).toBe(200);
   });
 
+  // --- Empty-table vs. query-error handling (BTA-CMS-ROADMAP 0.3) ---
+  // A genuinely empty table must resolve cleanly (0 rows, no error) and a
+  // real Postgres/PostgREST error must surface with its code but no other
+  // leaked detail, so the two are never confused by the admin UI.
+
+  test('a select against a table with zero rows resolves cleanly, not as an error', async () => {
+    mockFrom
+      .mockImplementationOnce(() => chainable({ data: { role: 'admin' }, error: null, count: 1 }))
+      .mockImplementationOnce(() => chainable({ data: [], error: null, count: 0 }));
+    const req = createReq({ body: { table: 'award_years', operation: 'select' } });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ data: [], count: 0, page: 1, pageSize: 50, totalPages: 0 });
+  });
+
+  test('a real Postgres error on select surfaces its code without leaking message/detail', async () => {
+    // Call order: 1st from() is the RBAC role lookup, 2nd is the actual query.
+    mockFrom
+      .mockImplementationOnce(() => chainable({ data: { role: 'admin' }, error: null, count: 1 }))
+      .mockImplementationOnce(() =>
+        chainable({ data: null, error: { code: '42703', message: 'column "status" does not exist', details: null } })
+      );
+    const req = createReq({ body: { table: 'winners', operation: 'select' } });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: 'Internal server error', code: '42703' });
+    expect(JSON.stringify(res.body)).not.toMatch(/does not exist/);
+  });
+
+  test('an error code in an unexpected format is dropped rather than echoed', async () => {
+    mockFrom
+      .mockImplementationOnce(() => chainable({ data: { role: 'admin' }, error: null, count: 1 }))
+      .mockImplementationOnce(() =>
+        chainable({ data: null, error: { code: 'not a real code!! <script>', message: 'weird error' } })
+      );
+    const req = createReq({ body: { table: 'winners', operation: 'select' } });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: 'Internal server error', code: undefined });
+  });
+
   // --- Tenant isolation tests (BTA-047) ---
   // No mechanism anywhere independently verifies a user belongs to a given
   // tenant, so a client-supplied tenantId other than 'default' must be

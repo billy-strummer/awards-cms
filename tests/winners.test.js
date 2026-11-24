@@ -28,6 +28,7 @@ const dom = new JSDOM(
   <div id="winnersPagination"></div>
   <select id="winnerYearFilterSelect"><option value="">All Years</option><option value="2026">2026</option><option value="2025">2025</option></select>
   <select id="winnerAwardFilterSelect"><option value="">All Awards</option></select>
+  <select id="winnerStatusFilter"><option value="">All Statuses</option><option value="pending">Pending</option><option value="confirmed">Confirmed</option></select>
   <input id="winnerSearchBox" value="" />
   <select id="winnersSavedViewsList"><option value="">No saved views</option></select>
   <div id="confirmDialogModal"></div>
@@ -550,8 +551,16 @@ describe('Winners Module - _populateFiltersFromConstants()', () => {
 });
 
 describe('Winners Module - _buildServerFilters()', () => {
-  test('returns empty object when no filters set', () => {
+  beforeEach(() => {
     document.getElementById('winnerYearFilterSelect').value = '';
+    document.getElementById('winnerStatusFilter').value = '';
+  });
+
+  afterEach(() => {
+    document.getElementById('winnerStatusFilter').value = '';
+  });
+
+  test('returns empty object when no filters set', () => {
     const filters = winnersModule._buildServerFilters();
     expect(Object.keys(filters).length).toBe(0);
   });
@@ -560,6 +569,13 @@ describe('Winners Module - _buildServerFilters()', () => {
     document.getElementById('winnerYearFilterSelect').value = '2026';
     const filters = winnersModule._buildServerFilters();
     expect(filters.year).toBe('2026');
+  });
+
+  test('sends the status dropdown value under the real winner_status column, not "status"', () => {
+    document.getElementById('winnerStatusFilter').value = 'confirmed';
+    const filters = winnersModule._buildServerFilters();
+    expect(filters.winner_status).toBe('confirmed');
+    expect(filters.status).toBeUndefined();
   });
 });
 
@@ -1361,6 +1377,10 @@ describe('Winners Module - Render Edge Cases Advanced', () => {
 // _buildServerFilters Advanced
 // ---------------------------------------------------------------------------
 describe('Winners Module - _buildServerFilters() Advanced', () => {
+  beforeEach(() => {
+    document.getElementById('winnerStatusFilter').value = '';
+  });
+
   test('returns year when set to 2025', () => {
     document.getElementById('winnerYearFilterSelect').value = '2025';
     const filters = winnersModule._buildServerFilters();

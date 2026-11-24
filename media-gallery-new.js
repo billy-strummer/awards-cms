@@ -105,6 +105,9 @@ const mediaGalleryModule = {
       }
     } catch (error) {
       console.error('Error loading media statistics:', error);
+      // Don't leave the dashboard card spinning forever on a failed load
+      const totalMediaEl = document.getElementById('totalMediaItems');
+      if (totalMediaEl) totalMediaEl.textContent = '—';
     }
   },
 

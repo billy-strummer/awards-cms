@@ -13,14 +13,15 @@
 | Date | Item | Status | Branch / PR | Notes |
 |---|---|---|---|---|
 | 2026-11-24 | Roadmap created | Done | this commit | Initial version of this file. |
-| 2026-11-24 | 0.1 Award Areas UX Overhaul | **PR open, not merged** | `claude/award-areas-ux-overhaul` → [#366](https://github.com/billy-strummer/awards-cms/pull/366) | `mergeable_state: clean`. Lint clean, 85/85 suites (6,880/6,880 tests), build clean, as of PR creation. Awaiting review/merge — not yet landed in `main`. |
+| 2026-11-24 | 0.1 Award Areas UX Overhaul | **Done — merged to `main`** | [#366](https://github.com/billy-strummer/awards-cms/pull/366) (merge commit `9233abf`) | Merged per explicit authorization. Branch `claude/award-areas-ux-overhaul` deleted locally; remote delete blocked by a 403 from this session's egress proxy (policy denial, not retried) — remote branch may still exist on `origin`, harmlessly, since its content is fully merged. |
+| 2026-11-24 | 0.2 Cross-Screen Admin UI/UX Polish | **Done — PR open, not yet merged** | `claude/admin-ui-polish-pass` → [#367](https://github.com/billy-strummer/awards-cms/pull/367) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section V. Could not verify a literal "¢" character or a "stale timestamp" header badge anywhere in source (exhaustive grep); fixed the concrete, verified bugs found instead — see Section V for the discrepancy report. |
 
 ---
 
 ## Phase 0 — UI/UX Polish & Live Data Stabilization (Immediate)
 
-### `[ ]` 0.1 — Merge Award Areas UX Overhaul
-**Status: implemented and pushed, PR open and clean, not yet merged.**
+### `[x]` 0.1 — Merge Award Areas UX Overhaul
+**Status: Done. PR #366 merged into `main` (merge commit `9233abf`).**
 - Branch: `claude/award-areas-ux-overhaul`. PR: [#366](https://github.com/billy-strummer/awards-cms/pull/366) → `main`.
 - Target files: `src/partials/03a-award-areas.html`, `src/partials/06-entries.html`, `nominee-uploads.js`, `entries.js`, `ui-init.js`, `global-actions.js`.
 - Acceptance criteria:
@@ -31,18 +32,19 @@
   - [x] "Upload CSV"/"Replace CSV" → "Upload Spreadsheet"/"Re-upload" everywhere.
   - [x] Top-level "Import Spreadsheet" button on both Award Areas and Entries.
   - [x] Lint clean, full suite green, build clean.
-  - [ ] **PR #366 merged into `main`.** ← the only remaining step; not done by this item's author unilaterally, per this project's standing merge-authorization rule.
+  - [x] **PR #366 merged into `main`** (merge commit `9233abf`), per explicit authorization.
 
-### `[ ]` 0.2 — Cross-Screen Admin UI/UX Polish (Dashboard, Awards, Entries, Winners)
-**Status: not started. Not yet investigated — the items below are the user's own report, unverified by a code read yet.**
-- Target files: TBD — likely `src/partials/02-dashboard.html`, `src/partials/03-awards.html`, `src/partials/06-entries.html`, `src/partials/05-winners.html`, plus their JS modules (`dashboard.js`, `awards.js`, `entries.js`, `winners.js`). Needs a read-through pass before any fix, not assumed.
+### `[x]` 0.2 — Cross-Screen Admin UI/UX Polish (Dashboard, Awards, Entries, Winners)
+**Status: Done. Branch `claude/admin-ui-polish-pass`. Full evidence and discrepancy report in `BTA-CMS-PROJECT-TASKS.md` Section V.**
+- Target files: `src/partials/02-dashboard.html`, `src/partials/05-winners.html`, `dashboard.js`, `entries.js`, `media-gallery-new.js`, `ai-vetting.js`, `styles.css`, `tests/dashboard.test.js`.
 - Acceptance criteria:
-  - [ ] Card spacing tightened consistently across all 4 screens.
-  - [ ] Stray `¢`-type mojibake glyphs found and fixed at the source (likely a mis-encoded en-dash/curly-quote in a template literal or DB seed value — needs confirming, not assuming, before fixing).
-  - [ ] Lingering skeleton/loading rows that never resolve are found and fixed (root cause, not just hidden).
-  - [ ] Table column proportions refined to match the Award Areas overhaul's standard (explicit `%` widths, no stretch-to-fill empty space).
-  - [ ] Noisy/oversized header badges toned down to match the rest of the design system.
-  - [ ] Lint clean, full suite green, build clean after changes.
+  - [x] Card spacing tightened: Dashboard's 4 "sandwiched" widget rows moved from `mb-5` (3rem) to `mb-4` (1.5rem).
+  - [x] **No literal `¢` character or escape sequence exists anywhere in source** (confirmed by raw-byte and escape-sequence search across the whole repo) — this is a discrepancy from the report, not silently resolved. Fixed the closely-related, concretely-verified bug instead: Dashboard's Media Gallery/AI Vetting cards and Entries' 4 stat cards left a spinner glyph stuck forever on a failed load (asymmetric with sibling cards that default to a plain "0"). All now fall back to "—" on failure.
+  - [x] Lingering skeleton rows: `entries.js`'s `initialize()` left 10 shimmer rows in `entriesTableBody` forever on failure (only a fading toast, no table update). Now replaced with a calm, retry-able empty state on failure.
+  - [x] Table column proportions: Winners table `<th>`s had no explicit widths (unlike Awards, which already had them) — added explicit `%` widths matching the Award Areas/Awards standard, removing the dead whitespace on the right.
+  - [x] Noisy header warnings toned down: Dashboard's "Failed to load awards summary" / "Error loading completion data" widget states were genuinely `text-danger` + exclamation-triangle (confirmed in source) — softened to calm `text-muted` placeholders. Global `Disconnected` connection badge softened from a saturated red tint to a muted amber one.
+  - [x] **Could not verify a "stale timestamp" header badge anywhere in Awards or Winners** (exhaustive grep for `stale`/`lastUpdated`/similar found nothing visible in either screen) — reported as a discrepancy, not fixed speculatively.
+  - [x] Lint clean. 85/85 suites, 6,880/6,880 tests (1 test updated for new copy, 1 pre-existing latent test gap noted — see Section V). Production build clean.
 
 ### `[ ]` 0.3 — Fix Admin Data Load Errors on Production
 **Status: not started. Not yet investigated.**

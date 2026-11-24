@@ -553,6 +553,9 @@ const aiVettingModule = {
       }
     } catch (error) {
       console.error('Error updating dashboard card:', error);
+      // Don't leave the dashboard card spinning forever on a failed load
+      const flaggedEl = document.getElementById('vettingFlaggedCount');
+      if (flaggedEl) flaggedEl.textContent = '—';
     }
   },
 

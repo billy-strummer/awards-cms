@@ -106,6 +106,14 @@ const entriesModule = {
     } catch (error) {
       console.error('Error initializing entries module:', error);
       utils.showErrorWithRetry(error, 'loading entries', () => this.initialize());
+      // Don't leave the skeleton-loading rows up forever — the toast above fades out
+      utils.showEnhancedEmptyState('entriesTableBody', 10, {
+        icon: 'bi-exclamation-circle',
+        message: "Couldn't load entries",
+        description: 'Check your connection and try again.',
+        actionLabel: 'Retry',
+        actionAction: 'utils.executeRetry',
+      });
     } finally {
       utils.hideLoading();
     }
@@ -307,6 +315,11 @@ const entriesModule = {
       }
     } catch (error) {
       console.error('Error loading stats:', error);
+      // Don't leave these cards spinning forever on a failed load
+      ['totalEntriesCount', 'pendingEntriesCount', 'shortlistedEntriesCount', 'winnerEntriesCount'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+      });
     }
   },
 

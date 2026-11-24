@@ -33,6 +33,10 @@ const nomineeUploads = (() => {
   let _currentFilename = '';
   let _duplicateStrategy = 'skip';
   let _lastValidation = null; // result of the last server validate call
+  let _currentBatchId = null; // batch id returned by the first chunk of the current import, reused by every later chunk
+  let _recentImportsArea = null; // area object the Recent Imports modal is currently showing
+  let _recentImportsBatches = []; // batches loaded for _recentImportsArea
+  let _lastRollbackPreview = null; // result of the last preview call, consumed by the confirm step
 
   // ── CSV PARSER ────────────────────────────────────────────────
 
@@ -318,6 +322,13 @@ const nomineeUploads = (() => {
             <button class="btn btn-sm btn-outline-secondary me-1" data-action="regionHubModule.open" data-args='["${a.id}", "${utils.escapeHtml(a.display_name)}", "${a.area_type || ''}", "${utils.escapeHtml(a.country || '')}"]' data-stop-propagation="true" title="Open Region Hub">
               <i class="bi bi-layout-sidebar-inset me-1"></i>Open Hub
             </button>
+            ${
+              count > 0
+                ? `<button class="btn btn-sm btn-outline-secondary me-1" data-action="nomineeUploads.openRecentImportsModal" data-args='["${a.id}"]' data-stop-propagation="true" title="Undo or review past spreadsheet imports for this area">
+              <i class="bi bi-clock-history"></i>
+            </button>`
+                : ''
+            }
             <button class="btn btn-sm ${btnClass}" data-action="nomineeUploads.openUploadModal" data-args='["${a.id}"]' data-stop-propagation="true">
               <i class="bi bi-cloud-upload me-1"></i>${btnLabel}
             </button>
@@ -688,6 +699,7 @@ const nomineeUploads = (() => {
 
     let mergedTotals = null;
     let area = null;
+    _currentBatchId = null;
     try {
       for (let i = 0; i < chunks.length; i++) {
         if (btn) {
@@ -704,7 +716,15 @@ const nomineeUploads = (() => {
           filename: _currentFilename,
           year: _selectedYear(),
           tenantId: apiClient._getTenantId(),
+          // The first chunk has no batchId yet -- the server creates one and
+          // returns it; every later chunk of this same upload passes it back
+          // so all of them accumulate onto a single batch record instead of
+          // each chunk creating its own (which would otherwise require
+          // finding and deleting up to IMPORT_CHUNK_SIZE-many separate
+          // batches to undo one logical upload).
+          batchId: _currentBatchId,
         });
+        _currentBatchId = result.batchId || _currentBatchId;
         area = result.area;
         mergedTotals = _mergeTotals(mergedTotals, result.totals);
       }
@@ -714,7 +734,7 @@ const nomineeUploads = (() => {
         bootstrap.Modal.getInstance(document.getElementById('nomineeUploadModal'))?.hide();
       }, 3000);
     } catch (err) {
-      utils.showToast('error', 'Import Failed', err.message || 'Unknown error');
+      utils.showToast(err.message || 'Unknown error', 'error', 'Import Failed');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -737,6 +757,210 @@ const nomineeUploads = (() => {
     el.classList.remove('d-none');
   }
 
+  // ── RECENT IMPORTS / BATCH ROLLBACK ─────────────────────────────
+  // Lets staff undo an accidental spreadsheet import without deleting up to
+  // 500 entries one row at a time. Always a two-step server round trip:
+  // preview (exact affected count + anything with downstream activity),
+  // then an explicit confirm before anything is deleted.
+
+  async function openRecentImportsModal(areaId) {
+    _recentImportsArea = _areas.find((a) => a.id === areaId) || null;
+    if (!_recentImportsArea) return;
+    const nameEl = document.getElementById('recentImportsAreaName');
+    if (nameEl) nameEl.textContent = _recentImportsArea.display_name;
+    _lastRollbackPreview = null;
+    const confirmSection = document.getElementById('recentImportsConfirmSection');
+    if (confirmSection) confirmSection.classList.add('d-none');
+    const listEl = document.getElementById('recentImportsList');
+    if (listEl) {
+      listEl.innerHTML =
+        '<div class="text-center py-4 text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>';
+    }
+    const modalEl = document.getElementById('recentImportsModal');
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+
+    try {
+      const result = await apiClient.select('nominee_upload_batches', {
+        filters: { area_id: areaId },
+        sort: { column: 'uploaded_at', ascending: false },
+        pageSize: 50,
+      });
+      _recentImportsBatches = result.data || [];
+      _renderRecentImportsList();
+    } catch (err) {
+      if (listEl) {
+        listEl.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${utils.escapeHtml(err.message || 'Failed to load import history')}</div>`;
+      }
+    }
+  }
+
+  function _renderRecentImportsList() {
+    const listEl = document.getElementById('recentImportsList');
+    if (!listEl) return;
+    if (_recentImportsBatches.length === 0) {
+      listEl.innerHTML = '<div class="text-muted small py-3 text-center">No recorded imports for this area yet.</div>';
+      return;
+    }
+    listEl.innerHTML = `
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:2rem;"></th>
+            <th>Uploaded</th>
+            <th>File</th>
+            <th>Year</th>
+            <th class="text-end">Rows stored</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${_recentImportsBatches
+            .map(
+              (b) => `
+            <tr>
+              <td><input type="checkbox" class="form-check-input recent-import-checkbox" value="${b.id}" data-on-change="nomineeUploads._updateRollbackPreviewButton"></td>
+              <td class="small">${utils.escapeHtml(b.uploaded_at ? new Date(b.uploaded_at).toLocaleString('en-GB') : '-')}</td>
+              <td class="small">${utils.escapeHtml(b.filename || '-')}</td>
+              <td class="small">${utils.escapeHtml(String(b.year || '-'))}</td>
+              <td class="small text-end">${b.stored_row_count ?? 0}</td>
+              <td class="small">${utils.escapeHtml(b.uploaded_by || '-')}</td>
+            </tr>`
+            )
+            .join('')}
+        </tbody>
+      </table>`;
+    _updateRollbackPreviewButton();
+  }
+
+  function _getSelectedBatchIds() {
+    return Array.from(document.querySelectorAll('.recent-import-checkbox:checked')).map((el) => el.value);
+  }
+
+  function _updateRollbackPreviewButton() {
+    const btn = document.getElementById('recentImportsPreviewBtn');
+    if (btn) btn.disabled = _getSelectedBatchIds().length === 0;
+    // Selection changed since the last preview -- it no longer reflects
+    // what's checked, so hide the stale confirm step rather than let it be
+    // actioned against a different selection than what it was computed for.
+    _lastRollbackPreview = null;
+    const confirmSection = document.getElementById('recentImportsConfirmSection');
+    if (confirmSection) confirmSection.classList.add('d-none');
+  }
+
+  async function _previewRollback() {
+    const batchIds = _getSelectedBatchIds();
+    if (batchIds.length === 0) return;
+    const btn = document.getElementById('recentImportsPreviewBtn');
+    const original = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking…';
+    }
+    const resultEl = document.getElementById('recentImportsPreviewResult');
+    try {
+      const preview = await apiClient.post('award_area_import_rollback', { action: 'preview', batchIds });
+      _lastRollbackPreview = preview;
+      _renderRollbackPreview(preview);
+    } catch (err) {
+      if (resultEl) {
+        resultEl.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${utils.escapeHtml(err.message || 'Failed to preview deletion')}</div>`;
+        resultEl.classList.remove('d-none');
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    }
+  }
+
+  function _renderRollbackPreview(preview) {
+    const resultEl = document.getElementById('recentImportsPreviewResult');
+    const confirmSection = document.getElementById('recentImportsConfirmSection');
+    const forceWrapper = document.getElementById('recentImportsForceWrapper');
+    const confirmBtn = document.getElementById('recentImportsConfirmBtn');
+    if (!resultEl || !confirmSection) return;
+
+    if (preview.totalEntries === 0) {
+      resultEl.innerHTML =
+        '<div class="alert alert-secondary py-2 small mb-0">These batches have no remaining imported entries to delete.</div>';
+      resultEl.classList.remove('d-none');
+      confirmSection.classList.add('d-none');
+      return;
+    }
+
+    const blockedRows = preview.blockedEntries
+      .slice(0, 20)
+      .map(
+        (e) =>
+          `<li><strong>${utils.escapeHtml(e.entryNumber || '')}</strong> ${utils.escapeHtml(e.entryTitle || '')} — ${e.reasons.map((r) => utils.escapeHtml(r)).join(', ')}</li>`
+      )
+      .join('');
+
+    resultEl.innerHTML = `
+      <div class="alert ${preview.blockedCount > 0 ? 'alert-warning' : 'alert-success'} py-2 small mb-0">
+        <strong>${preview.deletableCount} of ${preview.totalEntries} entr${preview.totalEntries === 1 ? 'y' : 'ies'}</strong> will be deleted.
+        ${
+          preview.blockedCount > 0
+            ? `<br><strong>${preview.blockedCount}</strong> ${preview.blockedCount === 1 ? 'has' : 'have'} received votes, judge scores, or outreach and will be <strong>skipped</strong> unless you choose to force-delete them below.
+               <ul class="mb-0 mt-1">${blockedRows}</ul>
+               ${preview.blockedEntries.length > 20 ? `<div>…and ${preview.blockedEntries.length - 20} more.</div>` : ''}`
+            : ''
+        }
+      </div>`;
+    resultEl.classList.remove('d-none');
+
+    if (forceWrapper) {
+      forceWrapper.classList.toggle('d-none', preview.blockedCount === 0);
+      const forceCheckbox = document.getElementById('recentImportsForceCheckbox');
+      if (forceCheckbox) forceCheckbox.checked = false;
+    }
+    if (confirmBtn) {
+      confirmBtn.textContent = `Delete ${preview.deletableCount} Entr${preview.deletableCount === 1 ? 'y' : 'ies'}`;
+    }
+    confirmSection.classList.remove('d-none');
+  }
+
+  async function _confirmRollback() {
+    if (!_lastRollbackPreview) return;
+    const force = document.getElementById('recentImportsForceCheckbox')?.checked === true;
+    const batchIds = _getSelectedBatchIds();
+    if (batchIds.length === 0) return;
+
+    const confirmed = await utils.confirmDialog({
+      title: 'Delete Imported Entries',
+      message: force
+        ? `This will permanently delete ALL ${_lastRollbackPreview.totalEntries} entries from the selected import(s), including any with votes, judge scores, or outreach recorded. This cannot be undone.`
+        : `This will permanently delete ${_lastRollbackPreview.deletableCount} entries from the selected import(s). This cannot be undone.`,
+      confirmText: 'Delete',
+    });
+    if (!confirmed) return;
+
+    const btn = document.getElementById('recentImportsConfirmBtn');
+    const original = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting…';
+    }
+    try {
+      const result = await apiClient.post('award_area_import_rollback', { action: 'execute', batchIds, force });
+      utils.showToast(
+        `${result.deletedCount} entr${result.deletedCount === 1 ? 'y' : 'ies'} deleted${result.skippedCount > 0 ? `, ${result.skippedCount} skipped (had votes/scores/outreach)` : ''}.`,
+        'success',
+        'Entries Deleted'
+      );
+      await loadAreasTable();
+      await openRecentImportsModal(_recentImportsArea.id);
+    } catch (err) {
+      utils.showToast(err.message || 'Unknown error', 'error', 'Delete Failed');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    }
+  }
+
   // ── FORM RESET ────────────────────────────────────────────────
 
   function _resetForm() {
@@ -755,6 +979,7 @@ const nomineeUploads = (() => {
     _currentFilename = '';
     _duplicateStrategy = 'skip';
     _lastValidation = null;
+    _currentBatchId = null;
 
     const fileInput = document.getElementById('nomineeFileInput');
     if (fileInput) {
@@ -814,6 +1039,21 @@ const nomineeUploads = (() => {
     const modalEl = document.getElementById('nomineeUploadModal');
     if (modalEl) modalEl.addEventListener('hidden.bs.modal', _resetForm);
 
+    const recentImportsPreviewBtn = document.getElementById('recentImportsPreviewBtn');
+    if (recentImportsPreviewBtn) recentImportsPreviewBtn.addEventListener('click', _previewRollback);
+
+    const recentImportsConfirmBtn = document.getElementById('recentImportsConfirmBtn');
+    if (recentImportsConfirmBtn) recentImportsConfirmBtn.addEventListener('click', _confirmRollback);
+
+    const recentImportsModalEl = document.getElementById('recentImportsModal');
+    if (recentImportsModalEl) {
+      recentImportsModalEl.addEventListener('hidden.bs.modal', () => {
+        _recentImportsArea = null;
+        _recentImportsBatches = [];
+        _lastRollbackPreview = null;
+      });
+    }
+
     if (document.getElementById('awardAreasTableBody')) loadAreasTable();
   }
 
@@ -830,6 +1070,8 @@ const nomineeUploads = (() => {
     sortAreas,
     resetAreaFilters,
     _onAreaPickerChange,
+    openRecentImportsModal,
+    _updateRollbackPreviewButton,
     // Underscore-prefixed utilities exposed for unit testing
     _parseCSV,
     _splitLine,
@@ -840,6 +1082,11 @@ const nomineeUploads = (() => {
     _detectYearFromFilename,
     _yearSelectOptions,
     _selectedYear,
+    _renderRecentImportsList,
+    _getSelectedBatchIds,
+    _previewRollback,
+    _renderRollbackPreview,
+    _confirmRollback,
   };
 })();
 

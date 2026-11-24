@@ -489,6 +489,21 @@ describe('Data Proxy API', () => {
     );
   });
 
+  test('does not reject an award_area_import request carrying tenantId "default" (the client now always sends this)', async () => {
+    const req = createReq({
+      body: {
+        operation: 'award_area_import',
+        mode: 'validate',
+        areaId: 'area-1',
+        rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company' }],
+        tenantId: 'default',
+      },
+    });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.statusCode).not.toBe(400);
+  });
+
   // --- Insert Tests ---
 
   test('accepts valid insert request', async () => {
@@ -1095,6 +1110,451 @@ describe('Data Proxy API', () => {
       } finally {
         mockFrom.mockImplementation(originalMockFromImpl);
       }
+    });
+
+    // --- import batch tracking (migrations/100-add-import-batch-tracking.sql) ---
+    // A single logical upload of up to 2000 rows is split client-side into
+    // fixed-size chunks, each its own server call -- these prove every
+    // chunk's entries land under one shared batch record (not one batch per
+    // chunk, which would make rollback need to find and delete up to
+    // IMPORT_CHUNK_SIZE-many separate batches to undo one upload).
+    describe('batch tracking', () => {
+      function recordingChain(resolveWith, singleResolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          chain._lastInsertPayload = payload;
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        // .single() must resolve a non-null row by default even when
+        // resolveWith (used for .maybeSingle()'s "no existing match" case)
+        // is { data: null }, e.g. an insert()-then-.single() on a brand new
+        // row — only pass singleResolveWith explicitly when a test needs to
+        // assert on that specific inserted row's generated id.
+        chain.single = () => Promise.resolve(singleResolveWith || { data: { id: 'generated-id' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      test('creates a new batch record, stamps its id onto every inserted entry, and returns it', async () => {
+        const recordedEntryInserts = [];
+        let batchInsertPayload = null;
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'organisations') return recordingChain({ data: null, error: null });
+          if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+          if (table === 'nominee_upload_batches') {
+            const chain = recordingChain({ data: null, error: null }, { data: { id: 'batch-new' }, error: null });
+            const realInsert = chain.insert;
+            chain.insert = (payload) => {
+              batchInsertPayload = payload;
+              return realInsert(payload);
+            };
+            return chain;
+          }
+          if (table === 'entries') {
+            const chain = recordingChain({ data: null, error: null });
+            const realInsert = chain.insert;
+            chain.insert = (payload) => {
+              recordedEntryInserts.push(payload);
+              return realInsert(payload);
+            };
+            return chain;
+          }
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'import',
+            rows: [{ company_name: 'Acme Roofing Ltd', category: 'Roofing Company' }],
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.batchId).toBe('batch-new');
+          expect(batchInsertPayload).toMatchObject({ area: 'Somerset', area_id: 'area-1', year: expect.any(Number) });
+          expect(recordedEntryInserts[0].import_batch_id).toBe('batch-new');
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+
+      test('reuses a client-supplied batchId belonging to the same area instead of creating a new one', async () => {
+        const recordedEntryInserts = [];
+        let newBatchWasCreated = false;
+        let batchUpdatePayload = null;
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'organisations') return recordingChain({ data: null, error: null });
+          if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+          if (table === 'nominee_upload_batches') {
+            // existingBatch lookup (maybeSingle) resolves to a batch in the same area;
+            // any insert() call here would mean a NEW batch was (wrongly) created.
+            const chain = recordingChain(
+              { data: { id: 'batch-existing', area_id: 'area-1' }, error: null },
+              { data: { id: 'batch-existing' }, error: null }
+            );
+            const realInsert = chain.insert;
+            chain.insert = (payload) => {
+              newBatchWasCreated = true;
+              return realInsert(payload);
+            };
+            chain.update = (payload) => {
+              batchUpdatePayload = payload;
+              return chain;
+            };
+            // Two different .select() calls happen against this same table
+            // in one request -- the reuse-check ('id, area_id') and the
+            // read-counts-before-update ('csv_row_count, stored_row_count')
+            // -- so the mock must tell them apart by their column argument
+            // rather than resolving the same row shape for both.
+            chain.select = (columns) => {
+              if (String(columns).includes('csv_row_count')) {
+                return {
+                  eq: () => ({
+                    maybeSingle: () =>
+                      Promise.resolve({ data: { csv_row_count: 3, stored_row_count: 2 }, error: null }),
+                  }),
+                };
+              }
+              return chain;
+            };
+            return chain;
+          }
+          if (table === 'entries') {
+            const chain = recordingChain({ data: null, error: null });
+            const realInsert = chain.insert;
+            chain.insert = (payload) => {
+              recordedEntryInserts.push(payload);
+              return realInsert(payload);
+            };
+            return chain;
+          }
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'import',
+            batchId: 'batch-existing',
+            rows: [{ company_name: 'Acme Roofing Ltd', category: 'Roofing Company' }],
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.batchId).toBe('batch-existing');
+          expect(newBatchWasCreated).toBe(false);
+          expect(recordedEntryInserts[0].import_batch_id).toBe('batch-existing');
+          // Counts accumulate onto the existing row (3+1 rows, 2+1 stored) rather than resetting.
+          expect(batchUpdatePayload).toEqual({ csv_row_count: 4, stored_row_count: 3 });
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+
+      test('ignores a client-supplied batchId that belongs to a different area, creating a fresh batch instead', async () => {
+        let newBatchWasCreated = false;
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'organisations') return recordingChain({ data: null, error: null });
+          if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+          if (table === 'nominee_upload_batches') {
+            // existingBatch lookup resolves to a batch for a DIFFERENT area.
+            const chain = recordingChain(
+              { data: { id: 'batch-other-area', area_id: 'area-999' }, error: null },
+              { data: { id: 'batch-fresh' }, error: null }
+            );
+            const realInsert = chain.insert;
+            chain.insert = (payload) => {
+              newBatchWasCreated = true;
+              return realInsert(payload);
+            };
+            return chain;
+          }
+          if (table === 'entries') return recordingChain({ data: null, error: null });
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'import',
+            batchId: 'batch-other-area-id',
+            rows: [{ company_name: 'Acme Roofing Ltd', category: 'Roofing Company' }],
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(newBatchWasCreated).toBe(true);
+          expect(res.body.batchId).toBe('batch-fresh');
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+    });
+  });
+
+  // --- award_area_import_rollback: undo an accidental spreadsheet import ---
+  // (migrations/100-add-import-batch-tracking.sql's entries.import_batch_id)
+  describe('award_area_import_rollback operation', () => {
+    function rollbackReq(overrides = {}) {
+      return createReq({
+        body: {
+          operation: 'award_area_import_rollback',
+          action: 'preview',
+          batchIds: ['batch-1'],
+          ...overrides,
+        },
+      });
+    }
+
+    function tableAwareChain(impl) {
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'admin' }, error: null, count: 1 });
+        return impl(table);
+      });
+    }
+
+    test('requires editor role or above', async () => {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'viewer' }, error: null, count: 1 });
+        return chainable();
+      });
+      const req = rollbackReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('rejects an empty batchIds array', async () => {
+      const req = rollbackReq({ batchIds: [] });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects more than 50 batches in one request', async () => {
+      const req = rollbackReq({ batchIds: Array.from({ length: 51 }, (_, i) => `batch-${i}`) });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects when no matching import batches are found', async () => {
+      tableAwareChain((table) => {
+        if (table === 'nominee_upload_batches') return chainable({ data: [], error: null });
+        return chainable({ data: [], error: null });
+      });
+      const req = rollbackReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('preview reports an exact deletable/blocked breakdown with reasons', async () => {
+      const entries = [
+        {
+          id: 'e-clean',
+          entry_number: 'BTA-2026-0001',
+          entry_title: 'Clean Co',
+          import_batch_id: 'batch-1',
+          public_votes: 0,
+          vote_count: 0,
+          nominee_outreach_sent_at: null,
+        },
+        {
+          id: 'e-voted',
+          entry_number: 'BTA-2026-0002',
+          entry_title: 'Voted Co',
+          import_batch_id: 'batch-1',
+          public_votes: 5,
+          vote_count: 5,
+          nominee_outreach_sent_at: null,
+        },
+        {
+          id: 'e-scored',
+          entry_number: 'BTA-2026-0003',
+          entry_title: 'Scored Co',
+          import_batch_id: 'batch-1',
+          public_votes: 0,
+          vote_count: 0,
+          nominee_outreach_sent_at: null,
+        },
+        {
+          id: 'e-outreach',
+          entry_number: 'BTA-2026-0004',
+          entry_title: 'Outreach Co',
+          import_batch_id: 'batch-1',
+          public_votes: 0,
+          vote_count: 0,
+          nominee_outreach_sent_at: '2026-11-01T00:00:00Z',
+        },
+      ];
+      tableAwareChain((table) => {
+        if (table === 'nominee_upload_batches') {
+          return chainable({
+            data: [
+              {
+                id: 'batch-1',
+                filename: 'somerset.csv',
+                area: 'Somerset',
+                year: 2026,
+                uploaded_by: 'staff@bta.test',
+                uploaded_at: '2026-11-20T00:00:00Z',
+              },
+            ],
+            error: null,
+          });
+        }
+        if (table === 'entries') return chainable({ data: entries, error: null });
+        if (table === 'judge_scores') return chainable({ data: [{ entry_id: 'e-scored' }], error: null });
+        return chainable({ data: [], error: null });
+      });
+
+      const req = rollbackReq();
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.totalEntries).toBe(4);
+      expect(res.body.deletableCount).toBe(1);
+      expect(res.body.blockedCount).toBe(3);
+      const reasonsByEntry = Object.fromEntries(res.body.blockedEntries.map((e) => [e.entryNumber, e.reasons]));
+      expect(reasonsByEntry['BTA-2026-0002']).toEqual(['votes']);
+      expect(reasonsByEntry['BTA-2026-0003']).toEqual(['scores']);
+      expect(reasonsByEntry['BTA-2026-0004']).toEqual(['outreach']);
+      expect(res.body.batches[0]).toMatchObject({ id: 'batch-1', filename: 'somerset.csv', entryCount: 4 });
+    });
+
+    test('execute without force deletes only entries with no downstream activity, and skips the rest', async () => {
+      const deleteCalls = [];
+      tableAwareChain((table) => {
+        if (table === 'nominee_upload_batches') {
+          const chain = chainable({
+            data: [{ id: 'batch-1', filename: 'f.csv', area: 'Somerset', year: 2026 }],
+            error: null,
+          });
+          chain.delete = jest.fn(() => chain);
+          return chain;
+        }
+        if (table === 'entries') {
+          const chain = chainable({
+            data: [
+              {
+                id: 'e-clean',
+                entry_number: 'N1',
+                entry_title: 'Clean',
+                import_batch_id: 'batch-1',
+                public_votes: 0,
+                vote_count: 0,
+                nominee_outreach_sent_at: null,
+              },
+              {
+                id: 'e-voted',
+                entry_number: 'N2',
+                entry_title: 'Voted',
+                import_batch_id: 'batch-1',
+                public_votes: 5,
+                vote_count: 5,
+                nominee_outreach_sent_at: null,
+              },
+            ],
+            error: null,
+          });
+          chain.delete = jest.fn(() => {
+            deleteCalls.push('entries.delete');
+            return chain;
+          });
+          return chain;
+        }
+        return chainable({ data: [], error: null });
+      });
+
+      const req = rollbackReq({ action: 'execute' });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.deletedCount).toBe(1);
+      expect(res.body.skippedCount).toBe(1);
+      expect(deleteCalls).toContain('entries.delete');
+      expect(mockIn).toHaveBeenCalledWith('id', ['e-clean']);
+      // The batch still has one (skipped) entry, so its audit row must stay.
+      expect(res.body.batchesRemoved).toEqual([]);
+    });
+
+    test('execute with force deletes entries that have votes/scores/outreach too', async () => {
+      tableAwareChain((table) => {
+        if (table === 'nominee_upload_batches') {
+          const chain = chainable({
+            data: [{ id: 'batch-1', filename: 'f.csv', area: 'Somerset', year: 2026 }],
+            error: null,
+          });
+          chain.delete = jest.fn(() => chain);
+          return chain;
+        }
+        if (table === 'entries') {
+          const chain = chainable({
+            data: [
+              {
+                id: 'e-voted',
+                entry_number: 'N2',
+                entry_title: 'Voted',
+                import_batch_id: 'batch-1',
+                public_votes: 5,
+                vote_count: 5,
+                nominee_outreach_sent_at: null,
+              },
+            ],
+            error: null,
+          });
+          chain.delete = jest.fn(() => chain);
+          return chain;
+        }
+        return chainable({ data: [], error: null });
+      });
+
+      const req = rollbackReq({ action: 'execute', force: true });
+      const res = createRes();
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.deletedCount).toBe(1);
+      expect(res.body.skippedCount).toBe(0);
+      // No entries remain for this batch -- its own audit row is cleaned up too.
+      expect(res.body.batchesRemoved).toEqual(['batch-1']);
     });
   });
 

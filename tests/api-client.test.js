@@ -126,6 +126,36 @@ describe('apiClient', () => {
     STATE.client = mockSupabase;
   });
 
+  describe('_getTenantId', () => {
+    afterEach(() => {
+      delete global.tenantModule;
+    });
+
+    test('returns undefined when tenantModule is not loaded', () => {
+      expect(apiClient._getTenantId()).toBeUndefined();
+    });
+
+    test('passes through the literal "default" tenant id unchanged', () => {
+      global.tenantModule = { getTenantId: () => 'default' };
+      expect(apiClient._getTenantId()).toBe('default');
+    });
+
+    test('normalises any non-"default" tenant id to "default"', () => {
+      // The server has no real tenant-membership check yet and rejects any
+      // non-'default' tenantId outright. tenantModule auto-selects the
+      // first row of the live `tenants` table (a real UUID, never the
+      // literal string 'default') whenever nobody has explicitly switched
+      // tenants -- this must never reach the wire as-is.
+      global.tenantModule = { getTenantId: () => 'a14aba51-cab6-4bed-86d2-706b16d7cd36' };
+      expect(apiClient._getTenantId()).toBe('default');
+    });
+
+    test('normalises an empty-string tenant id to "default"', () => {
+      global.tenantModule = { getTenantId: () => '' };
+      expect(apiClient._getTenantId()).toBe('default');
+    });
+  });
+
   test('select calls /api/data-proxy with correct payload', async () => {
     global.fetch.mockResolvedValue({
       ok: true,

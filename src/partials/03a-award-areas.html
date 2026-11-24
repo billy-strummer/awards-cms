@@ -165,6 +165,49 @@
         </div>
       </div>
 
+      <!-- Recent Imports / Batch Rollback — undo an accidental spreadsheet
+           import without deleting up to 500 entries one row at a time. -->
+      <div class="modal fade" id="recentImportsModal" tabindex="-1" aria-labelledby="recentImportsModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="recentImportsModalTitle">
+                <i class="bi bi-clock-history me-2"></i>Recent Imports — <span id="recentImportsAreaName"></span>
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="text-muted small">
+                Select one or more imports below to undo them. Deleting an import removes the entries it created —
+                nothing with recorded votes, judge scores, or outreach is deleted unless you choose to.
+              </p>
+              <div id="recentImportsList"></div>
+
+              <div class="mt-3">
+                <button type="button" class="btn btn-outline-danger btn-sm" id="recentImportsPreviewBtn" disabled>
+                  <i class="bi bi-search me-1"></i>Preview Deletion
+                </button>
+              </div>
+
+              <div id="recentImportsPreviewResult" class="mt-3 d-none"></div>
+
+              <div id="recentImportsConfirmSection" class="mt-3 d-none">
+                <div id="recentImportsForceWrapper" class="form-check d-none mb-2">
+                  <input class="form-check-input" type="checkbox" id="recentImportsForceCheckbox">
+                  <label class="form-check-label small" for="recentImportsForceCheckbox">
+                    Also delete entries with votes, judge scores, or outreach recorded (cannot be undone)
+                  </label>
+                </div>
+                <button type="button" class="btn btn-danger" id="recentImportsConfirmBtn">Delete</button>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================================================== -->
       <!-- REGION HUB DRAWER -->
       <!-- ==================================================== -->

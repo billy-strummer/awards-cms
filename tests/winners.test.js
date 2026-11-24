@@ -1559,6 +1559,45 @@ describe('Winners Module - certificateState', () => {
   });
 });
 
+describe('Winners Module - openCertificateGeneratorForWinners() (Roadmap 3.3)', () => {
+  beforeEach(() => {
+    winnersModule.certificateState.selectedWinners = new Set();
+    if (!document.getElementById('certificateWinnersList')) {
+      const el = document.createElement('div');
+      el.id = 'certificateWinnersList';
+      document.body.appendChild(el);
+    }
+    if (!document.getElementById('selectedCertificateWinnersCount')) {
+      const el = document.createElement('span');
+      el.id = 'selectedCertificateWinnersCount';
+      document.body.appendChild(el);
+    }
+  });
+
+  test('opens the generator and pre-selects every given winner id', async () => {
+    const openSpy = jest.spyOn(winnersModule, 'openCertificateGenerator').mockImplementation(async () => {
+      winnersModule.certificateState.filteredWinners = [...sampleWinners];
+    });
+
+    await winnersModule.openCertificateGeneratorForWinners(['winner-1', 'winner-2']);
+
+    expect(openSpy).toHaveBeenCalled();
+    expect(winnersModule.certificateState.selectedWinners).toEqual(new Set(['winner-1', 'winner-2']));
+
+    openSpy.mockRestore();
+  });
+
+  test('pre-selecting a single winner behaves the same as a batch of one', async () => {
+    const openSpy = jest.spyOn(winnersModule, 'openCertificateGenerator').mockImplementation(async () => {});
+
+    await winnersModule.openCertificateGeneratorForWinners(['winner-1']);
+
+    expect(winnersModule.certificateState.selectedWinners).toEqual(new Set(['winner-1']));
+
+    openSpy.mockRestore();
+  });
+});
+
 describe('Winners Module - filterCertificateWinners()', () => {
   beforeEach(() => {
     winnersModule.certificateState.allWinners = [...sampleWinners];

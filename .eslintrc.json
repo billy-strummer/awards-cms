@@ -83,7 +83,8 @@
     "nomineeUploads": "readonly",
     "nomineeBadgeModule": "readonly",
     "loadChunk": "readonly",
-    "judgingWorkspaceModule": "readonly"
+    "judgingWorkspaceModule": "readonly",
+    "winnerPackModule": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2022,

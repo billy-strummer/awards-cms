@@ -373,6 +373,31 @@ describe('apiClient', () => {
     apiClient.MAX_RETRIES = 2;
   });
 
+  test('prefers specific validation details over the generic "Validation failed" label', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () =>
+        Promise.resolve({ error: 'Validation failed', details: ['"sort.column" must be a valid column name'] }),
+    });
+
+    apiClient.MAX_RETRIES = 0;
+    await expect(apiClient.select('awards')).rejects.toThrow('"sort.column" must be a valid column name');
+    apiClient.MAX_RETRIES = 2;
+  });
+
+  test('falls back to the generic error label when no details are present', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Validation failed' }),
+    });
+
+    apiClient.MAX_RETRIES = 0;
+    await expect(apiClient.select('awards')).rejects.toThrow('Validation failed');
+    apiClient.MAX_RETRIES = 2;
+  });
+
   // --- Edge Cases ---
 
   test('select sends default options when none provided', async () => {

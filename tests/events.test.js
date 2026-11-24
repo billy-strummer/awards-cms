@@ -38,6 +38,14 @@ const dom = new JSDOM(
   <div id="eventsFilterSummary"></div>
   <div id="eventsLastRefreshed"></div>
   <div id="eventsPagination"></div>
+  <h4 id="financialTotalRevenue">&pound;0</h4>
+  <h4 id="financialTotalCosts">&pound;0</h4>
+  <h4 id="financialNetPL">&pound;0</h4>
+  <h4 id="financialMargin">-</h4>
+  <span id="financialSummaryRevenue"></span>
+  <span id="financialSummaryCosts"></span>
+  <span id="financialSummaryPL"></span>
+  <table><tbody id="financialBreakdownBody"><tr><td colspan="7" class="text-center text-muted py-2">Loading...</td></tr></tbody><tfoot id="financialBreakdownFoot"></tfoot></table>
   <input id="eventsSearchBox" value="" />
   <select id="eventsYearFilter"><option value="">All Years</option><option value="2025">2025</option><option value="2026">2026</option><option value="2027">2027</option></select>
   <select id="eventsStatusFilter"><option value="">All</option><option value="upcoming">Upcoming</option><option value="past">Past</option><option value="this-month">This Month</option></select>
@@ -5656,5 +5664,44 @@ describe('Events Module - _renderAttendanceReport', () => {
     expect(html).toContain('No-Shows');
 
     selectAllSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// renderFinancialOverview
+// ---------------------------------------------------------------------------
+describe('Events Module - renderFinancialOverview', () => {
+  beforeEach(() => {
+    document.getElementById('financialBreakdownBody').innerHTML =
+      '<tr><td colspan="7" class="text-center text-muted py-2">Loading...</td></tr>';
+    document.getElementById('financialBreakdownFoot').innerHTML = '';
+  });
+
+  test('replaces the static "Loading..." placeholder with an empty state when there are no events', async () => {
+    STATE.allEvents = [];
+
+    await eventsModule.renderFinancialOverview();
+
+    const tbody = document.getElementById('financialBreakdownBody');
+    expect(tbody.textContent).not.toContain('Loading...');
+    expect(tbody.textContent).toContain('No events yet');
+    expect(document.getElementById('financialBreakdownFoot').innerHTML).toBe('');
+  });
+
+  test('renders a row per event and totals when events exist', async () => {
+    STATE.allEvents = [{ id: 'evt-1', event_name: 'Gala', year: 2026, ticket_price: '50', event_status: 'confirmed' }];
+    eventsModule._eventAttendeeCounts = { 'evt-1': { attending: 10 } };
+    const getBudgetSpy = jest
+      .spyOn(eventsModule, 'getBudget')
+      .mockResolvedValue({ totalBudget: 200, items: [{ actual: 150 }] });
+
+    await eventsModule.renderFinancialOverview();
+
+    const tbody = document.getElementById('financialBreakdownBody');
+    expect(tbody.textContent).not.toContain('Loading...');
+    expect(tbody.textContent).toContain('Gala');
+    expect(document.getElementById('financialBreakdownFoot').innerHTML).not.toBe('');
+
+    getBudgetSpy.mockRestore();
   });
 });

@@ -1948,6 +1948,18 @@ document.addEventListener('DOMContentLoaded', function () {
     return new bootstrap.Tooltip(tooltipTriggerEl);
   });
 
+  // Bootstrap tooltips are appended to <body> and only hide on the trigger's
+  // own mouseleave/blur -- switching tabs hides the trigger's ancestor pane
+  // via CSS without firing either, so a tooltip left open when a tab is
+  // switched stays floating on screen over the newly-shown tab's content.
+  // Hide any currently-visible tooltip whenever a tab switch begins.
+  document.addEventListener('hide.bs.tab', () => {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => {
+      const instance = bootstrap.Tooltip.getInstance(el);
+      if (instance) instance.hide();
+    });
+  });
+
   // ==========================================
   // STEP 13: Realtime Subscriptions
   // ==========================================

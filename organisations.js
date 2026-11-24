@@ -94,6 +94,16 @@ const orgsModule = {
       // Calculate dashboard stats AFTER first page is loaded
       await this.calculateDashboardStats();
 
+      // Populate the "Counties, Cities & Regions Reference" panel's
+      // Coverage stat (#countyCoverageStats) -- it starts as a static
+      // "Loading..." placeholder in the HTML and was previously only ever
+      // refreshed by dashboardModule's own initial load or after a CSV
+      // import, so it stayed stuck on "Loading..." for anyone who opened
+      // Organisations directly without first visiting Dashboard.
+      if (typeof dashboardModule !== 'undefined' && dashboardModule.updateCountyCoverage) {
+        dashboardModule.updateCountyCoverage();
+      }
+
       this._initLocationFilters(lsFilters.country || '', lsFilters.regionId || '', lsFilters.areaId || '');
       this.populateSectorFilter();
       this.populateSectorSuggestions();
@@ -897,19 +907,20 @@ const orgsModule = {
                  ${isSelected ? 'checked' : ''}
                  data-on-change="orgsModule.toggleOrgSelection" data-id="${org.id}">
         </td>
-        <td>
-          <div class="d-flex align-items-center">
+        <td style="max-width: 1px;">
+          <div class="d-flex align-items-center" style="min-width: 0;">
             ${
               org.logo_url
                 ? `<img src="${org.logo_url}" alt="${utils.escapeHtml(org.company_name)}"
-                   class="me-2 rounded" style="width: 40px; height: 28px; object-fit: contain; border: 1px solid #e0e0e0;">`
-                : `<div class="me-2 d-flex align-items-center justify-content-center rounded"
+                   class="me-2 rounded flex-shrink-0" style="width: 40px; height: 28px; object-fit: contain; border: 1px solid #e0e0e0;">`
+                : `<div class="me-2 d-flex align-items-center justify-content-center rounded flex-shrink-0"
                    style="width: 40px; height: 28px; background: #f5f5f5; border: 1px solid #e0e0e0;">
                 <i class="bi bi-building text-muted" style="font-size: 0.8rem;"></i>
               </div>`
             }
-            <a class="text-primary text-decoration-none fw-semibold"
-               style="cursor: pointer;"
+            <a class="text-primary text-decoration-none fw-semibold text-truncate"
+               style="cursor: pointer; min-width: 0;"
+               title="${escapedName || 'N/A'}"
                data-action="orgsModule.openCompanyProfile" data-args='${JSON.stringify([org.id, escapedName])}'>
               ${utils.highlightMatch(org.company_name || 'N/A', document.getElementById('orgsSearchBox')?.value)}
             </a>
@@ -925,14 +936,14 @@ const orgsModule = {
             ${utils.escapeHtml(org.county || '-')}
           </span>
         </td>
-        <td class="small" style="${cv('contact')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'contact', org.contact_name || ''])}' title="Double-click to edit">
-          ${utils.escapeHtml(org.contact_name ? (org.contact_name.length > 18 ? org.contact_name.substring(0, 18) + '...' : org.contact_name) : '-')}
+        <td class="small text-truncate" style="${cv('contact')}cursor: pointer; max-width: 1px;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'contact', org.contact_name || ''])}' title="${org.contact_name ? utils.escapeHtml(org.contact_name) + ' (double-click to edit)' : 'Double-click to edit'}">
+          ${utils.escapeHtml(org.contact_name || '-')}
         </td>
-        <td class="small org-email-cell" style="${cv('email')}cursor: pointer;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'email', org.email || ''])}' title="Double-click to edit">
+        <td class="small org-email-cell text-truncate" style="${cv('email')}cursor: pointer; max-width: 1px;" data-on-dblclick="orgsModule.startInlineEdit" data-args='${JSON.stringify([org.id, 'email', org.email || ''])}' title="Double-click to edit">
           ${
             org.email
               ? `<a href="mailto:${org.email}" class="text-decoration-none" title="${utils.escapeHtml(org.email)}">
-              ${org.email.length > 22 ? utils.escapeHtml(org.email.substring(0, 22)) + '...' : utils.escapeHtml(org.email)}
+              ${utils.escapeHtml(org.email)}
             </a>`
               : '-'
           }

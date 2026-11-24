@@ -64,7 +64,7 @@ const brandingModule = {
   async loadBranding(tenantId) {
     const result = await apiClient.select('tenant_branding', {
       select: '*',
-      filters: { tenant_id: { operator: 'eq', value: tenantId } },
+      filters: { tenant_id: { op: 'eq', value: tenantId } },
       pageSize: 1,
     });
     return (result.data && result.data[0]) || {};

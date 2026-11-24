@@ -671,7 +671,12 @@ function validateQueryParams(body) {
  * like, ilike, in, is).
  * @param {Object} query - Supabase query builder instance.
  * @param {Object} filters - Filter object where keys are column names and values
- *   are either plain values (for equality) or objects with { op, value } for operators.
+ *   are either plain values (for equality) or objects with { op, value } (or,
+ *   equivalently, { operator, value } -- several existing callers across the
+ *   codebase use `operator` instead of the documented `op`; both are accepted
+ *   here rather than silently falling through to a broken equality check
+ *   against the whole filter object, which is what used to happen for them)
+ *   for operators.
  * @returns {Object} The query builder with filters applied.
  */
 function applyFilters(query, filters) {
@@ -692,9 +697,9 @@ function applyFilters(query, filters) {
     let operand = value;
 
     if (typeof value === 'object' && !Array.isArray(value)) {
-      if (value.op) {
-        // Explicit { op, value } format
-        op = op || value.op;
+      if (value.op || value.operator) {
+        // Explicit { op, value } format (or its { operator, value } alias)
+        op = op || value.op || value.operator;
         operand = value.value;
       } else {
         // Shorthand { eq: val } / { gte: val } format (op is the key)

@@ -336,19 +336,20 @@ describe('Data Proxy API', () => {
     expect(res.body).toEqual({ error: 'Internal server error', code: undefined });
   });
 
-  // --- applyFilters(): "{ operator, value }" vs "column@op" (found during Roadmap 3.3) ---
+  // --- applyFilters(): "{ operator, value }" vs "{ op, value }" vs "column@op" ---
   // Several existing callers across the codebase (entries.js, branding.js,
-  // payments.js, and briefly judging-workspace.js before this fix) pass
-  // filters shaped { operator: 'eq'/'neq'/'in', value: X }. applyFilters()
-  // only recognises an `op` key (or the documented { eq: X } shorthand, or
-  // the "column@op" embedded-operator key syntax) -- never `operator` --
-  // so that shape silently falls through to the default `.eq(key, value)`
-  // branch with the *whole filter object* as the operand, matching zero
-  // rows in production rather than applying the intended operator. These
-  // tests exist as concrete, reproducible evidence of that finding, not
-  // to fix every affected caller (out of scope for this task — see
-  // BTA-CMS-PROJECT-TASKS.md Section XV).
-  describe('applyFilters(): { operator, value } is not recognised (confirmed bug)', () => {
+  // payments.js) pass filters shaped { operator: 'eq'/'neq'/'in', value: X }.
+  // applyFilters() originally only recognised an `op` key (or the documented
+  // { eq: X } shorthand, or the "column@op" embedded-operator key syntax) --
+  // never `operator` -- so that shape silently fell through to the default
+  // `.eq(key, value)` branch with the *whole filter object* as the operand,
+  // matching zero rows in production rather than applying the intended
+  // operator (found and proven during Roadmap 3.3; see
+  // BTA-CMS-PROJECT-TASKS.md Section XV for the original discovery and
+  // Section XVI for this fix). applyFilters() now accepts `op` OR `operator`
+  // so every existing call shape works; these tests cover both forms plus a
+  // handful of the non-eq operators callers actually use.
+  describe('applyFilters(): accepts both "op" and "operator" keys', () => {
     test('"column@op" embedded-operator syntax correctly calls .neq()', async () => {
       const req = createReq({ body: { table: 'entries', operation: 'select', filters: { 'status@neq': 'draft' } } });
       const res = createRes();
@@ -358,15 +359,66 @@ describe('Data Proxy API', () => {
       expect(mockEq).not.toHaveBeenCalledWith('status', expect.anything());
     });
 
-    test('{ operator: "neq", value: X } is NOT applied as a neq filter -- it falls through to .eq() with the whole object', async () => {
+    test('{ op: "neq", value: X } (the originally documented shape) calls .neq()', async () => {
+      const req = createReq({
+        body: { table: 'entries', operation: 'select', filters: { status: { op: 'neq', value: 'draft' } } },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      expect(mockNeq).toHaveBeenCalledWith('status', 'draft');
+      expect(mockEq).not.toHaveBeenCalledWith('status', expect.anything());
+    });
+
+    test('{ operator: "neq", value: X } (the previously-broken alias) now also calls .neq(), not .eq() with the whole object', async () => {
       const req = createReq({
         body: { table: 'entries', operation: 'select', filters: { status: { operator: 'neq', value: 'draft' } } },
       });
       const res = createRes();
       await handler(req, res);
       expect(res.statusCode).toBe(200);
-      expect(mockNeq).not.toHaveBeenCalled();
-      expect(mockEq).toHaveBeenCalledWith('status', { operator: 'neq', value: 'draft' });
+      expect(mockNeq).toHaveBeenCalledWith('status', 'draft');
+      expect(mockEq).not.toHaveBeenCalledWith('status', expect.anything());
+    });
+
+    test('{ operator: "in", value: [...] } (entries.js\'s own bulk-by-id shape) calls .in()', async () => {
+      const req = createReq({
+        body: {
+          table: 'entries',
+          operation: 'select',
+          filters: { id: { operator: 'in', value: ['id-1', 'id-2'] } },
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      expect(mockIn).toHaveBeenCalledWith('id', ['id-1', 'id-2']);
+      expect(mockEq).not.toHaveBeenCalledWith('id', expect.anything());
+    });
+
+    test('{ operator: "eq", value: X } (entries.js\'s viewEntry() shape) calls .eq() with just the value, not the whole object', async () => {
+      const req = createReq({
+        body: { table: 'entries', operation: 'select', filters: { id: { operator: 'eq', value: 'entry-123' } } },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      expect(mockEq).toHaveBeenCalledWith('id', 'entry-123');
+      expect(mockEq).not.toHaveBeenCalledWith('id', expect.objectContaining({ operator: 'eq' }));
+    });
+
+    test('an embedded "column@op" key still wins over a conflicting operator in the value object', async () => {
+      const req = createReq({
+        body: {
+          table: 'entries',
+          operation: 'select',
+          filters: { 'status@neq': { operator: 'eq', value: 'draft' } },
+        },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      expect(mockNeq).toHaveBeenCalledWith('status', 'draft');
     });
   });
 

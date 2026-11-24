@@ -236,7 +236,7 @@ describe('Branding Module - loadBranding', () => {
     const result = await brandingModule.loadBranding('t1');
     expect(global.apiClient.select).toHaveBeenCalledWith('tenant_branding', {
       select: '*',
-      filters: { tenant_id: { operator: 'eq', value: 't1' } },
+      filters: { tenant_id: { op: 'eq', value: 't1' } },
       pageSize: 1,
     });
     expect(result.primary_color).toBe('#ff0000');

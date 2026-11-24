@@ -84,18 +84,24 @@ const dom = new JSDOM(
   <div id="scheduledReportsGrid"></div>
 
   <!-- Navigation tabs -->
-  <div id="dashboard-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#dashboard"></div>
-  <div id="awards-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#awards"></div>
-  <div id="organisations-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#organisations"></div>
-  <div id="winners-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#winners"></div>
-  <div id="events-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#events"></div>
-  <div id="media-gallery-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#media-gallery"></div>
-  <div id="payments-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#payments"></div>
-  <div id="entries-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#entries"></div>
-  <div id="settings-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#settings"></div>
-  <div id="reports-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#reports"></div>
-  <div id="marketing-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#marketing"></div>
-  <div id="crm-tab" class="nav-link" data-bs-toggle="tab" data-bs-target="#crm"></div>
+  <div id="appSidebar">
+  <div id="dashboard-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#dashboard"></div>
+  <div id="awards-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#awards"></div>
+  <div id="award-areas-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#award-areas"></div>
+  <div id="organisations-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#organisations"></div>
+  <div id="winners-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#winners"></div>
+  <div id="events-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#events"></div>
+  <div id="media-gallery-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#media-gallery"></div>
+  <div id="payments-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#payments"></div>
+  <div id="entries-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#entries"></div>
+  <div id="settings-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#settings"></div>
+  <div id="reports-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#reports"></div>
+  <div id="marketing-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#marketing"></div>
+  <div id="crm-tab" class="nav-link sidebar-nav-link" data-bs-toggle="tab" data-bs-target="#crm"></div>
+  </div>
+  <select id="globalSeasonSwitcher"></select>
+  <select id="awardAreasYearFilter"></select>
+  <select id="entriesYearFilter"><option value="">All Years</option></select>
   <div id="branding-subtab" class="nav-link" data-bs-toggle="tab"></div>
   <div id="placeholders-subtab" class="nav-link" data-bs-toggle="tab"></div>
   <div id="email-builder-subtab" class="nav-link" data-bs-toggle="tab"></div>
@@ -183,6 +189,7 @@ global.localStorage = dom.window.localStorage;
 global.navigator = dom.window.navigator;
 global.HTMLElement = dom.window.HTMLElement;
 global.Event = dom.window.Event;
+global.CustomEvent = dom.window.CustomEvent;
 global.KeyboardEvent = dom.window.KeyboardEvent;
 global.Blob = dom.window.Blob;
 global.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: jest.fn() };
@@ -365,6 +372,12 @@ global.window.actionRegistry = global.actionRegistry;
 global.dashboardModule = { loadAllData: jest.fn(), updateStats: jest.fn() };
 global.window.dashboardModule = global.dashboardModule;
 
+global.seasonSwitcherModule = { getSeason: jest.fn(() => '') };
+global.window.seasonSwitcherModule = global.seasonSwitcherModule;
+
+global.nomineeUploads = { init: jest.fn(), setYearFilter: jest.fn() };
+global.window.nomineeUploads = global.nomineeUploads;
+
 global.awardsModule = { loadAwards: jest.fn(), filterAwards: jest.fn(), updateCountyFilterByRegion: jest.fn() };
 global.window.awardsModule = global.awardsModule;
 
@@ -397,7 +410,13 @@ global.paymentsModule = {
 };
 global.window.paymentsModule = global.paymentsModule;
 
-global.entriesModule = { initialize: jest.fn(), loadEntries: jest.fn(), applyFilters: jest.fn(), allEntries: [] };
+global.entriesModule = {
+  initialize: jest.fn(),
+  loadEntries: jest.fn(),
+  applyFilters: jest.fn(),
+  filterEntries: jest.fn(),
+  allEntries: [],
+};
 global.window.entriesModule = global.entriesModule;
 
 global.marketingModule = {
@@ -2393,6 +2412,110 @@ describe('App Module - Stale Data Auto-Refresh (shown.bs.tab)', () => {
     expect(utils.isDataStale).toHaveBeenCalledWith('awards');
 
     utils.isDataStale = origIsDataStale;
+  });
+});
+
+describe('App Module - Global Season Switcher cross-tab sync', () => {
+  function fireTabShown(tabId) {
+    const tab = document.getElementById(tabId);
+    const event = new Event('shown.bs.tab', { bubbles: true });
+    Object.defineProperty(event, 'target', { value: tab });
+    tab.dispatchEvent(event);
+  }
+
+  function setActiveTab(tabId) {
+    document.querySelectorAll('#appSidebar .sidebar-nav-link').forEach((el) => el.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    document.getElementById('awardsYearFilterSelect').innerHTML =
+      '<option value="">All Years</option><option value="2027">2027</option>';
+    document.getElementById('winnerYearFilterSelect').innerHTML =
+      '<option value="">All Years</option><option value="2027">2027</option>';
+    document.getElementById('entriesYearFilter').innerHTML =
+      '<option value="">All Years</option><option value="2027">2027</option>';
+    document.getElementById('awardAreasYearFilter').innerHTML =
+      '<option value="2026" selected>2026</option><option value="2027">2027</option>';
+  });
+
+  test('switching to a season-aware tab syncs its year filter to the current global season', () => {
+    seasonSwitcherModule.getSeason.mockReturnValue('2027');
+    fireTabShown('awards-tab');
+    expect(document.getElementById('awardsYearFilterSelect').value).toBe('2027');
+    expect(awardsModule.filterAwards).toHaveBeenCalled();
+  });
+
+  test('switching tabs does not touch a tab not in the season-sync map', () => {
+    seasonSwitcherModule.getSeason.mockReturnValue('2027');
+    fireTabShown('organisations-tab');
+    expect(awardsModule.filterAwards).not.toHaveBeenCalled();
+    expect(winnersModule.filterWinners).not.toHaveBeenCalled();
+  });
+
+  test('switching to Dashboard always re-renders its stat cards to pick up the season', () => {
+    seasonSwitcherModule.getSeason.mockReturnValue('2027');
+    fireTabShown('dashboard-tab');
+    expect(dashboardModule.updateStats).toHaveBeenCalled();
+  });
+
+  test('a season change while Winners is the active tab syncs Winners, not Awards', () => {
+    setActiveTab('winners-tab');
+    document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }));
+    expect(document.getElementById('winnerYearFilterSelect').value).toBe('2027');
+    expect(winnersModule.filterWinners).toHaveBeenCalled();
+    expect(awardsModule.filterAwards).not.toHaveBeenCalled();
+  });
+
+  test('a season change while Entries is the active tab syncs Entries', () => {
+    setActiveTab('entries-tab');
+    document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }));
+    expect(document.getElementById('entriesYearFilter').value).toBe('2027');
+    expect(entriesModule.filterEntries).toHaveBeenCalled();
+  });
+
+  test('a season change while Dashboard is the active tab re-renders its stats, not any filter select', () => {
+    setActiveTab('dashboard-tab');
+    document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }));
+    expect(dashboardModule.updateStats).toHaveBeenCalled();
+  });
+
+  test('Award Areas syncs to a specific season', () => {
+    setActiveTab('award-areas-tab');
+    document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }));
+    expect(document.getElementById('awardAreasYearFilter').value).toBe('2027');
+    expect(nomineeUploads.setYearFilter).toHaveBeenCalled();
+  });
+
+  test('Award Areas is left untouched on "All Seasons" (it has no all-seasons concept of its own)', () => {
+    setActiveTab('award-areas-tab');
+    document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '' } }));
+    expect(nomineeUploads.setYearFilter).not.toHaveBeenCalled();
+  });
+
+  test('does nothing when no tab is marked active', () => {
+    document.querySelectorAll('#appSidebar .sidebar-nav-link').forEach((el) => el.classList.remove('active'));
+    expect(() =>
+      document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }))
+    ).not.toThrow();
+    expect(awardsModule.filterAwards).not.toHaveBeenCalled();
+  });
+
+  test('does not re-apply a season the select is already set to', () => {
+    setActiveTab('awards-tab');
+    document.getElementById('awardsYearFilterSelect').value = '2027';
+    document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }));
+    expect(awardsModule.filterAwards).not.toHaveBeenCalled();
+  });
+
+  test("silently does nothing when the season has no matching option in that tab's dropdown yet", () => {
+    document.getElementById('awardsYearFilterSelect').innerHTML = '<option value="">All Years</option>';
+    setActiveTab('awards-tab');
+    expect(() =>
+      document.dispatchEvent(new CustomEvent('bta:season-change', { detail: { season: '2027' } }))
+    ).not.toThrow();
+    expect(awardsModule.filterAwards).not.toHaveBeenCalled();
   });
 });
 

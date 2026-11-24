@@ -15,7 +15,8 @@
 | 2026-11-24 | Roadmap created | Done | this commit | Initial version of this file. |
 | 2026-11-24 | 0.1 Award Areas UX Overhaul | **Done — merged to `main`** | [#366](https://github.com/billy-strummer/awards-cms/pull/366) (merge commit `9233abf`) | Merged per explicit authorization. Branch `claude/award-areas-ux-overhaul` deleted locally; remote delete blocked by a 403 from this session's egress proxy (policy denial, not retried) — remote branch may still exist on `origin`, harmlessly, since its content is fully merged. |
 | 2026-11-24 | 0.2 Cross-Screen Admin UI/UX Polish | **Done — merged to `main`** | [#367](https://github.com/billy-strummer/awards-cms/pull/367) (merge commit `e462eb4`) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section V. Could not verify a literal "¢" character or a "stale timestamp" header badge anywhere in source (exhaustive grep); fixed the concrete, verified bugs found instead — see Section V for the discrepancy report. |
-| 2026-11-24 | 0.3 Fix Admin Data Load Errors | **Done (with honest limits) — PR open, not yet merged** | `claude/fix-admin-data-loads` → [#368](https://github.com/billy-strummer/awards-cms/pull/368) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section VI. The 4 reported exceptions were not reproducible via live schema+code tracing; fixed the 2 concrete bugs found (Winners status filter, diagnosability) and flagged a new, separate schema-drift finding (`gdpr_consent`/`trophy_collected`/`announce_at` don't exist anywhere) for its own future task. |
+| 2026-11-24 | 0.3 Fix Admin Data Load Errors | **Done (with honest limits) — merged to `main`** | [#368](https://github.com/billy-strummer/awards-cms/pull/368) (merge commit `303d6c7`) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section VI. The 4 reported exceptions were not reproducible via live schema+code tracing; fixed the 2 concrete bugs found (Winners status filter, diagnosability) and flagged a new, separate schema-drift finding (`gdpr_consent`/`trophy_collected`/`announce_at` don't exist anywhere) for its own future task. |
+| 2026-11-24 | 1.1 Global Season / Award Year Switcher | **Done (Payments deliberately not scoped) — PR open, not yet merged** | `claude/global-season-switcher` → #TBD | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section VII. New `season-switcher.js` module + top-navbar dropdown; syncs Dashboard/Awards/Entries/Winners via each tab's own existing filter functions; Award Areas synced except on "All Seasons" (no equivalent of its own); Payments has no year dimension in its data model — flagged, not wired, for a separate task. |
 
 ---
 
@@ -63,13 +64,18 @@
 
 ## Phase 1 — Region-First Operational Command Centre (Core Workflow)
 
-### `[ ]` 1.1 — Global Season / Award Year Switcher
-- Goal: a persistent year switcher (e.g. defaulting to `2027`) in the admin header, scoping Dashboard, Award Areas, Entries, Winners, and Payments to that year without each tab needing its own separate year control.
-- Target files/approach: TBD. Needs investigating how year scoping currently differs per screen (Award Areas already has its own per-tab year filter as of 0.1; Entries/Winners/Payments do not yet) before deciding whether this is a new shared header component + a shared state store, or a per-screen retrofit.
+### `[x]` 1.1 — Global Season / Award Year Switcher
+**Status: Done. Branch `claude/global-season-switcher`. Full evidence in `BTA-CMS-PROJECT-TASKS.md` Section VII.**
+- Goal: a persistent year switcher in the admin header, scoping Dashboard, Award Areas, Entries, Winners, and Payments to that year without each tab needing its own separate year control.
+- What was actually found (none of this was assumed): Dashboard and Payments had **no year/season concept at all** before this task; Awards/Winners defaulted their own per-tab filter to the *calendar* year (`new Date().getFullYear()`) via `utils.populateYearFilterFromDB`, independent of any global state; Award Areas (from 0.1) has a filter model that is *always* a specific year — it has no "All Seasons" equivalent of its own.
+- Target files: `season-switcher.js` (new module), `src/partials/00-shell-head.html` (dropdown in the top navbar — the project's real "top admin header bar"; the left sidebar is a separate, distinct nav), `build.js` / `src/partials/99-shell-foot.html` (script registration), `app.js` (cross-tab sync wiring, reusing each tab's own existing filter functions), `auth.js` (startup ordering), `awards.js` / `winners.js` (apply the global season as their own load-time default instead of the calendar year — only when that tab's own saved filter hasn't already set one), `dashboard.js` (`updateStats()` now scopes Total Awards/Pending Approvals/Winners to the season; Organisations is deliberately never season-scoped — it isn't tied to one award year).
 - Acceptance criteria:
-  - [ ] One switcher, one place, persists across tab navigation within a session.
-  - [ ] Every listed tab's data respects it.
-  - [ ] Does not regress Award Areas' existing per-tab year filter from 0.1 (reconcile or supersede deliberately, not accidentally).
+  - [x] One switcher, one place (top navbar `Season:` dropdown), persists across tab navigation within a session (`localStorage`, key `btaGlobalSeason`) and across page reloads.
+  - [x] Dashboard, Awards, Entries, Winners respect it (Dashboard via `updateStats()` reading the season directly; the other three via syncing their own existing year `<select>` + calling their own existing filter function — no duplicated filtering logic).
+  - [x] Does not regress Award Areas' existing per-tab year filter from 0.1 — reconciled deliberately: Award Areas syncs to a specific season normally, but is **left untouched on "All Seasons"** since it has no way to represent that itself (documented, not silently broken).
+  - [ ] **Payments is not season-scoped** — investigated and found to have no `year`/award-season dimension anywhere in its current data model; wiring that in would be a real scope expansion (touching invoice/payment query logic) beyond "add a switcher," not something to do unilaterally mid-task. Flagged as an explicit, honest gap for its own future task, not silently skipped.
+  - [x] Unit tests: season persistence, dropdown population (incl. "All Seasons" + latest-season default + fallback range when `award_years` is empty + saved-season restoration), and cross-tab sync behaviour (`tests/season-switcher.test.js`, `tests/app.test.js`).
+  - [x] Lint clean. 86/86 suites, 6,913/6,913 tests. Production build clean.
 
 ### `[ ]` 1.2 — Unified Region Hub
 - Goal: clicking a County/City/Borough in Award Areas opens a drawer/view showing that area's lifecycle stage, nominee count by category, sponsor status, quick actions, and a "View on Live Site ↗" link to the matching public page.

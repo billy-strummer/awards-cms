@@ -71,7 +71,18 @@ const awardsModule = {
 
       // Populate location filter dropdowns (non-blocking)
       this._initLocationFilters(savedFilters.country, savedFilters.regionId, savedFilters.areaId);
-      utils.populateYearFilterFromDB('awardsYearFilterSelect', { selectCurrent: true });
+      utils.populateYearFilterFromDB('awardsYearFilterSelect', { selectCurrent: true }).then(() => {
+        // A global season (BTA-CMS-ROADMAP 1.1) takes priority over this
+        // function's own calendar-year default, if one is already active
+        // and this tab's own saved filter didn't already set a year.
+        if (typeof seasonSwitcherModule === 'undefined' || savedFilters.year) return;
+        const season = seasonSwitcherModule.getSeason();
+        const sel = document.getElementById('awardsYearFilterSelect');
+        if (season && sel && sel.value !== season && [...sel.options].some((opt) => opt.value === season)) {
+          sel.value = season;
+          this.filterAwards();
+        }
+      });
       this._populateSectorFilterFromDB();
 
       utils.trackDataLoad('awards');

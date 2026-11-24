@@ -147,6 +147,14 @@
             <span class="status-text">Connected</span>
           </div>
 
+          <!-- Global Season Switcher -->
+          <div class="d-flex align-items-center gap-1 me-1" title="Switch the active awards season — syncs Dashboard, Awards, Award Areas, Entries and Winners">
+            <label for="globalSeasonSwitcher" class="navbar-text text-white-50 small mb-0 d-none d-md-inline">Season:</label>
+            <select class="form-select form-select-sm" id="globalSeasonSwitcher" style="width:auto;" aria-label="Season">
+              <option value="">All Seasons</option>
+            </select>
+          </div>
+
           <!-- Test Mode Button (hidden by default — reveal with Ctrl+Shift+D) -->
           <div class="dropdown d-none" id="testModeDropdown">
             <button class="btn btn-outline-warning dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Test Data Management">

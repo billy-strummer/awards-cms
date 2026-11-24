@@ -158,13 +158,19 @@ describe('judgingWorkspaceModule', () => {
       );
     });
 
-    test('excludes draft entries via a neq filter, not a hardcoded submitted-only gate', async () => {
+    test('excludes draft entries via the data-proxy\'s "column@op" filter syntax, not a hardcoded submitted-only gate', async () => {
+      // Regression guard: { operator: 'neq', value: 'draft' } is NOT
+      // recognised by api/data-proxy.js's applyFilters() (confirmed by
+      // reading its source -- it only reads `op`, not `operator`), so it
+      // would silently match zero rows in production. 'status@neq' is the
+      // confirmed-correct embedded-operator key syntax that function does
+      // support.
       apiClient.selectAll = jest.fn().mockResolvedValue([]);
       await judgingWorkspaceModule.open();
       expect(apiClient.selectAll).toHaveBeenCalledWith(
         'entries',
         expect.objectContaining({
-          filters: expect.objectContaining({ status: { operator: 'neq', value: 'draft' } }),
+          filters: expect.objectContaining({ 'status@neq': 'draft' }),
         })
       );
     });

@@ -114,6 +114,8 @@ describe('regionHubModule', () => {
     global.window.entriesModule = global.entriesModule;
     global.nomineeBadgeModule = { showMediaKitModal: jest.fn() };
     global.window.nomineeBadgeModule = global.nomineeBadgeModule;
+    global.winnerPackModule = { open: jest.fn() };
+    global.window.winnerPackModule = global.winnerPackModule;
     global.window.open = jest.fn();
     apiClient._getToken = jest.fn().mockResolvedValue('test-token');
     global.fetch = jest.fn();
@@ -401,7 +403,10 @@ describe('regionHubModule', () => {
         expect(html).toContain('Total Nominees');
         expect(html).toContain('Not Yet Contacted');
         expect(html).toContain('Send Nominee Outreach');
-        expect(html).not.toContain('disabled');
+        // Scoped to the outreach Send button itself (not the whole drawer
+        // -- the Winner Pack quick action, added in Roadmap 3.3, is
+        // legitimately disabled here since this fixture has no winners).
+        expect(html).toMatch(/data-action="regionHubModule\.openOutreachModal"\s*>/);
       });
 
       test('disables the Send button when no nominee has a valid email yet', async () => {
@@ -812,6 +817,31 @@ describe('regionHubModule', () => {
 
         expect(spy).toHaveBeenCalledWith(expect.stringContaining('Failed to save sponsor'), 'error');
         spy.mockRestore();
+      });
+    });
+
+    describe('openWinnerPack() (Roadmap 3.3)', () => {
+      test('delegates to winnerPackModule.open with this area and season when the area has at least one winner', async () => {
+        apiClient.selectAll = jest.fn().mockImplementation((table) => {
+          if (table === 'entries') return Promise.resolve([{ award_category: 'Roofing Company', status: 'winner' }]);
+          return Promise.resolve([]);
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+
+        regionHubModule.openWinnerPack();
+
+        expect(winnerPackModule.open).toHaveBeenCalledWith('area-1', 'Cardiff', 2027, 'Wales');
+      });
+
+      test('the quick action button itself is disabled when the area has no winners yet', async () => {
+        apiClient.selectAll = jest.fn().mockImplementation((table) => {
+          if (table === 'entries') return Promise.resolve([{ award_category: 'Roofing Company', status: 'submitted' }]);
+          return Promise.resolve([]);
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+
+        const html = document.getElementById('regionHubContent').innerHTML;
+        expect(html).toMatch(/data-action="regionHubModule\.openWinnerPack"\s*disabled/);
       });
     });
   });

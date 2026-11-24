@@ -31,6 +31,7 @@ const JS_FILES = [
   'nominee-uploads.js',
   'region-hub.js',
   'judging-workspace.js',
+  'winner-pack.js',
   'nominee-badge.js',
   'ai-vetting.js',
   'marketing.js',

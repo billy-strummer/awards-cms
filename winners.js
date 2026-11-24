@@ -1574,6 +1574,22 @@ const winnersModule = {
   },
 
   /**
+   * Open the certificate generator pre-selected for several winners at
+   * once (Roadmap 3.3's Regional Winner Pack "Generate Certificates for
+   * All" action). openCertificateGenerator() always does its own fresh
+   * fetch of every winner into certificateState.allWinners, so unlike
+   * openCertificateForWinner() above there is no need to check the ids
+   * exist in STATE.allWinners first -- the generator's own render will
+   * simply show nothing selected for an id that doesn't resolve.
+   * @param {string[]} winnerIds
+   */
+  async openCertificateGeneratorForWinners(winnerIds) {
+    await this.openCertificateGenerator();
+    this.certificateState.selectedWinners = new Set(winnerIds);
+    this.renderCertificateWinners();
+  },
+
+  /**
    * Filter certificate winners by year
    */
   filterCertificateWinners(year) {

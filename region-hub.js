@@ -288,6 +288,9 @@ const regionHubModule = (() => {
         <button class="btn btn-outline-secondary btn-sm" data-action="regionHubModule.openMediaKitPicker" ${_outreachEntries === null || _outreachEntries.length === 0 ? 'disabled' : ''}>
           <i class="bi bi-award me-1"></i>Nominee Media Kit
         </button>
+        <button class="btn btn-outline-success btn-sm" data-action="regionHubModule.openWinnerPack" ${_entries.some((e) => e.status === 'winner') ? '' : 'disabled'}>
+          <i class="bi bi-gift me-1"></i>Generate Winner Press &amp; Certificate Pack
+        </button>
       </div>
     `;
   }
@@ -495,6 +498,21 @@ const regionHubModule = (() => {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
+  /**
+   * Open the Regional Winner Pack generator (Roadmap 3.3) for this area +
+   * season. Delegates entirely to winnerPackModule, which already knows
+   * how to load winners/sponsors for an area+season — this hub just
+   * already has both on hand from open() above.
+   */
+  function openWinnerPack() {
+    if (!_area) return;
+    if (typeof winnerPackModule === 'undefined') {
+      utils.showToast('Winner Pack generator not available — please reload the page.', 'error');
+      return;
+    }
+    winnerPackModule.open(_area.id, _area.display_name, _season, _area.country);
+  }
+
   /** Generate the kit for whichever nominee is currently selected in the picker. */
   function generateMediaKitForPicked() {
     const selectEl = document.getElementById('mediaKitNomineeSelect');
@@ -638,6 +656,7 @@ const regionHubModule = (() => {
     generateMediaKitForPicked,
     openSponsorPicker,
     saveSponsorAssignment,
+    openWinnerPack,
     // Exposed for unit testing
     _deriveLifecycleStage,
     _categoryBreakdown,

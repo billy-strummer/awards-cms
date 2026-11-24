@@ -161,7 +161,16 @@ const judgingWorkspaceModule = (() => {
     try {
       const filters = {
         year: _season,
-        status: { operator: 'neq', value: 'draft' },
+        // "status@neq" (the data-proxy's own "column@op" embedded-operator
+        // key syntax, confirmed against api/data-proxy.js's applyFilters())
+        // -- not { operator: 'neq', value: 'draft' }, which that function
+        // does not recognise (it only reads `op`, not `operator`) and would
+        // silently fall through to an equality check against the whole
+        // filter object, matching zero rows. See BTA-CMS-PROJECT-TASKS.md
+        // Section XV for the wider, pre-existing instances of this bug
+        // found elsewhere in the codebase (out of scope here; this is a
+        // same-PR-series fix to this file's own, just-merged mistake).
+        'status@neq': 'draft',
       };
       if (_areaName) filters.county_city = _areaName;
       if (_category) filters.award_category = _category;

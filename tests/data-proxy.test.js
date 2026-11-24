@@ -46,9 +46,37 @@ function chainable(resolveWith = { data: [], error: null, count: 0 }) {
     single: jest.fn(),
     then: (resolve) => resolve(resolveWith),
   };
-  // Make all methods chainable by default
+  // Make any remaining methods (not already backed by one of the named
+  // mockX variables above, e.g. upsert/limit) chainable by default. The
+  // named mocks are left alone here so tests can assert on them directly
+  // (e.g. mockEq/mockNeq/mockIn) -- they already return `obj` themselves
+  // via mockReturnThis(), since `this` inside obj.eq(...) is obj.
+  const namedMockKeys = new Set([
+    'select',
+    'insert',
+    'update',
+    'delete',
+    'eq',
+    'neq',
+    'gt',
+    'gte',
+    'lt',
+    'lte',
+    'like',
+    'ilike',
+    'in',
+    'or',
+    'order',
+    'range',
+  ]);
   Object.keys(obj).forEach((key) => {
-    if (typeof obj[key] === 'function' && key !== 'then' && key !== 'maybeSingle' && key !== 'single') {
+    if (
+      typeof obj[key] === 'function' &&
+      key !== 'then' &&
+      key !== 'maybeSingle' &&
+      key !== 'single' &&
+      !namedMockKeys.has(key)
+    ) {
       obj[key] = jest.fn(() => obj);
     }
   });
@@ -306,6 +334,40 @@ describe('Data Proxy API', () => {
     await handler(req, res);
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: 'Internal server error', code: undefined });
+  });
+
+  // --- applyFilters(): "{ operator, value }" vs "column@op" (found during Roadmap 3.3) ---
+  // Several existing callers across the codebase (entries.js, branding.js,
+  // payments.js, and briefly judging-workspace.js before this fix) pass
+  // filters shaped { operator: 'eq'/'neq'/'in', value: X }. applyFilters()
+  // only recognises an `op` key (or the documented { eq: X } shorthand, or
+  // the "column@op" embedded-operator key syntax) -- never `operator` --
+  // so that shape silently falls through to the default `.eq(key, value)`
+  // branch with the *whole filter object* as the operand, matching zero
+  // rows in production rather than applying the intended operator. These
+  // tests exist as concrete, reproducible evidence of that finding, not
+  // to fix every affected caller (out of scope for this task — see
+  // BTA-CMS-PROJECT-TASKS.md Section XV).
+  describe('applyFilters(): { operator, value } is not recognised (confirmed bug)', () => {
+    test('"column@op" embedded-operator syntax correctly calls .neq()', async () => {
+      const req = createReq({ body: { table: 'entries', operation: 'select', filters: { 'status@neq': 'draft' } } });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      expect(mockNeq).toHaveBeenCalledWith('status', 'draft');
+      expect(mockEq).not.toHaveBeenCalledWith('status', expect.anything());
+    });
+
+    test('{ operator: "neq", value: X } is NOT applied as a neq filter -- it falls through to .eq() with the whole object', async () => {
+      const req = createReq({
+        body: { table: 'entries', operation: 'select', filters: { status: { operator: 'neq', value: 'draft' } } },
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(200);
+      expect(mockNeq).not.toHaveBeenCalled();
+      expect(mockEq).toHaveBeenCalledWith('status', { operator: 'neq', value: 'draft' });
+    });
   });
 
   // --- Tenant isolation tests (BTA-047) ---

@@ -9,6 +9,28 @@
   'use strict';
 
   /* ============================================================
+     Shared live-data fetch (Roadmap 2.1) — one request, reused by the
+     category grid, the regional area picker, and the promotional banner
+     slot below, instead of each feature fetching the same endpoint
+     separately. Normalises any network/API failure to null so every
+     consumer can fall back to its own static markup with a single
+     "if (!cms) return;" check, matching the rest of this file's existing
+     per-feature try/catch isolation -- one feature's bad data never
+     affects another's.
+  ============================================================ */
+  const homepageDataPromise = fetch('/api/voting-proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'load_homepage_data' }),
+  })
+    .then(function (r) {
+      return r.json();
+    })
+    .catch(function () {
+      return null;
+    });
+
+  /* ============================================================
      0. CATEGORY GRID — render from BTA_HOME_DATA, optionally
         refreshed with CMS-managed custom sectors from the API.
   ============================================================ */
@@ -87,64 +109,53 @@
 
       renderGrid(sectorCats, sectorMeta);
 
-      fetch('/api/voting-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'load_public_sectors' }),
-      })
-        .then(function (r) {
-          return r.json();
-        })
-        .then(function (res) {
-          const cms = res || {};
-          const hasCustomSectors = cms.sectors && cms.sectors.length > 0;
-          const hasCustomCats = cms.categories && Object.keys(cms.categories).length > 0;
-          if (!hasCustomSectors && !hasCustomCats) return;
+      homepageDataPromise.then(function (res) {
+        const cms = res || {};
+        const hasCustomSectors = cms.sectors && cms.sectors.length > 0;
+        const hasCustomCats = cms.categories && Object.keys(cms.categories).length > 0;
+        if (!hasCustomSectors && !hasCustomCats) return;
 
-          const mergedCats = {};
-          const mergedMeta = {};
-          Object.keys(sectorCats).forEach(function (key) {
-            mergedCats[key] = sectorCats[key].slice();
-            mergedMeta[key] = sectorMeta[key] || {};
-          });
+        const mergedCats = {};
+        const mergedMeta = {};
+        Object.keys(sectorCats).forEach(function (key) {
+          mergedCats[key] = sectorCats[key].slice();
+          mergedMeta[key] = sectorMeta[key] || {};
+        });
 
-          if (cms.categories) {
-            Object.keys(cms.categories).forEach(function (sectorKey) {
-              const normKey = sectorKey.toUpperCase();
-              if (!mergedCats[normKey]) {
-                mergedCats[normKey] = [];
-                mergedMeta[normKey] = {
-                  displayName: sectorKey.charAt(0).toUpperCase() + sectorKey.slice(1).toLowerCase(),
-                  description: '',
-                  image: '',
-                  ariaLabel: sectorKey,
-                };
-              }
-              cms.categories[sectorKey].forEach(function (cat) {
-                if (mergedCats[normKey].indexOf(cat) === -1) mergedCats[normKey].push(cat);
-              });
-            });
-          }
-
-          if (cms.sectors) {
-            cms.sectors.forEach(function (s) {
-              const key = (s.name || '').toUpperCase();
-              if (!key || mergedCats[key]) return;
-              mergedCats[key] = [];
-              mergedMeta[key] = {
-                displayName: s.name.charAt(0).toUpperCase() + s.name.slice(1).toLowerCase(),
+        if (cms.categories) {
+          Object.keys(cms.categories).forEach(function (sectorKey) {
+            const normKey = sectorKey.toUpperCase();
+            if (!mergedCats[normKey]) {
+              mergedCats[normKey] = [];
+              mergedMeta[normKey] = {
+                displayName: sectorKey.charAt(0).toUpperCase() + sectorKey.slice(1).toLowerCase(),
                 description: '',
                 image: '',
-                ariaLabel: s.name,
+                ariaLabel: sectorKey,
               };
+            }
+            cms.categories[sectorKey].forEach(function (cat) {
+              if (mergedCats[normKey].indexOf(cat) === -1) mergedCats[normKey].push(cat);
             });
-          }
+          });
+        }
 
-          renderGrid(mergedCats, mergedMeta);
-        })
-        .catch(function () {
-          /* keep static render on API error */
-        });
+        if (cms.sectors) {
+          cms.sectors.forEach(function (s) {
+            const key = (s.name || '').toUpperCase();
+            if (!key || mergedCats[key]) return;
+            mergedCats[key] = [];
+            mergedMeta[key] = {
+              displayName: s.name.charAt(0).toUpperCase() + s.name.slice(1).toLowerCase(),
+              description: '',
+              image: '',
+              ariaLabel: s.name,
+            };
+          });
+        }
+
+        renderGrid(mergedCats, mergedMeta);
+      });
     })();
   } catch (e) {
     console.warn('[BTA] initCategoryGrid', e);
@@ -278,7 +289,13 @@
   try {
     (function initRegions() {
       const FLAG_MAP = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.flagMap) || {};
-      const SUB_REGIONS = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.regionData) || {};
+      // Mutable (not const): once live data arrives from Supabase it
+      // REPLACES this static base wholesale (see homepageDataPromise
+      // .then() below) rather than merging into it -- unlike the category
+      // grid above, an admin deactivating an area must be able to make it
+      // disappear, and a merge could only ever add entries, never remove
+      // one that's gone stale.
+      let SUB_REGIONS = (window.BTA_HOME_DATA && window.BTA_HOME_DATA.regionData) || {};
 
       const cards = document.querySelectorAll('.country-card');
 
@@ -430,9 +447,81 @@
           }
         });
       });
+
+      // Live sync (Roadmap 2.1): once Supabase's active areas arrive,
+      // replace the static base with them -- but only when the live
+      // result actually has at least one area somewhere, so an empty or
+      // mid-migration `areas` table can never blank the picker out from
+      // under a visitor. openAccordion() always calls renderLocations()
+      // fresh, so simply swapping SUB_REGIONS is enough for the *next*
+      // open; a panel that's already open when the data lands is
+      // re-rendered immediately so it doesn't sit stale.
+      homepageDataPromise.then(function (res) {
+        const liveAreas = res && res.areas;
+        if (!liveAreas) return;
+        const hasAnyArea = Object.keys(liveAreas).some(function (country) {
+          const groups = liveAreas[country] || {};
+          return Object.keys(groups).some(function (group) {
+            return (groups[group] || []).length > 0;
+          });
+        });
+        if (!hasAnyArea) return;
+
+        SUB_REGIONS = liveAreas;
+
+        const activeCard = document.querySelector('.country-card.active');
+        if (activeCard) renderLocations(activeCard.getAttribute('data-country'));
+      });
     })();
   } catch (e) {
     console.warn('[BTA] initRegions', e);
+  }
+
+  /* ============================================================
+     4b. PROMOTIONAL BANNER SLOT (Roadmap 2.1) — Marketing -> Website
+         Banners. There is no static fallback content for this slot (the
+         hero above it is the real "default" state) -- it simply stays
+         hidden, exactly as the page already renders today, whenever
+         there is no active banner or the live fetch fails.
+  ============================================================ */
+  try {
+    (function initBannerSlot() {
+      const slot = document.getElementById('homepage-banner-slot');
+      if (!slot) return;
+
+      function esc(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      homepageDataPromise.then(function (res) {
+        const banners = res && res.banners;
+        if (!banners || !banners.length) return;
+
+        // Exactly one slot on this page -- show the highest-priority
+        // (lowest display_order) active banner the server already sorted
+        // for us, rather than building a carousel nobody asked for.
+        const banner = banners[0];
+        if (!banner || !banner.image_url) return;
+
+        const sizeAttrs =
+          (banner.width ? ' width="' + parseInt(banner.width, 10) + '"' : '') +
+          (banner.height ? ' height="' + parseInt(banner.height, 10) + '"' : '');
+        const img = '<img src="' + esc(banner.image_url) + '" alt="' + esc(banner.title || '') + '"' + sizeAttrs + '>';
+
+        slot.innerHTML =
+          banner.link_url && /^https?:\/\//i.test(banner.link_url)
+            ? '<a href="' + esc(banner.link_url) + '" target="_blank" rel="noopener">' + img + '</a>'
+            : '<span class="banner-static">' + img + '</span>';
+
+        slot.hidden = false;
+      });
+    })();
+  } catch (e) {
+    console.warn('[BTA] initBannerSlot', e);
   }
 
   /* ============================================================

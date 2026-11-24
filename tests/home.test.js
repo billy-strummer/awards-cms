@@ -147,3 +147,164 @@ describe('home.js — season-date propagation into Key Dates / Vote box (BTA-064
     expect(document.getElementById('sponsors').style.display).toBe('');
   });
 });
+
+/**
+ * Tests for the live area picker and promotional banner slot (Roadmap
+ * 2.1) — both driven by the same shared fetch to /api/voting-proxy's
+ * load_homepage_data action. home.js makes two independent requests on
+ * load (this one, and the entry-proxy one tested above); since the mock
+ * below answers every fetch call identically, a combined response object
+ * is used so both consumers see the fields they each look for.
+ */
+describe('home.js — live area picker and promotional banner slot (Roadmap 2.1)', () => {
+  function buildRegionsDom() {
+    const dom = new JSDOM(
+      `<!DOCTYPE html><html><head></head><body>
+        <div class="country-cards">
+          <div class="country-card" id="card-england" role="button" tabindex="0" aria-expanded="false" aria-controls="accordion-england" data-country="england"></div>
+          <div class="country-card" id="card-scotland" role="button" tabindex="0" aria-expanded="false" aria-controls="accordion-scotland" data-country="scotland"></div>
+          <div class="country-card" id="card-wales" role="button" tabindex="0" aria-expanded="false" aria-controls="accordion-wales" data-country="wales"></div>
+        </div>
+        <div class="regions-accordion" id="accordion-england" aria-hidden="true">
+          <div class="regions-accordion-inner"><div class="sub-regions-list" id="sub-list-england"></div></div>
+        </div>
+        <div class="regions-accordion" id="accordion-scotland" aria-hidden="true">
+          <div class="regions-accordion-inner"><div class="sub-regions-list" id="sub-list-scotland"></div></div>
+        </div>
+        <div class="regions-accordion" id="accordion-wales" aria-hidden="true">
+          <div class="regions-accordion-inner"><div class="sub-regions-list" id="sub-list-wales"></div></div>
+        </div>
+        <section id="homepage-banner-slot" hidden></section>
+      </body></html>`,
+      { url: 'http://localhost' }
+    );
+    global.window = dom.window;
+    global.document = dom.window.document;
+    global.window.BTA_HOME_DATA = {
+      regionData: {
+        england: { Counties: ['Kent'], Cities: ['Bristol'], 'London Boroughs': ['Camden'] },
+      },
+      flagMap: {},
+    };
+    return dom;
+  }
+
+  beforeEach(() => {
+    jest.resetModules();
+  });
+
+  test('renders the static area picker immediately, before the live fetch resolves', async () => {
+    buildRegionsDom();
+    mockPublicData({});
+    require('../home.js');
+
+    document.getElementById('card-england').dispatchEvent(new window.Event('click', { bubbles: true }));
+
+    const chips = [...document.querySelectorAll('#sub-list-england .sub-region-chip')].map((a) => a.textContent);
+    expect(chips).toEqual(['Kent', 'Bristol', 'Camden']);
+  });
+
+  test('replaces the picker with live areas once they arrive, reflecting is_active removals the static list cannot', async () => {
+    buildRegionsDom();
+    mockPublicData({
+      areas: { england: { Counties: ['Kent', 'Essex'] } }, // Bristol/Camden deliberately absent -> deactivated
+    });
+    require('../home.js');
+    await flush();
+
+    document.getElementById('card-england').dispatchEvent(new window.Event('click', { bubbles: true }));
+
+    const chips = [...document.querySelectorAll('#sub-list-england .sub-region-chip')].map((a) => a.textContent);
+    expect(chips).toEqual(['Kent', 'Essex']);
+  });
+
+  test('re-renders a panel that is already open when the live data lands', async () => {
+    buildRegionsDom();
+    mockPublicData({ areas: { england: { Counties: ['Kent', 'Essex'] } } });
+    require('../home.js');
+
+    document.getElementById('card-england').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect([...document.querySelectorAll('#sub-list-england .sub-region-chip')].map((a) => a.textContent)).toEqual([
+      'Kent',
+      'Bristol',
+      'Camden',
+    ]);
+
+    await flush();
+
+    expect([...document.querySelectorAll('#sub-list-england .sub-region-chip')].map((a) => a.textContent)).toEqual([
+      'Kent',
+      'Essex',
+    ]);
+  });
+
+  test('keeps the static picker when the live areas object is empty', async () => {
+    buildRegionsDom();
+    mockPublicData({ areas: {} });
+    require('../home.js');
+    await flush();
+
+    document.getElementById('card-england').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect([...document.querySelectorAll('#sub-list-england .sub-region-chip')].map((a) => a.textContent)).toEqual([
+      'Kent',
+      'Bristol',
+      'Camden',
+    ]);
+  });
+
+  test('keeps the static picker when the live fetch fails', async () => {
+    buildRegionsDom();
+    global.fetch = jest.fn().mockRejectedValue(new Error('network down'));
+    global.window.fetch = global.fetch;
+    require('../home.js');
+    await flush();
+
+    document.getElementById('card-england').dispatchEvent(new window.Event('click', { bubbles: true }));
+    expect([...document.querySelectorAll('#sub-list-england .sub-region-chip')].map((a) => a.textContent)).toEqual([
+      'Kent',
+      'Bristol',
+      'Camden',
+    ]);
+  });
+
+  test('banner slot stays hidden with no active banner', async () => {
+    buildRegionsDom();
+    mockPublicData({ banners: [] });
+    require('../home.js');
+    await flush();
+
+    expect(document.getElementById('homepage-banner-slot').hidden).toBe(true);
+  });
+
+  test('reveals the banner slot with a clickable image for the top-priority active banner', async () => {
+    buildRegionsDom();
+    mockPublicData({
+      banners: [
+        { title: 'Big Sponsor', image_url: 'sponsor.png', link_url: 'https://example.com', width: 728, height: 90 },
+      ],
+    });
+    require('../home.js');
+    await flush();
+
+    const slot = document.getElementById('homepage-banner-slot');
+    expect(slot.hidden).toBe(false);
+    const link = slot.querySelector('a');
+    expect(link.getAttribute('href')).toBe('https://example.com');
+    expect(link.getAttribute('target')).toBe('_blank');
+    const img = slot.querySelector('img');
+    expect(img.getAttribute('src')).toBe('sponsor.png');
+    expect(img.getAttribute('alt')).toBe('Big Sponsor');
+  });
+
+  test('renders the banner without a link wrapper when link_url is absent', async () => {
+    buildRegionsDom();
+    mockPublicData({ banners: [{ title: 'No Link Banner', image_url: 'nolink.png', link_url: null }] });
+    require('../home.js');
+    await flush();
+
+    const slot = document.getElementById('homepage-banner-slot');
+    expect(slot.hidden).toBe(false);
+    expect(slot.querySelector('a')).toBeNull();
+    expect(slot.querySelector('img').getAttribute('src')).toBe('nolink.png');
+  });
+});

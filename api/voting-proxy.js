@@ -420,15 +420,82 @@ async function sendVoteConfirmation({ voter_email, company_name, award_name, ent
   }
 }
 
+// (country, area_type) -> the exact group label home-data.js's static
+// REGION_DATA already uses for that country, so switching the home page's
+// area picker from static to live data changes WHICH areas show (reflecting
+// is_active / admin edits) without changing how they're grouped or labelled.
+// Wales's counties/areas are stored with area_type 'county' (not 'region',
+// unlike Scotland) -- confirmed against migrations/067-create-missing-areas-table.sql
+// rather than assumed, since the two countries use different area_type values
+// for what home-data.js labels identically as "Counties & Areas".
+const PUBLIC_AREA_GROUP_LABELS = {
+  England: { county: 'Counties', city: 'Cities', borough: 'London Boroughs' },
+  Scotland: { region: 'Counties & Areas', city: 'Cities' },
+  Wales: { county: 'Counties & Areas', city: 'Cities' },
+};
+const PUBLIC_AREA_COUNTRY_KEYS = { England: 'england', Scotland: 'scotland', Wales: 'wales' };
+
+// Groups flat `areas` rows into the same { england: { Counties: [...], ... } }
+// shape as home-data.js's static REGION_DATA, so home.js can drop the live
+// result straight in as a replacement with no shape translation needed.
+// Rows outside the 3 supported countries, or with an area_type this site has
+// no label for, are silently skipped rather than guessed at.
+function groupPublicAreas(areaRows) {
+  const grouped = {};
+  (areaRows || []).forEach(function (row) {
+    const countryKey = PUBLIC_AREA_COUNTRY_KEYS[row.country];
+    const labels = PUBLIC_AREA_GROUP_LABELS[row.country];
+    const groupLabel = labels && labels[row.area_type];
+    if (!countryKey || !groupLabel || !row.display_name) return;
+    if (!grouped[countryKey]) grouped[countryKey] = {};
+    if (!grouped[countryKey][groupLabel]) grouped[countryKey][groupLabel] = [];
+    grouped[countryKey][groupLabel].push(row.display_name);
+  });
+  return grouped;
+}
+
+// Active, currently in-date-range banners only, sorted by display_order
+// (lowest first -- the admin's own "priority"). start_date/end_date are
+// both optional (an unset bound is treated as "no limit on that side"), so
+// a banner with neither is simply always in range once active.
+function filterActiveBanners(bannerRows) {
+  const today = new Date().toISOString().slice(0, 10);
+  return (bannerRows || [])
+    .filter(function (b) {
+      if (b.start_date && b.start_date > today) return false;
+      if (b.end_date && b.end_date < today) return false;
+      return true;
+    })
+    .sort(function (a, b) {
+      return (a.display_order || 0) - (b.display_order || 0);
+    })
+    .map(function (b) {
+      // Explicit allowlist, not the full row -- impressions/clicks are
+      // admin analytics, not public data, and this is an unauthenticated
+      // endpoint.
+      return { title: b.title, image_url: b.image_url, link_url: b.link_url, width: b.width, height: b.height };
+    });
+}
+
 /**
- * load_public_sectors — return CMS-managed sectors and categories for the home page.
- * Falls back to an empty result if the custom_sectors / custom_categories tables are
- * not yet populated; the front-end falls back to the static data in home-data.js.
+ * load_homepage_data — CMS-managed data for the public home page, with each
+ * field independently optional: sectors/categories (merged onto the static
+ * home-data.js base when present), active regions (REPLACES the static
+ * REGION_DATA wholesale when non-empty, since an admin deactivating an area
+ * must be able to make it disappear -- a merge could only ever add, never
+ * remove), and active promotional banners (shown in the hero's banner slot,
+ * hidden when empty). Falls back to an empty result per field on error so
+ * one failing query never blanks out the others.
  */
-async function loadPublicSectors() {
-  const [sectorsResult, catsResult] = await Promise.all([
+async function loadHomepageData() {
+  const [sectorsResult, catsResult, areasResult, bannersResult] = await Promise.all([
     supabase.from('custom_sectors').select('id, name').eq('is_active', true).order('name'),
     supabase.from('custom_categories').select('id, name, sector_name').eq('is_active', true).order('name'),
+    supabase.from('areas').select('display_name, country, area_type').eq('is_active', true).order('display_name'),
+    supabase
+      .from('banners')
+      .select('title, image_url, link_url, width, height, display_order, start_date, end_date')
+      .eq('is_active', true),
   ]);
 
   const sectors = sectorsResult.data || [];
@@ -442,7 +509,12 @@ async function loadPublicSectors() {
     categories[cat.sector_name].push(cat.name);
   });
 
-  return { sectors, categories };
+  return {
+    sectors,
+    categories,
+    areas: groupPublicAreas(areasResult.data),
+    banners: filterActiveBanners(bannersResult.data),
+  };
 }
 
 async function loadWinners() {
@@ -489,7 +561,8 @@ async function loadWinners() {
 const ACTIONS = {
   load_awards: loadAwards,
   load_entries: loadEntries,
-  load_public_sectors: loadPublicSectors,
+  load_public_sectors: loadHomepageData,
+  load_homepage_data: loadHomepageData,
   check_votes: checkVotes,
   check_rate_limit: checkRateLimit,
   check_existing_vote: checkExistingVote,

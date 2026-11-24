@@ -717,3 +717,195 @@ describe('Voting Proxy API - load_winners() column allowlist', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// load_homepage_data (Roadmap 2.1) — live-synced data for the public home
+// page: CMS sectors/categories (pre-existing), plus newly-added active
+// regions (grouped to match home-data.js's static REGION_DATA shape) and
+// active promotional banners. `load_public_sectors` is kept as an alias to
+// the same function for backward compatibility with home-stage2.js, which
+// still calls it by that name and only ever reads the sectors/categories
+// fields it always returned.
+// ---------------------------------------------------------------------------
+describe('Voting Proxy API - load_homepage_data()', () => {
+  function mockTables({ sectors = [], categories = [], areas = [], banners = [] } = {}) {
+    mockFrom.mockImplementation((table) => {
+      const byTable = {
+        custom_sectors: { data: sectors, error: null },
+        custom_categories: { data: categories, error: null },
+        areas: { data: areas, error: null },
+        banners: { data: banners, error: null },
+      };
+      return chainable(byTable[table] || { data: [], error: null });
+    });
+  }
+
+  test('groups England areas into Counties/Cities/London Boroughs', async () => {
+    mockTables({
+      areas: [
+        { display_name: 'Kent', country: 'England', area_type: 'county' },
+        { display_name: 'Bristol', country: 'England', area_type: 'city' },
+        { display_name: 'Camden', country: 'England', area_type: 'borough' },
+      ],
+    });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.areas.england).toEqual({
+      Counties: ['Kent'],
+      Cities: ['Bristol'],
+      'London Boroughs': ['Camden'],
+    });
+  });
+
+  test('groups Scotland (area_type "region") and Wales (area_type "county") both under "Counties & Areas"', async () => {
+    mockTables({
+      areas: [
+        { display_name: 'Highlands', country: 'Scotland', area_type: 'region' },
+        { display_name: 'Edinburgh', country: 'Scotland', area_type: 'city' },
+        { display_name: 'Powys', country: 'Wales', area_type: 'county' },
+        { display_name: 'Cardiff', country: 'Wales', area_type: 'city' },
+      ],
+    });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.areas.scotland).toEqual({ 'Counties & Areas': ['Highlands'], Cities: ['Edinburgh'] });
+    expect(res.body.areas.wales).toEqual({ 'Counties & Areas': ['Powys'], Cities: ['Cardiff'] });
+  });
+
+  test('skips rows with an unsupported country or area_type rather than guessing a group for them', async () => {
+    mockTables({
+      areas: [
+        { display_name: 'Kent', country: 'England', area_type: 'county' },
+        { display_name: 'Mystery', country: 'Narnia', area_type: 'county' },
+        { display_name: 'NoType', country: 'England', area_type: 'spaceport' },
+        { display_name: '', country: 'England', area_type: 'county' },
+      ],
+    });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.areas).toEqual({ england: { Counties: ['Kent'] } });
+  });
+
+  test('returns an empty areas object (not a throw) when the areas query errors', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'areas') return chainable({ data: null, error: { message: 'boom' } });
+      return chainable({ data: [], error: null });
+    });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.areas).toEqual({});
+  });
+
+  test('returns only active, in-date-range banners, sorted by display_order, as a public-safe field allowlist', async () => {
+    mockTables({
+      banners: [
+        {
+          title: 'Future banner',
+          image_url: 'future.png',
+          link_url: 'https://example.com/future',
+          width: 300,
+          height: 100,
+          display_order: 1,
+          start_date: '2099-01-01',
+          end_date: null,
+          impressions: 999,
+          clicks: 50,
+        },
+        {
+          title: 'Expired banner',
+          image_url: 'expired.png',
+          link_url: null,
+          width: 300,
+          height: 100,
+          display_order: 1,
+          start_date: null,
+          end_date: '2000-01-01',
+          impressions: 1,
+          clicks: 1,
+        },
+        {
+          title: 'Second priority',
+          image_url: 'second.png',
+          link_url: 'https://example.com/b',
+          width: 728,
+          height: 90,
+          display_order: 5,
+          start_date: null,
+          end_date: null,
+        },
+        {
+          title: 'Top priority',
+          image_url: 'top.png',
+          link_url: 'https://example.com/a',
+          width: 728,
+          height: 90,
+          display_order: 2,
+          start_date: null,
+          end_date: null,
+        },
+      ],
+    });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.banners).toEqual([
+      { title: 'Top priority', image_url: 'top.png', link_url: 'https://example.com/a', width: 728, height: 90 },
+      {
+        title: 'Second priority',
+        image_url: 'second.png',
+        link_url: 'https://example.com/b',
+        width: 728,
+        height: 90,
+      },
+    ]);
+    // Analytics columns are never sent to this public, unauthenticated endpoint.
+    expect(res.body.banners[0].impressions).toBeUndefined();
+    expect(res.body.banners[0].clicks).toBeUndefined();
+  });
+
+  test('returns an empty banners array when none are active', async () => {
+    mockTables({ banners: [] });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+    expect(res.body.banners).toEqual([]);
+  });
+
+  test('load_public_sectors is kept as a working alias for the same handler (home-stage2.js back-compat)', async () => {
+    mockTables({ sectors: [{ id: 's1', name: 'Roofing' }] });
+    const req = createReq({ body: { action: 'load_public_sectors' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.sectors).toEqual([{ id: 's1', name: 'Roofing' }]);
+    // The alias returns the exact same expanded shape -- a caller that only
+    // reads sectors/categories (like home-stage2.js) is unaffected either way.
+    expect(res.body.areas).toEqual({});
+    expect(res.body.banners).toEqual([]);
+  });
+
+  test('still groups categories by sector_name alongside the new areas/banners fields', async () => {
+    mockTables({
+      categories: [
+        { id: 'c1', name: 'Roofing Company', sector_name: 'BUILDING & CONSTRUCTION' },
+        { id: 'c2', name: 'Plastering Company', sector_name: 'BUILDING & CONSTRUCTION' },
+      ],
+    });
+    const req = createReq({ body: { action: 'load_homepage_data' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.categories['BUILDING & CONSTRUCTION']).toEqual(['Roofing Company', 'Plastering Company']);
+  });
+});

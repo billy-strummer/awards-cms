@@ -144,7 +144,7 @@ const entriesModule = {
       /* selectAll: justified — small reference table (active awards for filter dropdown) */
       const result = await apiClient.selectAll('awards', {
         select: 'id, award_name',
-        filters: { status: { operator: 'eq', value: 'Active' } },
+        filters: { status: { op: 'eq', value: 'Active' } },
         sort: { column: 'award_name', ascending: true },
       });
       awards = result;
@@ -950,7 +950,7 @@ const entriesModule = {
         updateData.shortlisted_date = new Date().toISOString();
       }
 
-      await apiClient.updateByFilters('entries', { id: { operator: 'in', value: ids } }, updateData);
+      await apiClient.updateByFilters('entries', { id: { op: 'in', value: ids } }, updateData);
 
       // Log a single activity entry for the bulk change
       try {
@@ -997,7 +997,7 @@ const entriesModule = {
     try {
       const result = await apiClient.select('entries', {
         select: '*, organisations(*), awards:award_years(*), entry_files(*), judge_scores(*)',
-        filters: { id: { operator: 'eq', value: entryId } },
+        filters: { id: { op: 'eq', value: entryId } },
         pageSize: 1,
       });
 
@@ -1347,7 +1347,7 @@ const entriesModule = {
 
           const entryResult = await apiClient.select('entries', {
             select: 'admin_notes',
-            filters: { id: { operator: 'eq', value: entryId } },
+            filters: { id: { op: 'eq', value: entryId } },
             pageSize: 1,
           });
           const entry = entryResult.data && entryResult.data[0];
@@ -1430,7 +1430,7 @@ const entriesModule = {
           // Get current admin notes
           const entryResult = await apiClient.select('entries', {
             select: 'admin_notes',
-            filters: { id: { operator: 'eq', value: entryId } },
+            filters: { id: { op: 'eq', value: entryId } },
             pageSize: 1,
           });
           const entry = entryResult.data && entryResult.data[0];
@@ -1647,7 +1647,7 @@ const entriesModule = {
     try {
       // Fetch source entry
       const result = await apiClient.select('entries', {
-        filters: { id: { operator: 'eq', value: entryId } },
+        filters: { id: { op: 'eq', value: entryId } },
         pageSize: 1,
       });
       const source = result.data && result.data[0];
@@ -1819,7 +1819,7 @@ const entriesModule = {
     try {
       const entryResult = await apiClient.select('entries', {
         select: '*, organisations(id, company_name), awards:award_years(id, award_name)',
-        filters: { id: { operator: 'eq', value: entryId } },
+        filters: { id: { op: 'eq', value: entryId } },
         pageSize: 1,
       });
       const entry = entryResult.data && entryResult.data[0];
@@ -2461,7 +2461,7 @@ const entriesModule = {
 
           try {
             await chunkedApiOperation((chunk) =>
-              apiClient.deleteByFilters('entries', { id: { operator: 'in', value: chunk } })
+              apiClient.deleteByFilters('entries', { id: { op: 'in', value: chunk } })
             );
 
             utils.showToast(`${count} entries deleted`, 'success');
@@ -2517,7 +2517,7 @@ const entriesModule = {
               return;
             }
 
-            await apiClient.updateByFilters('entries', { id: { operator: 'in', value: validIds } }, updateData);
+            await apiClient.updateByFilters('entries', { id: { op: 'in', value: validIds } }, updateData);
 
             if (skippedCount > 0) {
               utils.showToast(
@@ -2569,11 +2569,7 @@ const entriesModule = {
             return;
 
           try {
-            await apiClient.updateByFilters(
-              'entries',
-              { id: { operator: 'in', value: ids } },
-              { payment_status: value }
-            );
+            await apiClient.updateByFilters('entries', { id: { op: 'in', value: ids } }, { payment_status: value });
 
             utils.showToast(`${count} entries payment status updated to ${value}`, 'success');
           } catch (error) {

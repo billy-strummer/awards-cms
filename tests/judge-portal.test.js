@@ -1242,6 +1242,53 @@ describe('Judge Portal - saveScore', () => {
     expect(apiClient.upsert).toHaveBeenCalled();
     delete global.confirm;
   });
+
+  // --- Payload/schema alignment (Roadmap "fix-proxy-operator-filters") ---
+  // judge_scores was missing most of saveScore()'s own columns in
+  // production (confirmed live: id, entry_id, judge_email, judge_name,
+  // is_complete, has_conflict, conflict_declared, total_score, created_at
+  // only) -- PostgREST rejects an insert/upsert outright if ANY payload
+  // key doesn't match a real column, so this was very likely failing on
+  // every real score submission. Fixed via migrations/099 (held unapplied
+  // pending sign-off, per this project's own standing migration process).
+  // This test is a regression guard, not a live-DB check: it hardcodes
+  // the columns migration 099 adds (plus the pre-existing ones) and fails
+  // if saveScore()'s own payload ever drifts from that list again without
+  // the schema being updated alongside it.
+  test("every key saveScore() sends is one of judge_scores' real (post-migration-099) columns", async () => {
+    await judgePortal.saveScore(true);
+    const upsertArg = apiClient.upsert.mock.calls[0][1];
+
+    // Pre-existing production columns + migration 099's additions. NOT
+    // included: admin-configured custom criteria ids (custom_score_0,
+    // custom_score_1, ...) -- those remain a known, flagged, unfixed gap
+    // (see migrations/099's own header comment and
+    // BTA-CMS-PROJECT-TASKS.md Section XVI) since they're unbounded and
+    // can't be covered by a fixed column list.
+    const knownColumns = new Set([
+      'id',
+      'entry_id',
+      'judge_email',
+      'judge_name',
+      'is_complete',
+      'has_conflict',
+      'conflict_declared',
+      'total_score',
+      'created_at',
+      'innovation_score',
+      'impact_score',
+      'quality_score',
+      'presentation_score',
+      'strengths',
+      'weaknesses',
+      'comments',
+      'recommendation',
+      'scored_at',
+    ]);
+
+    const unknownKeys = Object.keys(upsertArg).filter((k) => !knownColumns.has(k));
+    expect(unknownKeys).toEqual([]);
+  });
 });
 
 // ============================

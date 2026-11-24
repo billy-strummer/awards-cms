@@ -968,7 +968,7 @@ const paymentsModule = {
     try {
       const paymentsCheck = await apiClient.select('payments', {
         select: 'id',
-        filters: { invoice_id: { operator: 'eq', value: invoiceId } },
+        filters: { invoice_id: { op: 'eq', value: invoiceId } },
         pageSize: 1,
       });
       if (paymentsCheck.data && paymentsCheck.data.length > 0) {

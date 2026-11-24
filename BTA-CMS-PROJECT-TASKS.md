@@ -3560,3 +3560,54 @@ Lint: clean (`npm run lint`, exit 0). Full suite: **91/91 suites, 7,137/7,137 te
 ### XV.6 — Git/worktree state
 
 All changes currently uncommitted in the working tree on branch `claude/winner-pack-generator` (created off post-#376-merge `main`, confirmed via `git merge-base`), about to be committed and pushed; PR to be opened into `main` and held unmerged pending review, per instruction. This closes out every item in `BTA-CMS-ROADMAP.md` (Phases 0–3) as `[x]`.
+
+### XV.7 — PR #377 merged (recorded retroactively in this section)
+
+Per explicit authorization in a later turn: merged PR #377 (`claude/winner-pack-generator` → `main`, merge commit `2fef1c6`). Fast-forwarded local `main`, deleted the merged local branch, created `claude/fix-proxy-operator-filters` off the updated `main` (confirmed via `git merge-base`) to clean up the two critical findings flagged during 3.3 — see Section XVI below.
+
+---
+
+## XVI. Fix `applyFilters()`/`operator` filter bug (all call sites) + `judge_scores` column mismatch (2026-11-24)
+
+### XVI.1 — Task 1: `applyFilters()` accepts both `op` and `operator`; call sites normalized
+
+Per explicit instruction, fixed `api/data-proxy.js`'s `applyFilters()` with the minimal, additive change the user asked for: where it previously only read `value.op`, it now reads `value.op || value.operator` (one line, inside the existing `{ op, value }`-shape branch — no new branch, no new shorthand key added to the `shorthandOps` array, since `operator` is a value-level key alongside `op`, not a top-level shorthand like `{ eq: X }`). This makes every existing `{ operator: ... }` call site work correctly without needing to touch all of them, while callers that already use the documented `{ op: ... }` shape are completely unaffected.
+
+Re-wrote the existing "confirmed bug" describe block in `tests/data-proxy.test.js` (from Section XV) into `applyFilters(): accepts both "op" and "operator" keys`, since its old assertions (`{ operator, value }` does NOT apply as a filter) are no longer true and would otherwise be left as permanently-failing documentation of a bug that no longer exists. Added 6 tests covering: the pre-existing `"column@op"` syntax; the documented `{ op, value }` shape; the previously-broken `{ operator, value }` alias (now also correct); `{ operator: 'in', value: [...] }` (`entries.js`'s own bulk-by-id shape); `{ operator: 'eq', value: X }` (`entries.js`'s `viewEntry()` shape, confirming it now calls `.eq(key, value)` with just the value, not the whole filter object); and a conflict case proving an embedded `"column@op"` key still wins over a differing `operator` inside the value object (the pre-existing `op`-wins-over-nothing precedence, now also verified to win over `operator`).
+
+Normalized all 11 pre-existing `{ operator: '<op>', value: X }` sites found in Section XV's repo-wide grep to the documented `{ op: '<op>', value: X }` shape, for consistency (not because the fix above required it — `applyFilters()` now accepts both — but because the user explicitly asked for normalization, and leaving two equivalent spellings in active use would just reintroduce the same confusion that caused this bug in the first place):
+- `entries.js`: 9 sites (lines 147, 953, 1000, 1350, 1433, 1650, 1822, 2464, 2520, 2574 — `viewEntry()`, bulk update/delete-by-id via `updateByFilters`/`deleteByFilters`, and a duplicate-check select).
+- `branding.js`: 1 site (line 67, `loadBranding()`'s `tenant_id` filter).
+- `payments.js`: 1 site (line 971, an `invoice_id` lookup).
+
+Found and fixed one test that asserted on the now-changed call shape: `tests/branding.test.js`'s `'calls apiClient.select with correct params'` expected `{ tenant_id: { operator: 'eq', value: 't1' } }` — updated to `{ tenant_id: { op: 'eq', value: 't1' } }`. Grepped `tests/entries.test.js` and `tests/payments.test.js` for the same risk — neither asserts on the literal filter shape, so no other test needed updating.
+
+### XVI.2 — Task 2: `judge_scores` column mismatch — audited, migration authored, held unapplied
+
+Re-confirmed live (not trusted from Section XV's own earlier finding, per this project's own standing "verify, don't trust a prior session's report" rule) by querying `information_schema.columns` against production (`qdzyknercdqwhwijbcxf`) directly: `judge_scores` has exactly `id, entry_id, judge_email, judge_name, is_complete, has_conflict, conflict_declared, total_score, created_at` — 9 columns, 0 rows in the table.
+
+Re-read `judge-portal.js`'s `saveScore()` in full to get the exact payload it has always sent: `entry_id, judge_email, judge_name, ...scores` (one key per scoring-criterion id), `total_score, strengths, weaknesses, comments, recommendation, has_conflict, is_complete, scored_at`. Traced `scoringCriteria`'s own ids: `DEFAULT_SCORING_CRITERIA` (used whenever an award has no custom criteria configured) uses the fixed ids `innovation_score, impact_score, quality_score, presentation_score`; an award with admin-configured custom criteria (`award.scoring_criteria`, loaded in `_loadScoringCriteria()`) instead gets ids `custom_score_0, custom_score_1, ...`, indexed per-criterion and therefore unbounded in count across different awards.
+
+**Confirmed this isn't an isolated judge-portal.js problem**: `reporting.js`'s own pre-existing `exportJudgeProgress()` already selects `innovation_score, impact_score, quality_score, presentation_score` from `judge_scores` by name for a per-judge analytics report — meaning that report has very likely also been failing in production (it has its own try/catch showing a generic error toast, so it fails silently rather than crashing, consistent with why this went unnoticed). This confirms the 4 default-criteria columns are the *intended*, actively-relied-upon design — not something to redesign away.
+
+**Decision: fixed columns for the 4 default criteria + the 5 free-text/timestamp fields, NOT a JSONB redesign, and NOT an attempt to cover custom criteria.** Considered storing all per-criterion scores in a single `criteria_scores JSONB` column instead (which would handle any number of criteria, present or future, without further migrations) — rejected because `reporting.js` already reads the 4 default criteria as flat, named columns, so a JSONB redesign would require also rewriting that report (and its own existing tests) and is a materially larger change than "make `saveScore()` actually work," which is what was asked for. Authored `migrations/099-add-judge-scores-missing-columns.sql`: 9 new nullable columns (`innovation_score`, `impact_score`, `quality_score`, `presentation_score` as `NUMERIC`; `strengths`, `weaknesses`, `comments`, `recommendation` as `TEXT`; `scored_at` as `TIMESTAMPTZ`), each `ADD COLUMN IF NOT EXISTS` (idempotent). 0 rows in the table currently, so zero data-migration risk.
+
+**Explicitly flagged, not fixed**: an award using admin-configured custom scoring criteria will still fail to save a score after this migration, since `custom_score_0`/`custom_score_1`/etc. are not fixed, bounded column names a migration can target. No existing code outside `judge-portal.js` itself reads those ids by name (confirmed via the same repo-wide grep used to find the default-criteria readers), so this is a narrower, lower-blast-radius gap than the one being fixed here — recorded as its own follow-up rather than expanding this task's scope into a schema redesign.
+
+**Migration 099 is authored on disk only — not applied to the test project or production**, consistent with this project's standing migration process (every prior migration this session has required its own, separate, explicit sign-off before being applied, regardless of how low-risk or clearly-needed it is).
+
+### XVI.3 — Tests added
+
+`tests/data-proxy.test.js`: described in XVI.1 (6 tests, replacing the 2 "confirmed bug" tests from Section XV that are no longer accurate).
+
+`tests/judge-portal.test.js` (1 new test): `'every key saveScore() sends is one of judge_scores' real (post-migration-099) columns'` — a payload-alignment regression guard. Since this test suite mocks `apiClient.upsert` entirely (it never reaches a real Postgres schema, so it can't verify column existence directly), the test instead hardcodes the known-good column list (the 9 pre-existing production columns + migration 099's 9 additions) and asserts every key in `saveScore()`'s actual payload is a member of that list. This is deliberately a regression guard against the payload and the schema drifting apart *again*, not a live-schema check — if someone adds a new field to `saveScore()`'s payload in the future without a matching migration, this test fails immediately instead of silently shipping another broken column.
+
+`tests/branding.test.js`: 1 existing test's assertion updated (not new coverage) — see XVI.1.
+
+### XVI.4 — Verification
+
+Lint: clean (`npm run lint`, exit 0). Full suite: **91/91 suites, 7,142/7,142 tests pass** (`npm test`) — up from 7,137 before this task (+6 data-proxy, +1 judge-portal, −2 removed/replaced data-proxy tests nets to +5 net new, matching the file-level diff). Build: clean (`npm run build`); core bundle module count unchanged at 32 (expected — this task touched `api/data-proxy.js`, which is not part of the frontend bundle, plus already-bundled core modules `entries.js`/`branding.js`/`payments.js`, which needed no new wiring).
+
+### XVI.5 — Git/worktree state
+
+All changes currently uncommitted in the working tree on branch `claude/fix-proxy-operator-filters` (created off post-#377-merge `main`, confirmed via `git merge-base`), about to be committed and pushed; PR to be opened into `main` and held unmerged pending review, per instruction. Migration 099 is authored on disk only — not applied to the test project or production.

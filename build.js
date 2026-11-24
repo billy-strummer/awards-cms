@@ -29,6 +29,7 @@ const JS_FILES = [
   'assignments.js',
   'dashboard.js',
   'nominee-uploads.js',
+  'region-hub.js',
   'ai-vetting.js',
   'marketing.js',
   'email-builder.js',

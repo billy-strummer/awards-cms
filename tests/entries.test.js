@@ -35,6 +35,8 @@ const dom = new JSDOM(
   <div id="winnerEntriesCount">0</div>
   <select id="entriesStatusFilter"><option value="">All</option></select>
   <select id="entriesAwardFilter"><option value="">All Awards</option></select>
+  <select id="entriesAreaFilter"><option value="">All Areas</option></select>
+  <input type="hidden" id="entriesCategoryFilter" value="">
   <select id="entriesYearFilter"><option value="">All Years</option></select>
   <select id="entriesSelfNomFilter"><option value="">All</option></select>
   <input id="entriesSearchInput" value="" />
@@ -1363,6 +1365,18 @@ describe('Entries Module - _buildServerFilters', () => {
     expect(filters.award_id).toBe('award-123');
   });
 
+  test('area filter maps to county_city', () => {
+    entriesModule.currentFilters.area = 'Cardiff';
+    const filters = entriesModule._buildServerFilters();
+    expect(filters.county_city).toBe('Cardiff');
+  });
+
+  test('category filter maps to award_category', () => {
+    entriesModule.currentFilters.category = 'Roofing Company';
+    const filters = entriesModule._buildServerFilters();
+    expect(filters.award_category).toBe('Roofing Company');
+  });
+
   test('year filter is parsed as integer', () => {
     entriesModule.currentFilters.year = '2026';
     const filters = entriesModule._buildServerFilters();
@@ -1694,10 +1708,12 @@ describe('Entries Module - filterEntries reads from DOM', () => {
   beforeEach(() => {
     entriesModule._serverPagination = false;
     entriesModule.allEntries = [...sampleEntries];
-    entriesModule.currentFilters = { status: '', award: '', year: '', search: '', selfNom: '' };
+    entriesModule.currentFilters = { status: '', award: '', area: '', category: '', year: '', search: '', selfNom: '' };
     // Reset filter selects
     document.getElementById('entriesStatusFilter').value = '';
     document.getElementById('entriesAwardFilter').value = '';
+    document.getElementById('entriesAreaFilter').value = '';
+    document.getElementById('entriesCategoryFilter').value = '';
     document.getElementById('entriesYearFilter').value = '';
     document.getElementById('entriesSelfNomFilter').value = '';
   });
@@ -1713,6 +1729,55 @@ describe('Entries Module - filterEntries reads from DOM', () => {
     entriesModule.filterEntries();
     expect(entriesModule.currentFilters.status).toBe('winner');
     expect(entriesModule.filteredEntries.every((e) => e.status === 'winner')).toBe(true);
+  });
+
+  test('filterEntries reads the area and category filters too', () => {
+    const areaFilter = document.getElementById('entriesAreaFilter');
+    const opt = document.createElement('option');
+    opt.value = 'Cardiff';
+    areaFilter.appendChild(opt);
+    areaFilter.value = 'Cardiff';
+    document.getElementById('entriesCategoryFilter').value = 'Roofing Company';
+    entriesModule.filterEntries();
+    expect(entriesModule.currentFilters.area).toBe('Cardiff');
+    expect(entriesModule.currentFilters.category).toBe('Roofing Company');
+  });
+});
+
+describe('Entries Module - filterByArea() (Region Hub quick actions)', () => {
+  beforeEach(() => {
+    entriesModule._serverPagination = false;
+    entriesModule.allEntries = [...sampleEntries];
+    entriesModule.currentFilters = { status: '', award: '', area: '', category: '', year: '', search: '', selfNom: '' };
+    document.getElementById('entriesAreaFilter').innerHTML =
+      '<option value="">All Areas</option><option value="Cardiff">Cardiff</option>';
+    document.getElementById('entriesYearFilter').innerHTML =
+      '<option value="">All Years</option><option value="2027">2027</option>';
+    document.getElementById('entriesCategoryFilter').value = '';
+  });
+
+  test('sets the area filter and applies it', () => {
+    entriesModule.filterByArea('Cardiff');
+    expect(document.getElementById('entriesAreaFilter').value).toBe('Cardiff');
+    expect(entriesModule.currentFilters.area).toBe('Cardiff');
+  });
+
+  test('also sets the year filter when a season is given', () => {
+    entriesModule.filterByArea('Cardiff', 2027);
+    expect(document.getElementById('entriesYearFilter').value).toBe('2027');
+    expect(entriesModule.currentFilters.year).toBe('2027');
+  });
+
+  test('also sets the hidden category filter when given', () => {
+    entriesModule.filterByArea('Cardiff', 2027, 'Roofing Company');
+    expect(document.getElementById('entriesCategoryFilter').value).toBe('Roofing Company');
+    expect(entriesModule.currentFilters.category).toBe('Roofing Company');
+  });
+
+  test('clears any previous category filter when none is given', () => {
+    document.getElementById('entriesCategoryFilter').value = 'stale-category';
+    entriesModule.filterByArea('Cardiff', 2027);
+    expect(document.getElementById('entriesCategoryFilter').value).toBe('');
   });
 });
 

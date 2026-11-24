@@ -454,10 +454,20 @@ describe('nomineeUploads - Award Areas table sort & filters', () => {
 
   test('row-level Upload Spreadsheet / Re-upload labels reflect import status for the selected year', () => {
     const tbody = win.document.getElementById('awardAreasTableBody');
+    const uploadBtn = (tr) => tr.querySelector('[data-action="nomineeUploads.openUploadModal"]');
     const cardiffRow = [...tbody.querySelectorAll('tr')].find((tr) => tr.textContent.includes('Cardiff'));
-    expect(cardiffRow.querySelector('button').textContent).toContain('Re-upload');
+    expect(uploadBtn(cardiffRow).textContent).toContain('Re-upload');
     const westminsterRow = [...tbody.querySelectorAll('tr')].find((tr) => tr.textContent.includes('Westminster'));
-    expect(westminsterRow.querySelector('button').textContent).toContain('Upload Spreadsheet');
+    expect(uploadBtn(westminsterRow).textContent).toContain('Upload Spreadsheet');
+  });
+
+  test('row-level "Open Hub" button carries the area id, name, type and country as data-args', () => {
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const cardiffRow = [...tbody.querySelectorAll('tr')].find((tr) => tr.textContent.includes('Cardiff'));
+    const hubBtn = cardiffRow.querySelector('[data-action="regionHubModule.open"]');
+    expect(hubBtn).toBeTruthy();
+    const args = JSON.parse(hubBtn.getAttribute('data-args'));
+    expect(args[1]).toBe('Cardiff');
   });
 });
 
@@ -506,5 +516,43 @@ describe('nomineeUploads - openImportModal() / area picker', () => {
     expect(win.document.getElementById('nomineeAreaPickerWrapper').classList.contains('d-none')).toBe(true);
     expect(win.document.getElementById('nomineeUploadAreaName').textContent).toBe('Somerset');
     expect(win.document.getElementById('nomineeFileInput').disabled).toBe(false);
+  });
+
+  describe('openUploadModal preset year (Region Hub)', () => {
+    let select;
+
+    beforeEach(() => {
+      select = win.document.createElement('select');
+      select.id = 'nomineeUploadYear';
+      win.document.body.appendChild(select);
+    });
+
+    afterEach(() => {
+      select.remove();
+    });
+
+    test('pre-selects a given preset year, as used by the Region Hub', () => {
+      const presetYear = new Date().getFullYear() + 1;
+      uploads.openUploadModal('a1', presetYear);
+      expect(win.document.getElementById('nomineeUploadYear').value).toBe(String(presetYear));
+    });
+
+    test('ignores a preset year outside the selectable range', () => {
+      uploads.openUploadModal('a1', 1999);
+      // Falls back to its own default (the current calendar year), not 1999.
+      expect(win.document.getElementById('nomineeUploadYear').value).toBe(String(new Date().getFullYear()));
+    });
+  });
+});
+
+describe('nomineeUploads - getYearFilter()', () => {
+  test("returns the Award Areas table's currently selected year", () => {
+    const select = win.document.getElementById('awardAreasYearFilter');
+    const opt = win.document.createElement('option');
+    opt.value = '2026';
+    select.appendChild(opt);
+    select.value = '2026';
+    uploads.setYearFilter();
+    expect(uploads.getYearFilter()).toBe(2026);
   });
 });

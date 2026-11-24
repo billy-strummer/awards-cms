@@ -176,6 +176,11 @@ const nomineeUploads = (() => {
     _updateSummary();
   }
 
+  /** The award year/season this table is currently scoped to — used by the Region Hub. */
+  function getYearFilter() {
+    return _yearFilter;
+  }
+
   function setTypeFilter(type) {
     _typeFilter = type;
     _updateFilterPillStates();
@@ -304,13 +309,16 @@ const nomineeUploads = (() => {
         // Spreadsheet" button is the page's one strong call-to-action;
         // row buttons stay visually secondary to it even for empty areas.
         const btnClass = count > 0 ? 'btn-outline-secondary' : 'btn-outline-primary';
-        return `<tr>
+        return `<tr class="u-pointer" data-action="regionHubModule.open" data-args='["${a.id}", "${utils.escapeHtml(a.display_name)}", "${a.area_type || ''}", "${utils.escapeHtml(a.country || '')}"]'>
           <td class="fw-semibold">${utils.escapeHtml(a.display_name)}</td>
           <td><span class="badge bg-light text-dark border">${utils.escapeHtml(_typeLabel(a))}</span></td>
           <td>${count}</td>
           <td>${status}</td>
           <td class="text-end">
-            <button class="btn btn-sm ${btnClass}" data-action="nomineeUploads.openUploadModal" data-args='["${a.id}"]'>
+            <button class="btn btn-sm btn-outline-secondary me-1" data-action="regionHubModule.open" data-args='["${a.id}", "${utils.escapeHtml(a.display_name)}", "${a.area_type || ''}", "${utils.escapeHtml(a.country || '')}"]' data-stop-propagation="true" title="Open Region Hub">
+              <i class="bi bi-layout-sidebar-inset me-1"></i>Open Hub
+            </button>
+            <button class="btn btn-sm ${btnClass}" data-action="nomineeUploads.openUploadModal" data-args='["${a.id}"]' data-stop-propagation="true">
               <i class="bi bi-cloud-upload me-1"></i>${btnLabel}
             </button>
           </td>
@@ -325,13 +333,24 @@ const nomineeUploads = (() => {
 
   // ── UPLOAD MODAL ──────────────────────────────────────────────
 
-  function openUploadModal(areaId) {
+  /**
+   * @param {string} areaId
+   * @param {number|string} [presetYear] - Pre-select this year instead of the
+   *   current calendar year (e.g. the season a Region Hub was open on), when
+   *   it's one of the selectable options.
+   */
+  function openUploadModal(areaId, presetYear) {
     _currentArea = _areas.find((a) => a.id === areaId) || null;
     if (!_currentArea) return;
     _resetForm();
     const nameEl = document.getElementById('nomineeUploadAreaName');
     if (nameEl) nameEl.textContent = _currentArea.display_name;
     _populateYearSelect();
+    const year = parseInt(presetYear, 10);
+    if (Number.isInteger(year) && _yearSelectOptions().includes(year)) {
+      const yearSelect = document.getElementById('nomineeUploadYear');
+      if (yearSelect) yearSelect.value = String(year);
+    }
     const modalEl = document.getElementById('nomineeUploadModal');
     if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
@@ -807,6 +826,7 @@ const nomineeUploads = (() => {
     setTypeFilter,
     setStatusFilter,
     setYearFilter,
+    getYearFilter,
     sortAreas,
     resetAreaFilters,
     _onAreaPickerChange,

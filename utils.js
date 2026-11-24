@@ -3479,11 +3479,29 @@ const apiClient = {
 
   /**
    * Get the current tenant ID for server-side tenant isolation.
+   *
+   * SECURITY (BTA-047, carried forward): api/data-proxy.js's
+   * rejectUntrustedTenantId() rejects every request whose tenantId isn't
+   * the literal string 'default', because no server-side tenant-membership
+   * check exists yet. tenantModule.restoreLastTenant() loads real rows from
+   * the live `tenants` table and auto-selects the first one whenever no
+   * tenant has been explicitly chosen -- in production that table has
+   * exactly one row, with a real UUID (not the literal string 'default'),
+   * so tenantModule.getTenantId() silently returned that UUID on every page
+   * load and every apiClient call (select/insert/update/delete/upsert/post)
+   * was rejected outright. Confirmed live: `select id from public.tenants`
+   * on production returns one row whose id is a UUID, never 'default'.
+   * Until a real server-side binding exists, only the literal 'default'
+   * sentinel is ever safe to forward — normalise anything else here, at the
+   * single point where tenant state crosses to the wire, rather than in
+   * multi-tenancy.js itself (whose own fallback-to-first-tenant behaviour
+   * is otherwise correct and unit-tested on its own terms).
    * @returns {string|undefined}
    */
   _getTenantId() {
     if (typeof tenantModule !== 'undefined' && tenantModule.getTenantId) {
-      return tenantModule.getTenantId();
+      const tenantId = tenantModule.getTenantId();
+      return tenantId === 'default' ? tenantId : 'default';
     }
     return undefined;
   },

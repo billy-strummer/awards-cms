@@ -1469,6 +1469,50 @@ async function executeAwardAreaImport(body, user) {
   const yearNow = requestedYear;
   const awardCache = new Map(); // category name -> award_id (found-or-created once per import)
 
+  // Resolve a batch record for this import so every entry it creates can be
+  // traced back to (and later bulk-deleted by) it. A single logical upload
+  // of up to 2000 rows is split client-side into fixed-size chunks (see
+  // nominee-uploads.js's IMPORT_CHUNK_SIZE), each its own server call — the
+  // client passes back the batchId the FIRST chunk's response returned so
+  // every later chunk accumulates onto the same batch row instead of each
+  // chunk creating its own, which would otherwise require staff to find
+  // and delete up to 20 separate batch records to undo one upload.
+  let batchId = null;
+  if (body.batchId) {
+    const { data: existingBatch } = await supabase
+      .from('nominee_upload_batches')
+      .select('id, area_id')
+      .eq('id', body.batchId)
+      .maybeSingle();
+    // Only reuse a batch that actually belongs to this same area -- a
+    // mismatched or forged id must never let one area's entries get
+    // attributed to another area's batch record.
+    if (existingBatch && existingBatch.area_id === area.id) batchId = existingBatch.id;
+  }
+  if (!batchId) {
+    try {
+      const { data: newBatch, error: batchErr } = await supabase
+        .from('nominee_upload_batches')
+        .insert({
+          filename: filename ? String(filename).slice(0, 255) : 'upload.csv',
+          area: area.display_name,
+          area_id: area.id,
+          country: area.country,
+          category: null,
+          year: yearNow,
+          csv_row_count: 0,
+          stored_row_count: 0,
+          uploaded_by: user.email || null,
+        })
+        .select('id')
+        .single();
+      if (!batchErr) batchId = newBatch.id;
+    } catch (_batchCreateErr) {
+      // Best-effort, same as the pre-existing audit-trail insert this
+      // replaces: a bookkeeping failure must never block the import itself.
+    }
+  }
+
   async function getOrCreateAward(resolved) {
     if (awardCache.has(resolved.category)) return awardCache.get(resolved.category);
 
@@ -1628,6 +1672,7 @@ async function executeAwardAreaImport(body, user) {
       payment_status: 'waived',
       public_votes: 0,
       tenant_id: tenantId,
+      import_batch_id: batchId,
     });
     if (entryErr) throw entryErr;
 
@@ -1637,24 +1682,34 @@ async function executeAwardAreaImport(body, user) {
   const entriesCreated = rowResults.filter((r) => r.action === 'imported').length;
 
   // Audit trail — best-effort, doesn't fail the import if it errors.
-  try {
-    await supabase.from('nominee_upload_batches').insert({
-      filename: filename ? String(filename).slice(0, 255) : 'upload.csv',
-      area: area.display_name,
-      country: area.country,
-      category: null,
-      csv_row_count: rows.length,
-      stored_row_count: entriesCreated,
-      uploaded_by: user.email || null,
-    });
-  } catch (_auditErr) {
-    /* audit trail is best-effort */
+  // Accumulates onto the single batch row resolved above (one per logical
+  // upload, not one per chunk) so its counts reflect the whole upload once
+  // every chunk has run, and so the rollback feature's "Recent Imports"
+  // list shows one accurate row per upload rather than one per chunk.
+  if (batchId) {
+    try {
+      const { data: currentBatch } = await supabase
+        .from('nominee_upload_batches')
+        .select('csv_row_count, stored_row_count')
+        .eq('id', batchId)
+        .maybeSingle();
+      await supabase
+        .from('nominee_upload_batches')
+        .update({
+          csv_row_count: (currentBatch?.csv_row_count || 0) + rows.length,
+          stored_row_count: (currentBatch?.stored_row_count || 0) + entriesCreated,
+        })
+        .eq('id', batchId);
+    } catch (_auditErr) {
+      /* audit trail is best-effort */
+    }
   }
 
   return {
     mode: 'import',
     valid: true,
     area,
+    batchId,
     totals: {
       rows: rows.length,
       entriesCreated,
@@ -1665,6 +1720,126 @@ async function executeAwardAreaImport(body, user) {
       alreadyEntered: rowResults.filter((r) => r.action === 'entry_exists').length,
     },
     rowResults,
+  };
+}
+
+/**
+ * Preview or execute a bulk rollback of one or more Award Areas spreadsheet
+ * import batches (migrations/100-add-import-batch-tracking.sql's
+ * entries.import_batch_id). Always a two-step flow from the client: a
+ * 'preview' call first to get an exact affected count and a breakdown of
+ * anything with downstream activity, then an explicit 'execute' call.
+ *
+ * Entries that have received public votes, judge scores, or outreach
+ * emails are never deleted unless the caller explicitly sets `force: true`
+ * on the execute call — deleting an entry cascades (ON DELETE CASCADE) to
+ * its votes/scores/deliberation notes/files/shortlist rows, so this is
+ * real judging/engagement data being destroyed, not just an import mistake
+ * being undone.
+ * @param {Object} body - { batchIds: string[], action: 'preview'|'execute', force?: boolean }
+ * @returns {Promise<Object>} Preview summary, or execute result.
+ */
+async function executeAwardAreaImportRollback(body) {
+  const batchIds = Array.isArray(body.batchIds)
+    ? [...new Set(body.batchIds.filter((id) => typeof id === 'string' && id))]
+    : [];
+  if (batchIds.length === 0) {
+    throw new Error('award_area_import_rollback: batchIds must be a non-empty array of batch ids');
+  }
+  if (batchIds.length > 50) {
+    throw new Error('award_area_import_rollback: maximum 50 batches per request');
+  }
+  const action = body.action === 'execute' ? 'execute' : 'preview';
+
+  const { data: batches, error: batchesErr } = await supabase
+    .from('nominee_upload_batches')
+    .select('id, filename, area, year, uploaded_by, uploaded_at')
+    .in('id', batchIds);
+  if (batchesErr) throw batchesErr;
+  if (!batches || batches.length === 0) {
+    throw new Error('award_area_import_rollback: no matching import batches found');
+  }
+  const foundIds = batches.map((b) => b.id);
+
+  const { data: entries, error: entriesErr } = await supabase
+    .from('entries')
+    .select('id, entry_number, entry_title, import_batch_id, public_votes, vote_count, nominee_outreach_sent_at')
+    .in('import_batch_id', foundIds);
+  if (entriesErr) throw entriesErr;
+
+  let scoredEntryIds = new Set();
+  const entryIds = (entries || []).map((e) => e.id);
+  if (entryIds.length > 0) {
+    const { data: scores, error: scoresErr } = await supabase
+      .from('judge_scores')
+      .select('entry_id')
+      .in('entry_id', entryIds);
+    if (scoresErr) throw scoresErr;
+    scoredEntryIds = new Set((scores || []).map((s) => s.entry_id));
+  }
+
+  const classified = (entries || []).map((e) => {
+    const reasons = [];
+    if ((e.public_votes || 0) > 0 || (e.vote_count || 0) > 0) reasons.push('votes');
+    if (scoredEntryIds.has(e.id)) reasons.push('scores');
+    if (e.nominee_outreach_sent_at) reasons.push('outreach');
+    return { id: e.id, entryNumber: e.entry_number, entryTitle: e.entry_title, batchId: e.import_batch_id, reasons };
+  });
+  const blocked = classified.filter((c) => c.reasons.length > 0);
+  const deletable = classified.filter((c) => c.reasons.length === 0);
+
+  const batchSummaries = batches.map((b) => ({
+    id: b.id,
+    filename: b.filename,
+    area: b.area,
+    year: b.year,
+    uploadedBy: b.uploaded_by,
+    uploadedAt: b.uploaded_at,
+    entryCount: classified.filter((c) => c.batchId === b.id).length,
+  }));
+
+  if (action === 'preview') {
+    return {
+      action: 'preview',
+      batches: batchSummaries,
+      totalEntries: classified.length,
+      deletableCount: deletable.length,
+      blockedCount: blocked.length,
+      blockedEntries: blocked.map((b) => ({
+        entryNumber: b.entryNumber,
+        entryTitle: b.entryTitle,
+        reasons: b.reasons,
+      })),
+    };
+  }
+
+  // ── Execute ──────────────────────────────────────────────────────
+  const force = body.force === true;
+  const idsToDelete = (force ? classified : deletable).map((c) => c.id);
+
+  if (idsToDelete.length > 0) {
+    const { error: deleteErr } = await supabase.from('entries').delete().in('id', idsToDelete);
+    if (deleteErr) throw deleteErr;
+  }
+
+  // Clean up a batch's own audit row only once none of its entries remain
+  // (deleted or otherwise) -- if any were skipped, the batch stays visible
+  // so its still-existing entries remain attributable and listable.
+  const deletedSet = new Set(idsToDelete);
+  const batchesRemoved = [];
+  for (const b of batchSummaries) {
+    const stillHasEntries = classified.some((c) => c.batchId === b.id && !deletedSet.has(c.id));
+    if (!stillHasEntries) {
+      await supabase.from('nominee_upload_batches').delete().eq('id', b.id);
+      batchesRemoved.push(b.id);
+    }
+  }
+
+  return {
+    action: 'execute',
+    deletedCount: idsToDelete.length,
+    skippedCount: force ? 0 : blocked.length,
+    batchesRemoved,
   };
 }
 
@@ -2369,6 +2544,20 @@ module.exports = async function handler(req, res) {
       }
       const importResult = await executeAwardAreaImport(body, user);
       return res.status(200).json(importResult);
+    }
+
+    // 7b2. Award Areas import batch rollback — bulk-undo one or more
+    // spreadsheet import batches (see migrations/100-add-import-batch-tracking.sql).
+    // Same role gate as the import itself: an editor can already delete any
+    // single entry one at a time via the standard 'entries' delete
+    // permission, so undoing their own bulk import in one step needs no
+    // higher bar than that.
+    if (body.operation === 'award_area_import_rollback') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res.status(403).json({ error: 'Forbidden', message: 'Import rollback requires editor role or above' });
+      }
+      const rollbackResult = await executeAwardAreaImportRollback(body);
+      return res.status(200).json(rollbackResult);
     }
 
     // 7c. User management — invite, role changes, disable/reactivate, password

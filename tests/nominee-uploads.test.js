@@ -37,6 +37,18 @@ const dom = new JSDOM(
     <input type="file" id="nomineeFileInput">
     <div id="nomineeUploadConfirmBtn"></div>
   </div>
+  <div id="recentImportsModal">
+    <div id="recentImportsAreaName"></div>
+    <div id="recentImportsList"></div>
+    <button id="recentImportsPreviewBtn" disabled></button>
+    <div id="recentImportsPreviewResult" class="d-none"></div>
+    <div id="recentImportsConfirmSection" class="d-none">
+      <div id="recentImportsForceWrapper" class="d-none">
+        <input type="checkbox" id="recentImportsForceCheckbox">
+      </div>
+      <button id="recentImportsConfirmBtn"></button>
+    </div>
+  </div>
   <div id="publicToastContainer"></div>
   </body></html>`,
   { url: 'http://localhost/', runScripts: 'dangerously', resources: 'usable' }
@@ -48,6 +60,7 @@ const { window: win } = dom;
 win.utils = {
   escapeHtml: (s) => String(s || ''),
   showToast: () => {},
+  confirmDialog: async () => true,
   // Simplified re-implementation of the real utils.showEnhancedEmptyState,
   // enough to assert on message/clear-filters-button wiring without
   // pulling in the whole utils.js module.
@@ -554,5 +567,229 @@ describe('nomineeUploads - getYearFilter()', () => {
     select.value = '2026';
     uploads.setYearFilter();
     expect(uploads.getYearFilter()).toBe(2026);
+  });
+});
+
+// -----------------------------------------------------------------------
+// Recent Imports / batch rollback — undoing an accidental spreadsheet
+// import without deleting up to 500 entries one row at a time.
+// -----------------------------------------------------------------------
+describe('nomineeUploads - Recent Imports / batch rollback', () => {
+  const areas = [{ id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' }];
+  const batches = [
+    {
+      id: 'batch-1',
+      filename: 'somerset-nov.csv',
+      year: 2026,
+      stored_row_count: 10,
+      uploaded_by: 'staff@bta.test',
+      uploaded_at: '2026-11-20T00:00:00Z',
+    },
+    {
+      id: 'batch-2',
+      filename: 'somerset-older.csv',
+      year: 2025,
+      stored_row_count: 5,
+      uploaded_by: 'staff2@bta.test',
+      uploaded_at: '2026-10-01T00:00:00Z',
+    },
+  ];
+
+  beforeEach(async () => {
+    jest.spyOn(win.apiClient, 'select').mockResolvedValue({ data: areas, error: null });
+    jest.spyOn(win.apiClient, 'selectAll').mockResolvedValue([]);
+    await uploads.loadAreasTable();
+  });
+
+  afterEach(() => {
+    win.apiClient.select.mockRestore();
+    win.apiClient.selectAll.mockRestore();
+    if (win.apiClient.post.mockRestore) win.apiClient.post.mockRestore();
+  });
+
+  test('openRecentImportsModal loads and renders the area batches', async () => {
+    win.apiClient.select.mockResolvedValue({ data: batches, error: null });
+    await uploads.openRecentImportsModal('area-1');
+
+    expect(win.document.getElementById('recentImportsAreaName').textContent).toBe('Somerset');
+    const rows = win.document.querySelectorAll('.recent-import-checkbox');
+    expect(rows.length).toBe(2);
+    expect(win.document.getElementById('recentImportsList').innerHTML).toContain('somerset-nov.csv');
+  });
+
+  test('openRecentImportsModal does nothing for an unknown area id', async () => {
+    win.document.getElementById('recentImportsAreaName').textContent = '';
+    const selectSpy = jest.spyOn(win.apiClient, 'select');
+    selectSpy.mockClear();
+    await uploads.openRecentImportsModal('does-not-exist');
+    expect(win.document.getElementById('recentImportsAreaName').textContent).toBe('');
+    expect(selectSpy).not.toHaveBeenCalled();
+  });
+
+  describe('with batches rendered', () => {
+    beforeEach(async () => {
+      win.apiClient.select.mockResolvedValue({ data: batches, error: null });
+      await uploads.openRecentImportsModal('area-1');
+    });
+
+    test('_getSelectedBatchIds returns only the checked batch ids', () => {
+      const checkboxes = win.document.querySelectorAll('.recent-import-checkbox');
+      checkboxes[0].checked = true;
+      expect(uploads._getSelectedBatchIds()).toEqual(['batch-1']);
+      checkboxes[1].checked = true;
+      expect(uploads._getSelectedBatchIds()).toEqual(['batch-1', 'batch-2']);
+    });
+
+    test('_updateRollbackPreviewButton enables the preview button only when something is checked', () => {
+      const btn = win.document.getElementById('recentImportsPreviewBtn');
+      const checkboxes = win.document.querySelectorAll('.recent-import-checkbox');
+      uploads._updateRollbackPreviewButton();
+      expect(btn.disabled).toBe(true);
+      checkboxes[0].checked = true;
+      uploads._updateRollbackPreviewButton();
+      expect(btn.disabled).toBe(false);
+    });
+
+    test('_updateRollbackPreviewButton hides a stale confirm section when the selection changes', () => {
+      const confirmSection = win.document.getElementById('recentImportsConfirmSection');
+      confirmSection.classList.remove('d-none');
+      uploads._updateRollbackPreviewButton();
+      expect(confirmSection.classList.contains('d-none')).toBe(true);
+    });
+
+    test('_previewRollback posts the selected batch ids and renders a clean-deletion result', async () => {
+      win.document.querySelectorAll('.recent-import-checkbox')[0].checked = true;
+      const postSpy = jest.spyOn(win.apiClient, 'post').mockResolvedValue({
+        action: 'preview',
+        totalEntries: 3,
+        deletableCount: 3,
+        blockedCount: 0,
+        blockedEntries: [],
+      });
+
+      await uploads._previewRollback();
+
+      expect(postSpy).toHaveBeenCalledWith('award_area_import_rollback', { action: 'preview', batchIds: ['batch-1'] });
+      const resultEl = win.document.getElementById('recentImportsPreviewResult');
+      expect(resultEl.classList.contains('d-none')).toBe(false);
+      expect(resultEl.innerHTML).toContain('3 of 3');
+      expect(win.document.getElementById('recentImportsConfirmSection').classList.contains('d-none')).toBe(false);
+      expect(win.document.getElementById('recentImportsForceWrapper').classList.contains('d-none')).toBe(true);
+      expect(win.document.getElementById('recentImportsConfirmBtn').textContent).toBe('Delete 3 Entries');
+    });
+
+    test('_previewRollback does nothing when no batch is selected', async () => {
+      const postSpy = jest.spyOn(win.apiClient, 'post');
+      await uploads._previewRollback();
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+
+    test('_renderRollbackPreview shows the force option and a per-entry reason breakdown when blocked', () => {
+      uploads._renderRollbackPreview({
+        action: 'preview',
+        totalEntries: 2,
+        deletableCount: 1,
+        blockedCount: 1,
+        blockedEntries: [{ entryNumber: 'BTA-2026-0002', entryTitle: 'Voted Co', reasons: ['votes'] }],
+      });
+
+      const resultEl = win.document.getElementById('recentImportsPreviewResult');
+      expect(resultEl.innerHTML).toContain('1 of 2');
+      expect(resultEl.innerHTML).toContain('BTA-2026-0002');
+      expect(resultEl.innerHTML).toContain('votes');
+      expect(win.document.getElementById('recentImportsForceWrapper').classList.contains('d-none')).toBe(false);
+    });
+
+    test('_renderRollbackPreview shows a plain message and hides confirm when nothing matches', () => {
+      uploads._renderRollbackPreview({
+        action: 'preview',
+        totalEntries: 0,
+        deletableCount: 0,
+        blockedCount: 0,
+        blockedEntries: [],
+      });
+      expect(win.document.getElementById('recentImportsPreviewResult').innerHTML).toContain(
+        'no remaining imported entries'
+      );
+      expect(win.document.getElementById('recentImportsConfirmSection').classList.contains('d-none')).toBe(true);
+    });
+
+    test('_confirmRollback does nothing without a prior preview', async () => {
+      const postSpy = jest.spyOn(win.apiClient, 'post');
+      await uploads._confirmRollback();
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+
+    test('_confirmRollback executes the rollback and reports the result', async () => {
+      win.document.querySelectorAll('.recent-import-checkbox')[0].checked = true;
+      jest
+        .spyOn(win.apiClient, 'post')
+        .mockResolvedValueOnce({
+          action: 'preview',
+          totalEntries: 3,
+          deletableCount: 3,
+          blockedCount: 0,
+          blockedEntries: [],
+        })
+        .mockResolvedValueOnce({ action: 'execute', deletedCount: 3, skippedCount: 0, batchesRemoved: ['batch-1'] });
+      await uploads._previewRollback();
+
+      const toastSpy = jest.spyOn(win.utils, 'showToast');
+      await uploads._confirmRollback();
+
+      expect(win.apiClient.post).toHaveBeenLastCalledWith('award_area_import_rollback', {
+        action: 'execute',
+        batchIds: ['batch-1'],
+        force: false,
+      });
+      expect(toastSpy).toHaveBeenCalled();
+      toastSpy.mockRestore();
+    });
+
+    test('_confirmRollback respects the force checkbox', async () => {
+      win.document.querySelectorAll('.recent-import-checkbox')[0].checked = true;
+      jest
+        .spyOn(win.apiClient, 'post')
+        .mockResolvedValueOnce({
+          action: 'preview',
+          totalEntries: 2,
+          deletableCount: 1,
+          blockedCount: 1,
+          blockedEntries: [],
+        })
+        .mockResolvedValueOnce({ action: 'execute', deletedCount: 2, skippedCount: 0, batchesRemoved: ['batch-1'] });
+      await uploads._previewRollback();
+      win.document.getElementById('recentImportsForceCheckbox').checked = true;
+
+      await uploads._confirmRollback();
+
+      expect(win.apiClient.post).toHaveBeenLastCalledWith('award_area_import_rollback', {
+        action: 'execute',
+        batchIds: ['batch-1'],
+        force: true,
+      });
+    });
+
+    test('_confirmRollback aborts when the user declines the confirm dialog', async () => {
+      win.document.querySelectorAll('.recent-import-checkbox')[0].checked = true;
+      jest
+        .spyOn(win.apiClient, 'post')
+        .mockResolvedValueOnce({
+          action: 'preview',
+          totalEntries: 1,
+          deletableCount: 1,
+          blockedCount: 0,
+          blockedEntries: [],
+        });
+      await uploads._previewRollback();
+
+      const confirmSpy = jest.spyOn(win.utils, 'confirmDialog').mockResolvedValue(false);
+      const postSpy = jest.spyOn(win.apiClient, 'post');
+      postSpy.mockClear();
+      await uploads._confirmRollback();
+
+      expect(postSpy).not.toHaveBeenCalled();
+      confirmSpy.mockRestore();
+    });
   });
 });

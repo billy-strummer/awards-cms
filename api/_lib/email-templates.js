@@ -28,6 +28,7 @@ const DB_TEMPLATE_TYPE_MAP = {
   GENERAL: 'general',
   NOTIFICATION: 'notification',
   INVITE: 'invite',
+  NOMINEE_OUTREACH: 'nominee_outreach',
 };
 
 /**
@@ -534,6 +535,35 @@ const EMAIL_TEMPLATES = {
         </table>
 
         <p><strong>{{brand_name}} Team</strong></p>
+      </div>
+    `,
+  },
+
+  // Region-level nominee outreach (Roadmap 2.2). Subject and intro are
+  // fully caller-supplied (an operator edits both in the Region Hub's
+  // outreach modal before sending) — same {{subject_line}}/override
+  // convention as GENERAL/NOTIFICATION/INVITE above. The nomination
+  // details box below the intro is NOT editable, since it's simply a
+  // factual restatement of this specific nominee's own entry.
+  NOMINEE_OUTREACH: {
+    preheader: 'You have been officially nominated for a British Trade Award.',
+    subject: '{{subject_line}}',
+    body: `
+      <div style="padding: 30px 40px;">
+        <h1 style="margin: 0 0 20px 0; font-family: Arial, sans-serif; font-size: 28px; color: #1a1a1a;">Official Nominee</h1>
+        <p>Dear {{recipient_name}},</p>
+        <p>{{intro_copy}}</p>
+
+        <div style="background: #fffdf5; border-left: 4px solid #D4AF37; padding: 16px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+            <tr><td style="padding: 4px 8px; color: #6c757d; width: 120px;">Nominee:</td><td style="padding: 4px 8px; font-weight: 600;">{{nominee_name}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Category:</td><td style="padding: 4px 8px;">{{award_category}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Area:</td><td style="padding: 4px 8px;">{{area_name}}</td></tr>
+            <tr><td style="padding: 4px 8px; color: #6c757d;">Season:</td><td style="padding: 4px 8px;">{{season}}</td></tr>
+          </table>
+        </div>
+
+        <p style="margin-top: 24px;">Kind regards,<br><strong>{{brand_name}} Team</strong></p>
       </div>
     `,
   },

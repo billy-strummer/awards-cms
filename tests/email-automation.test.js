@@ -769,3 +769,214 @@ describe('Email Automation - Resend webhook signature verification', () => {
     expect(res.body.suppressed).toBe('bounced@example.com');
   });
 });
+
+// ---------------------------------------------------------------------------
+// send-nominee-outreach (Roadmap 2.2) — region-level bulk nominee outreach,
+// dispatched via the Region Hub's "Send Nominee Outreach" button.
+// ---------------------------------------------------------------------------
+describe('Email Automation - send-nominee-outreach', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTableResponses = {};
+    setupDefaultMocks();
+    mockEmailsSend.mockResolvedValue({ id: 'email-123' });
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: 'user-123', email: 'admin@test.com' } },
+      error: null,
+    });
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'admin' }, error: null });
+  });
+
+  function entriesChain(rows) {
+    const chain = chainable({ data: rows, error: null });
+    chain.update = jest.fn(() => chain);
+    return chain;
+  }
+
+  test('rejects with 400 when required fields are missing', async () => {
+    const req = createReq({ body: { action: 'send-nominee-outreach', areaName: 'Cardiff' } });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('rejects with 400 when season is not a whole number', async () => {
+    const req = createReq({
+      body: { action: 'send-nominee-outreach', areaName: 'Cardiff', season: 'soon', subject: 'S', introCopy: 'I' },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test.each(['viewer', 'editor'])(
+    'rejects a %s-role user with 403 (same floor as the other mass-send actions)',
+    async (role) => {
+      mockTableResponses['user_roles'] = chainable({ data: { role }, error: null });
+      const req = createReq({
+        body: { action: 'send-nominee-outreach', areaName: 'Cardiff', season: 2027, subject: 'S', introCopy: 'I' },
+      });
+      const res = createRes();
+      await emailAutomationHandler(req, res);
+      expect(res.statusCode).toBe(403);
+    }
+  );
+
+  test('excludes entries with no email or an invalid email address', async () => {
+    mockTableResponses['entries'] = entriesChain([
+      { id: 'e1', contact_name: 'A', contact_email: 'a@example.com', award_category: 'Roofing', entry_title: 'A Ltd' },
+      { id: 'e2', contact_name: 'B', contact_email: null, award_category: 'Roofing', entry_title: 'B Ltd' },
+      { id: 'e3', contact_name: 'C', contact_email: 'not-an-email', award_category: 'Roofing', entry_title: 'C Ltd' },
+    ]);
+
+    const req = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+      },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+
+    expect(res.body.sent).toBe(1);
+    expect(res.body.skippedNoEmail).toBe(2);
+    expect(mockEmailsSend).toHaveBeenCalledTimes(1);
+    expect(mockEmailsSend.mock.calls[0][0].to).toBe('a@example.com');
+  });
+
+  test('excludes already-sent entries by default, and includes them when includeAlreadySent is true', async () => {
+    const rows = [
+      {
+        id: 'e1',
+        contact_name: 'A',
+        contact_email: 'a@example.com',
+        award_category: 'Roofing',
+        entry_title: 'A Ltd',
+        nominee_outreach_sent_at: null,
+      },
+      {
+        id: 'e2',
+        contact_name: 'B',
+        contact_email: 'b@example.com',
+        award_category: 'Roofing',
+        entry_title: 'B Ltd',
+        nominee_outreach_sent_at: '2026-01-01T00:00:00Z',
+      },
+    ];
+    mockTableResponses['entries'] = entriesChain(rows);
+
+    const req1 = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+      },
+    });
+    const res1 = createRes();
+    await emailAutomationHandler(req1, res1);
+    expect(res1.body.sent).toBe(1);
+    expect(res1.body.skippedAlreadySent).toBe(1);
+
+    jest.clearAllMocks();
+    mockTableResponses['user_roles'] = chainable({ data: { role: 'admin' }, error: null });
+    setupDefaultMocks();
+    mockEmailsSend.mockResolvedValue({ id: 'email-123' });
+    mockTableResponses['entries'] = entriesChain(rows);
+
+    const req2 = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+        includeAlreadySent: true,
+      },
+    });
+    const res2 = createRes();
+    await emailAutomationHandler(req2, res2);
+    expect(res2.body.sent).toBe(2);
+    expect(res2.body.skippedAlreadySent).toBe(0);
+  });
+
+  test('builds email variables from the organisation company_name, with subject/intro passed through as the operator edited them', async () => {
+    mockTableResponses['entries'] = entriesChain([
+      {
+        id: 'e1',
+        contact_name: 'Jane',
+        contact_email: 'jane@example.com',
+        award_category: 'Roofing Company',
+        entry_title: 'Fallback Title',
+        organisations: { company_name: 'Acme Roofing Ltd' },
+      },
+    ]);
+
+    const req = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Official Nominee — Cardiff — 2027',
+        introCopy: "Congratulations, you've been nominated!",
+      },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+
+    expect(mockEmailsSend).toHaveBeenCalledTimes(1);
+    const sentHtml = mockEmailsSend.mock.calls[0][0].html;
+    const sentSubject = mockEmailsSend.mock.calls[0][0].subject;
+    expect(sentSubject).toBe('Official Nominee — Cardiff — 2027');
+    expect(sentHtml).toContain('Acme Roofing Ltd');
+    expect(sentHtml).toContain('Roofing Company');
+    expect(sentHtml).toContain('Cardiff');
+    expect(sentHtml).toContain('2027');
+    expect(sentHtml).toContain("Congratulations, you've been nominated!");
+  });
+
+  test('records sentEntryIds only for entries that actually sent successfully', async () => {
+    mockTableResponses['entries'] = entriesChain([
+      { id: 'e1', contact_name: 'A', contact_email: 'a@example.com', award_category: 'Roofing', entry_title: 'A Ltd' },
+      { id: 'e2', contact_name: 'B', contact_email: 'b@example.com', award_category: 'Roofing', entry_title: 'B Ltd' },
+    ]);
+    mockEmailsSend.mockResolvedValueOnce({ id: 'ok' }).mockRejectedValueOnce(new Error('resend down'));
+
+    const req = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+      },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+
+    expect(res.body.sent).toBe(1);
+    expect(res.body.failed).toBe(1);
+    expect(res.body.sentEntryIds).toEqual(['e1']);
+  });
+
+  test('returns 500 when the entries query itself fails', async () => {
+    mockTableResponses['entries'] = chainable({ data: null, error: { message: 'db down' } });
+
+    const req = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+      },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+    expect(res.statusCode).toBe(500);
+  });
+});

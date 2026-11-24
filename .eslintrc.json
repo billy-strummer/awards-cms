@@ -81,7 +81,9 @@
     "locationModule": "readonly",
     "areasManager": "readonly",
     "nomineeUploads": "readonly",
-    "nomineeBadgeModule": "readonly"
+    "nomineeBadgeModule": "readonly",
+    "loadChunk": "readonly",
+    "judgingWorkspaceModule": "readonly"
   },
   "parserOptions": {
     "ecmaVersion": 2022,

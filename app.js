@@ -983,6 +983,13 @@ function loadChunk(filename) {
   loadChunk._pending[filename] = promise;
   return promise;
 }
+// Exposed globally (not just via the ESM export below) so plain-script
+// modules that depend on a lazy chunk's own module (e.g. judging-workspace.js
+// awaiting winnerPipelineModule from events.chunk.js) can call it the same
+// way every other cross-module global in this codebase is reached, without
+// introducing a static import of app.js into a core module -- no other
+// core module does that, and app.js's own init code is order-sensitive.
+ModuleRegistry.register('loadChunk', loadChunk);
 
 // Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', function () {
@@ -2490,4 +2497,4 @@ window.app = {
   },
 };
 
-export { reportsScheduler };
+export { reportsScheduler, loadChunk };

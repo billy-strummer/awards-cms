@@ -14,7 +14,7 @@
 |---|---|---|---|---|
 | 2026-11-24 | Roadmap created | Done | this commit | Initial version of this file. |
 | 2026-11-24 | 0.1 Award Areas UX Overhaul | **Done — merged to `main`** | [#366](https://github.com/billy-strummer/awards-cms/pull/366) (merge commit `9233abf`) | Merged per explicit authorization. Branch `claude/award-areas-ux-overhaul` deleted locally; remote delete blocked by a 403 from this session's egress proxy (policy denial, not retried) — remote branch may still exist on `origin`, harmlessly, since its content is fully merged. |
-| 2026-11-24 | 0.2 Cross-Screen Admin UI/UX Polish | **Done — PR open, not yet merged** | `claude/admin-ui-polish-pass` → #TBD | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section V. Could not verify a literal "¢" character or a "stale timestamp" header badge anywhere in source (exhaustive grep); fixed the concrete, verified bugs found instead — see Section V for the discrepancy report. |
+| 2026-11-24 | 0.2 Cross-Screen Admin UI/UX Polish | **Done — PR open, not yet merged** | `claude/admin-ui-polish-pass` → [#367](https://github.com/billy-strummer/awards-cms/pull/367) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section V. Could not verify a literal "¢" character or a "stale timestamp" header badge anywhere in source (exhaustive grep); fixed the concrete, verified bugs found instead — see Section V for the discrepancy report. |
 
 ---
 

@@ -3,61 +3,67 @@
       <!-- ==================================================== -->
       <div class="tab-pane fade" id="award-areas" role="tabpanel">
         <div class="container-fluid">
+          <div style="max-width: 1100px;">
 
           <!-- Page Header -->
-          <div class="section-header">
-            <h1 class="section-title">
-              <i class="bi bi-geo-alt me-2"></i>Award Areas
-            </h1>
-            <p class="section-subtitle">Bulk-import nominees for any County, City, or London Borough<span id="awardAreasSummary" class="ms-2 text-muted"></span></p>
+          <div class="section-header d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+              <h1 class="section-title">
+                <i class="bi bi-geo-alt me-2"></i>Award Areas
+              </h1>
+              <p class="section-subtitle">Bulk-import nominees for any County, City, or London Borough<span id="awardAreasSummary" class="ms-2 text-muted"></span></p>
+            </div>
+            <button type="button" class="btn btn-primary" id="awardAreasImportBtn" data-action="nomineeUploads.openImportModal">
+              <i class="bi bi-cloud-upload me-1"></i>Import Spreadsheet
+            </button>
           </div>
 
           <!-- Getting Started Banner -->
-          <div class="card border-0 shadow-sm mb-4" id="awardAreasGettingStarted">
-            <div class="card-body py-3">
-              <div class="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h6 class="fw-bold mb-1"><i class="bi bi-map me-2 text-primary"></i>Getting Started — Award Areas</h6>
-                  <p class="text-muted small mb-0">Every County, City, and London Borough is already set up — you never need to create these. Upload a CSV per area to publish nominees to the website.</p>
+          <div class="card border-0 shadow-sm mb-3" id="awardAreasGettingStarted">
+            <div class="card-body py-2 px-3">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center flex-wrap gap-3 small mb-0">
+                  <span class="fw-semibold text-primary text-nowrap"><i class="bi bi-map me-1"></i>Getting Started</span>
+                  <span class="d-inline-flex align-items-center gap-2 text-nowrap">
+                    <span class="badge bg-primary rounded-circle" style="width:18px;height:18px;line-height:18px;padding:0;font-size:.7rem;">1</span>
+                    <span class="text-muted">Click <strong class="text-dark">Upload Spreadsheet</strong> on an area</span>
+                  </span>
+                  <span class="d-inline-flex align-items-center gap-2 text-nowrap">
+                    <span class="badge bg-primary rounded-circle" style="width:18px;height:18px;line-height:18px;padding:0;font-size:.7rem;">2</span>
+                    <span class="text-muted">Fix any validation errors</span>
+                  </span>
+                  <span class="d-inline-flex align-items-center gap-2 text-nowrap">
+                    <span class="badge bg-primary rounded-circle" style="width:18px;height:18px;line-height:18px;padding:0;font-size:.7rem;">3</span>
+                    <span class="text-muted">Import — it's live immediately</span>
+                  </span>
                 </div>
-                <button type="button" class="btn-close btn-sm" aria-label="Dismiss" onclick="document.getElementById('awardAreasGettingStarted').style.display='none';"></button>
-              </div>
-              <div class="row g-2">
-                <div class="col-md-4">
-                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
-                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">1</span>
-                    <div>
-                      <div class="fw-semibold small">Click Upload CSV on an area</div>
-                      <div class="text-muted" style="font-size:.75rem;">Every row is automatically assigned to that area — you never type a county name.</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
-                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">2</span>
-                    <div>
-                      <div class="fw-semibold small">Fix any validation errors</div>
-                      <div class="text-muted" style="font-size:.75rem;">Unknown categories, duplicate companies, and bad emails are checked before anything is imported.</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div class="d-flex align-items-start gap-2 p-2 rounded" style="background:#f8f9fa;">
-                    <span class="badge bg-primary rounded-circle flex-shrink-0" style="width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:.75rem;">3</span>
-                    <div>
-                      <div class="fw-semibold small">Import — it's live immediately</div>
-                      <div class="text-muted" style="font-size:.75rem;">Every imported nominee is published straight to the public site. No separate publish step.</div>
-                    </div>
-                  </div>
-                </div>
+                <button type="button" class="btn-close btn-sm flex-shrink-0" aria-label="Dismiss" onclick="document.getElementById('awardAreasGettingStarted').style.display='none';localStorage.setItem('awardAreasWorkflowDismissed','1');"></button>
               </div>
             </div>
           </div>
 
-          <!-- Search -->
+          <!-- Toolbar: search, type/status filters, award year -->
           <div class="card border-0 shadow-sm mb-3">
-            <div class="card-body py-2">
-              <input type="text" class="form-control form-control-sm" id="awardAreasSearch" placeholder="Search areas…" style="max-width:320px;">
+            <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+              <input type="text" class="form-control form-control-sm" id="awardAreasSearch" placeholder="Search areas…" style="max-width:220px;">
+
+              <div class="btn-group btn-group-sm" role="group" aria-label="Filter by area type">
+                <button type="button" class="btn btn-outline-secondary active" data-type-filter="all" data-action="nomineeUploads.setTypeFilter" data-args='["all"]'>All</button>
+                <button type="button" class="btn btn-outline-secondary" data-type-filter="county" data-action="nomineeUploads.setTypeFilter" data-args='["county"]'>Counties</button>
+                <button type="button" class="btn btn-outline-secondary" data-type-filter="city" data-action="nomineeUploads.setTypeFilter" data-args='["city"]'>Cities</button>
+                <button type="button" class="btn btn-outline-secondary" data-type-filter="borough" data-action="nomineeUploads.setTypeFilter" data-args='["borough"]'>London Boroughs</button>
+              </div>
+
+              <div class="btn-group btn-group-sm" role="group" aria-label="Filter by import status">
+                <button type="button" class="btn btn-outline-secondary active" data-status-filter="all" data-action="nomineeUploads.setStatusFilter" data-args='["all"]'>All Statuses</button>
+                <button type="button" class="btn btn-outline-secondary" data-status-filter="imported" data-action="nomineeUploads.setStatusFilter" data-args='["imported"]'>Imported</button>
+                <button type="button" class="btn btn-outline-secondary" data-status-filter="empty" data-action="nomineeUploads.setStatusFilter" data-args='["empty"]'>Empty</button>
+              </div>
+
+              <div class="d-flex align-items-center gap-2 ms-auto">
+                <label for="awardAreasYearFilter" class="form-label small text-muted mb-0 text-nowrap">Award Year</label>
+                <select class="form-select form-select-sm" id="awardAreasYearFilter" style="width:auto;" data-on-change="nomineeUploads.setYearFilter"></select>
+              </div>
             </div>
           </div>
 
@@ -65,14 +71,14 @@
           <div class="card border-0 shadow-sm">
             <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0 align-middle">
                   <thead class="table-light">
                     <tr>
-                      <th>Area</th>
-                      <th>Type</th>
-                      <th>Entries</th>
-                      <th>Status</th>
-                      <th>Action</th>
+                      <th style="width:38%;" class="u-pointer" data-action="nomineeUploads.sortAreas" data-args='["name"]' aria-sort="ascending">Area <i data-sort-icon-areas="name" class="bi bi-caret-up-fill text-primary ms-1 small"></i></th>
+                      <th style="width:18%;" class="u-pointer" data-action="nomineeUploads.sortAreas" data-args='["type"]' aria-sort="none">Type <i data-sort-icon-areas="type" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                      <th style="width:12%;" class="u-pointer" data-action="nomineeUploads.sortAreas" data-args='["count"]' aria-sort="none">Nominees <i data-sort-icon-areas="count" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                      <th style="width:14%;">Status</th>
+                      <th style="width:18%;" class="text-end">Action</th>
                     </tr>
                   </thead>
                   <tbody id="awardAreasTableBody">
@@ -83,11 +89,12 @@
             </div>
           </div>
 
+          </div>
         </div>
       </div>
 
       <!-- ==================================================== -->
-      <!-- AWARD AREAS — CSV UPLOAD MODAL -->
+      <!-- AWARD AREAS — SPREADSHEET UPLOAD MODAL -->
       <!-- ==================================================== -->
       <div class="modal fade" id="nomineeUploadModal" tabindex="-1" aria-labelledby="nomineeUploadModalTitle" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -100,8 +107,14 @@
             </div>
             <div class="modal-body">
 
-              <!-- Step 1: file picker -->
+              <!-- Step 1: area (when opened via top-level Import) + file picker -->
               <div id="nomineeStep1">
+                <div id="nomineeAreaPickerWrapper" class="mb-3 d-none">
+                  <label for="nomineeUploadAreaPicker" class="form-label small fw-semibold">County / City / London Borough</label>
+                  <select class="form-select" id="nomineeUploadAreaPicker" data-on-change="nomineeUploads._onAreaPickerChange">
+                    <option value="">Select an area…</option>
+                  </select>
+                </div>
                 <p class="text-muted small">
                   CSV or Excel (.xlsx) file must include a <strong>Company Name</strong> column and an <strong>Award Category</strong> column
                   (category must match an existing award category exactly). Optional columns: Email, Contact Name, Phone, Website, Address, Catchment Area, Rank, Notes.

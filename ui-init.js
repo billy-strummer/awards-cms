@@ -19,6 +19,7 @@
     ['orgsWorkflowDismissed', 'orgsGettingStarted'],
     ['winnersWorkflowDismissed', 'winnersGettingStarted'],
     ['entriesWorkflowDismissed', 'entriesGettingStarted'],
+    ['awardAreasWorkflowDismissed', 'awardAreasGettingStarted'],
     ['mediaGalleryWorkflowDismissed', 'mediaGalleryGettingStarted'],
     ['eventsWorkflowDismissed', 'eventsGettingStarted'],
     ['reportsWorkflowDismissed', 'reportsGettingStarted'],

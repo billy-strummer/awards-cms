@@ -15,7 +15,26 @@ const path = require('path');
 // -----------------------------------------------------------------------
 const dom = new JSDOM(
   `<!DOCTYPE html><html><body>
+  <span id="awardAreasSummary"></span>
+  <input id="awardAreasSearch">
+  <button data-type-filter="all" class="active"></button>
+  <button data-type-filter="county"></button>
+  <button data-type-filter="city"></button>
+  <button data-type-filter="borough"></button>
+  <button data-status-filter="all" class="active"></button>
+  <button data-status-filter="imported"></button>
+  <button data-status-filter="empty"></button>
+  <select id="awardAreasYearFilter"></select>
+  <i data-sort-icon-areas="name"></i>
+  <i data-sort-icon-areas="type"></i>
+  <i data-sort-icon-areas="count"></i>
+  <table><tbody id="awardAreasTableBody"></tbody></table>
   <div id="nomineeUploadModal">
+    <div id="nomineeUploadAreaName"></div>
+    <div id="nomineeAreaPickerWrapper" class="d-none">
+      <select id="nomineeUploadAreaPicker"></select>
+    </div>
+    <input type="file" id="nomineeFileInput">
     <div id="nomineeUploadConfirmBtn"></div>
   </div>
   <div id="publicToastContainer"></div>
@@ -29,13 +48,36 @@ const { window: win } = dom;
 win.utils = {
   escapeHtml: (s) => String(s || ''),
   showToast: () => {},
+  // Simplified re-implementation of the real utils.showEnhancedEmptyState,
+  // enough to assert on message/clear-filters-button wiring without
+  // pulling in the whole utils.js module.
+  showEnhancedEmptyState: (tableBodyId, colspan, options = {}) => {
+    const { message = 'No data found', isFiltered = false, clearAction = '' } = options;
+    const tbody = win.document.getElementById(tableBodyId);
+    if (!tbody) return;
+    const clearBtn = isFiltered && clearAction ? `<button data-action="${clearAction}">Clear Filters</button>` : '';
+    tbody.innerHTML = `<tr><td colspan="${colspan}"><p>${message}</p>${clearBtn}</td></tr>`;
+  },
 };
 
 // Minimal apiClient mock (nominee-uploads calls this for DB ops)
 win.apiClient = {
   select: async () => ({ data: [], error: null }),
+  selectAll: async () => [],
   insert: async () => ({ data: [], error: null }),
   post: async () => ({ data: [], error: null }),
+};
+
+// Minimal bootstrap mock -- openUploadModal()/openImportModal() show a
+// real Bootstrap modal in the app; jsdom has no such thing.
+win.bootstrap = {
+  Modal: class {
+    show() {}
+    hide() {}
+    static getOrCreateInstance() {
+      return { show() {}, hide() {} };
+    }
+  },
 };
 
 const scriptContent = fs.readFileSync(path.join(__dirname, '../nominee-uploads.js'), 'utf8');
@@ -287,5 +329,182 @@ describe('nomineeUploads - _mergeTotals()', () => {
     expect(uploads._mergeTotals(a, b)).toEqual(
       totals({ rows: 80, entriesCreated: 78, organisationsCreated: 15, skipped: 2, alreadyEntered: 1 })
     );
+  });
+});
+
+// -----------------------------------------------------------------------
+// Award Areas table: default sort, type/status/year filters, pill state
+// -----------------------------------------------------------------------
+describe('nomineeUploads - Award Areas table sort & filters', () => {
+  function makeArea(overrides) {
+    return {
+      id: overrides.id,
+      display_name: overrides.display_name,
+      country: overrides.country || 'England',
+      area_type: overrides.area_type || 'county',
+      sort_order: overrides.sort_order || 0,
+    };
+  }
+
+  const areas = [
+    makeArea({ id: 'a1', display_name: 'Gwynedd & Anglesey', area_type: 'county', sort_order: 900 }),
+    makeArea({ id: 'a2', display_name: 'Glasgow', area_type: 'city', sort_order: 100 }),
+    makeArea({ id: 'a3', display_name: 'Cardiff', area_type: 'city', sort_order: 500 }),
+    makeArea({ id: 'a4', display_name: 'Westminster', area_type: 'borough', sort_order: 10 }),
+    makeArea({ id: 'a5', display_name: 'Highlands', area_type: 'region', sort_order: 200 }),
+  ];
+
+  const entries = [
+    { county_city: 'Cardiff', year: 2026 },
+    { county_city: 'Cardiff', year: 2026 },
+    { county_city: 'Glasgow', year: 2025 },
+  ];
+
+  beforeEach(async () => {
+    jest.spyOn(win.apiClient, 'select').mockResolvedValue({ data: areas, error: null });
+    jest.spyOn(win.apiClient, 'selectAll').mockResolvedValue(entries);
+    win.document.getElementById('awardAreasYearFilter').innerHTML = '';
+    await uploads.loadAreasTable();
+  });
+
+  afterEach(() => {
+    win.apiClient.select.mockRestore();
+    win.apiClient.selectAll.mockRestore();
+    uploads.setTypeFilter('all');
+    uploads.setStatusFilter('all');
+  });
+
+  test('renders areas strictly alphabetically by default', () => {
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const names = [...tbody.querySelectorAll('tr td:first-child')].map((td) => td.textContent);
+    expect(names).toEqual(['Cardiff', 'Glasgow', 'Gwynedd & Anglesey', 'Highlands', 'Westminster']);
+  });
+
+  test('setTypeFilter("borough") shows only London Boroughs and marks the right pill active', () => {
+    uploads.setTypeFilter('borough');
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const names = [...tbody.querySelectorAll('tr td:first-child')].map((td) => td.textContent);
+    expect(names).toEqual(['Westminster']);
+    expect(win.document.querySelector('[data-type-filter="borough"]').classList.contains('active')).toBe(true);
+    expect(win.document.querySelector('[data-type-filter="all"]').classList.contains('active')).toBe(false);
+  });
+
+  test('setTypeFilter("county") includes Scotland\'s "region" areas alongside counties', () => {
+    uploads.setTypeFilter('county');
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const names = [...tbody.querySelectorAll('tr td:first-child')].map((td) => td.textContent);
+    expect(names).toEqual(['Gwynedd & Anglesey', 'Highlands']);
+  });
+
+  test('setStatusFilter("imported") shows only areas with entries for the selected year', () => {
+    uploads.setStatusFilter('imported');
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const names = [...tbody.querySelectorAll('tr td:first-child')].map((td) => td.textContent);
+    expect(names).toEqual(['Cardiff']); // Glasgow's entries are 2025, current year is 2026
+  });
+
+  test('setStatusFilter("empty") excludes areas with entries for the selected year', () => {
+    uploads.setStatusFilter('empty');
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const names = [...tbody.querySelectorAll('tr td:first-child')].map((td) => td.textContent);
+    expect(names).not.toContain('Cardiff');
+    expect(names).toContain('Glasgow');
+  });
+
+  test('a filter combination matching nothing shows the shared empty-state with a working Clear Filters action', () => {
+    win.document.getElementById('awardAreasSearch').value = 'nonexistent place';
+    uploads.filterAreasTable();
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    expect(tbody.innerHTML).toContain('No areas match your filters');
+    expect(tbody.innerHTML).toContain('nomineeUploads.resetAreaFilters');
+
+    uploads.resetAreaFilters();
+    const names = [...tbody.querySelectorAll('tr td:first-child')].map((td) => td.textContent);
+    expect(names.length).toBe(5); // back to the full unfiltered set
+    expect(win.document.getElementById('awardAreasSearch').value).toBe('');
+    expect(win.document.querySelector('[data-type-filter="all"]').classList.contains('active')).toBe(true);
+  });
+
+  test('sortAreas("count") sorts by nominee count ascending, then toggles to descending on a second click', () => {
+    uploads.sortAreas('count');
+    let tbody = win.document.getElementById('awardAreasTableBody');
+    let rows = [...tbody.querySelectorAll('tr')].map((tr) => ({
+      name: tr.querySelector('td:first-child').textContent,
+      count: Number(tr.querySelectorAll('td')[2].textContent),
+    }));
+    // Ascending: 0-count areas first, Cardiff (2) last among the non-zero ones
+    expect(rows[rows.length - 1]).toEqual({ name: 'Cardiff', count: 2 });
+
+    uploads.sortAreas('count');
+    tbody = win.document.getElementById('awardAreasTableBody');
+    rows = [...tbody.querySelectorAll('tr')].map((tr) => tr.querySelector('td:first-child').textContent);
+    expect(rows[0]).toBe('Cardiff');
+
+    uploads.sortAreas('name'); // restore default for subsequent tests
+  });
+
+  test('sortAreas updates the sort icon classes', () => {
+    uploads.sortAreas('type');
+    const typeIcon = win.document.querySelector('[data-sort-icon-areas="type"]');
+    const nameIcon = win.document.querySelector('[data-sort-icon-areas="name"]');
+    expect(typeIcon.className).toContain('caret-up-fill');
+    expect(nameIcon.className).toContain('arrow-down-up');
+    uploads.sortAreas('name'); // restore default
+  });
+
+  test('row-level Upload Spreadsheet / Re-upload labels reflect import status for the selected year', () => {
+    const tbody = win.document.getElementById('awardAreasTableBody');
+    const cardiffRow = [...tbody.querySelectorAll('tr')].find((tr) => tr.textContent.includes('Cardiff'));
+    expect(cardiffRow.querySelector('button').textContent).toContain('Re-upload');
+    const westminsterRow = [...tbody.querySelectorAll('tr')].find((tr) => tr.textContent.includes('Westminster'));
+    expect(westminsterRow.querySelector('button').textContent).toContain('Upload Spreadsheet');
+  });
+});
+
+// -----------------------------------------------------------------------
+// Top-level "Import Spreadsheet" entry point (no pre-selected area)
+// -----------------------------------------------------------------------
+describe('nomineeUploads - openImportModal() / area picker', () => {
+  const areas = [
+    { id: 'a1', display_name: 'Somerset', country: 'England', area_type: 'county', sort_order: 1 },
+    { id: 'a2', display_name: 'Cardiff', country: 'Wales', area_type: 'city', sort_order: 2 },
+  ];
+
+  beforeEach(async () => {
+    jest.spyOn(win.apiClient, 'select').mockResolvedValue({ data: areas, error: null });
+    jest.spyOn(win.apiClient, 'selectAll').mockResolvedValue([]);
+    await uploads.loadAreasTable();
+    uploads.openImportModal();
+  });
+
+  afterEach(() => {
+    win.apiClient.select.mockRestore();
+    win.apiClient.selectAll.mockRestore();
+  });
+
+  test('reveals the area picker and disables the file input until an area is chosen', () => {
+    expect(win.document.getElementById('nomineeAreaPickerWrapper').classList.contains('d-none')).toBe(false);
+    expect(win.document.getElementById('nomineeFileInput').disabled).toBe(true);
+  });
+
+  test("populates the picker alphabetically regardless of the areas table's sort_order", () => {
+    const options = [...win.document.getElementById('nomineeUploadAreaPicker').options].map((o) => o.textContent);
+    expect(options[1]).toContain('Cardiff'); // index 0 is the "Select an area…" placeholder
+    expect(options[2]).toContain('Somerset');
+  });
+
+  test('_onAreaPickerChange sets the area, updates the title, and enables the file input', () => {
+    const picker = win.document.getElementById('nomineeUploadAreaPicker');
+    picker.value = 'a2';
+    uploads._onAreaPickerChange();
+    expect(win.document.getElementById('nomineeUploadAreaName').textContent).toBe('Cardiff');
+    expect(win.document.getElementById('nomineeFileInput').disabled).toBe(false);
+  });
+
+  test('openUploadModal (row-level) keeps the picker hidden', () => {
+    uploads.openUploadModal('a1');
+    expect(win.document.getElementById('nomineeAreaPickerWrapper').classList.contains('d-none')).toBe(true);
+    expect(win.document.getElementById('nomineeUploadAreaName').textContent).toBe('Somerset');
+    expect(win.document.getElementById('nomineeFileInput').disabled).toBe(false);
   });
 });

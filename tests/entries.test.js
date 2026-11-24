@@ -1934,7 +1934,8 @@ describe('Entries Module - renderEntries row content', () => {
     entriesModule.filteredEntries = [rankedEntry];
     entriesModule.renderEntries();
     const tbody = document.getElementById('entriesTableBody');
-    expect(tbody.innerHTML).toContain('#2');
+    expect(tbody.innerHTML).toContain('Priority Rank from upload');
+    expect(tbody.innerHTML).toContain('>2</span>');
   });
 
   test('renderEntries shows no rank badge when priority_rank is null', () => {
@@ -2049,7 +2050,7 @@ describe('Entries Module - showEntryDetailsModal priority rank display', () => {
     entriesModule.showEntryDetailsModal({ ...sampleEntries[0], priority_rank: 1 });
     const modal = document.getElementById('entryDetailsModal');
     expect(modal.innerHTML).toContain('Priority Rank');
-    expect(modal.innerHTML).toContain('#1');
+    expect(modal.innerHTML).toContain('>1</span>');
   });
 
   test('shows N/A when priority_rank is null', () => {

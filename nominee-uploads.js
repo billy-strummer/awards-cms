@@ -9,8 +9,14 @@
 const nomineeUploads = (() => {
   // ── State ─────────────────────────────────────────────────────
   let _areas = []; // loaded from the `areas` table
-  let _areaEntryCounts = {}; // area display_name -> entries count
+  let _entryRows = []; // {county_city, year} for every entry, fetched once per loadAreasTable()
+  let _areaEntryCounts = {}; // area display_name -> entries count, for the currently selected _yearFilter
   let _currentArea = null; // area object the open modal is uploading into
+  let _typeFilter = 'all'; // 'all' | 'county' | 'city' | 'borough'
+  let _statusFilter = 'all'; // 'all' | 'imported' | 'empty'
+  let _yearFilter = new Date().getFullYear();
+  let _sortField = 'name'; // 'name' | 'type' | 'count'
+  let _sortDir = 'asc';
 
   let _parsedRows = []; // CSV rows after parsing (blanks removed)
   let _headers = []; // normalised column headers
@@ -126,19 +132,105 @@ const nomineeUploads = (() => {
           sort: { column: 'sort_order', ascending: true },
           pageSize: 500,
         }),
-        apiClient.selectAll('entries', { select: 'county_city' }),
+        apiClient.selectAll('entries', { select: 'county_city, year' }),
       ]);
       _areas = areasResult.data || [];
-      const counts = {};
-      (entryCountyRows || []).forEach((e) => {
-        if (e.county_city) counts[e.county_city] = (counts[e.county_city] || 0) + 1;
-      });
-      _areaEntryCounts = counts;
+      _entryRows = entryCountyRows || [];
+      _populateYearFilterSelect();
+      _recomputeEntryCounts();
       _renderAreasTable();
       _updateSummary();
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-danger text-center py-4">${utils.escapeHtml(e.message)}</td></tr>`;
     }
+  }
+
+  // Fetched once per loadAreasTable() call; re-derived per year rather than
+  // re-fetched, so switching the toolbar's Award Year filter is instant.
+  function _recomputeEntryCounts() {
+    const counts = {};
+    _entryRows.forEach((e) => {
+      if (e.county_city && Number(e.year) === _yearFilter) {
+        counts[e.county_city] = (counts[e.county_city] || 0) + 1;
+      }
+    });
+    _areaEntryCounts = counts;
+  }
+
+  function _populateYearFilterSelect() {
+    const select = document.getElementById('awardAreasYearFilter');
+    if (!select || select.options.length > 0) return; // populate once; preserve the admin's choice across reloads
+    const current = new Date().getFullYear();
+    select.innerHTML = _yearSelectOptions()
+      .map((y) => `<option value="${y}" ${y === current ? 'selected' : ''}>${y}</option>`)
+      .join('');
+    _yearFilter = current;
+  }
+
+  function setYearFilter() {
+    const select = document.getElementById('awardAreasYearFilter');
+    const parsed = select ? parseInt(select.value, 10) : NaN;
+    _yearFilter = Number.isInteger(parsed) ? parsed : new Date().getFullYear();
+    _recomputeEntryCounts();
+    _renderAreasTable();
+    _updateSummary();
+  }
+
+  function setTypeFilter(type) {
+    _typeFilter = type;
+    _updateFilterPillStates();
+    _renderAreasTable();
+  }
+
+  function setStatusFilter(status) {
+    _statusFilter = status;
+    _updateFilterPillStates();
+    _renderAreasTable();
+  }
+
+  function _updateFilterPillStates() {
+    document.querySelectorAll('[data-type-filter]').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-type-filter') === _typeFilter);
+    });
+    document.querySelectorAll('[data-status-filter]').forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-status-filter') === _statusFilter);
+    });
+  }
+
+  // Wired to the shared empty-state's "Clear Filters" button when a
+  // search/type/status combination matches nothing.
+  function resetAreaFilters() {
+    _typeFilter = 'all';
+    _statusFilter = 'all';
+    const search = document.getElementById('awardAreasSearch');
+    if (search) search.value = '';
+    _updateFilterPillStates();
+    _renderAreasTable();
+  }
+
+  function sortAreas(field) {
+    if (_sortField === field) {
+      _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      _sortField = field;
+      _sortDir = 'asc';
+    }
+    _updateSortIndicators();
+    _renderAreasTable();
+  }
+
+  function _updateSortIndicators() {
+    document.querySelectorAll('[data-sort-icon-areas]').forEach((icon) => {
+      const field = icon.getAttribute('data-sort-icon-areas');
+      if (field === _sortField) {
+        icon.className =
+          _sortDir === 'asc'
+            ? 'bi bi-caret-up-fill text-primary ms-1 small'
+            : 'bi bi-caret-down-fill text-primary ms-1 small';
+      } else {
+        icon.className = 'bi bi-arrow-down-up text-muted ms-1 small';
+      }
+    });
   }
 
   function _updateSummary() {
@@ -151,14 +243,52 @@ const nomineeUploads = (() => {
     }
   }
 
+  // Scotland's 'region' areas (e.g. Highlands, Fife) have no dedicated
+  // filter pill of their own -- grouped under "Counties" since they're the
+  // equivalent administrative division, just named differently there.
+  function _filterTypeKey(area) {
+    return area.area_type === 'region' ? 'county' : area.area_type;
+  }
+
   function _renderAreasTable() {
     const tbody = document.getElementById('awardAreasTableBody');
     if (!tbody) return;
     const search = (document.getElementById('awardAreasSearch')?.value || '').toLowerCase().trim();
-    const filtered = search ? _areas.filter((a) => a.display_name.toLowerCase().includes(search)) : _areas;
+
+    let filtered = _areas.filter((a) => {
+      if (search && !a.display_name.toLowerCase().includes(search)) return false;
+      if (_typeFilter !== 'all' && _filterTypeKey(a) !== _typeFilter) return false;
+      const count = _areaEntryCounts[a.display_name] || 0;
+      if (_statusFilter === 'imported' && count === 0) return false;
+      if (_statusFilter === 'empty' && count > 0) return false;
+      return true;
+    });
+
+    filtered = filtered.slice().sort((a, b) => {
+      let aVal, bVal;
+      if (_sortField === 'type') {
+        aVal = _typeLabel(a);
+        bVal = _typeLabel(b);
+      } else if (_sortField === 'count') {
+        aVal = _areaEntryCounts[a.display_name] || 0;
+        bVal = _areaEntryCounts[b.display_name] || 0;
+      } else {
+        aVal = a.display_name.toLowerCase();
+        bVal = b.display_name.toLowerCase();
+      }
+      if (aVal < bVal) return _sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return _sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
 
     if (!filtered.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No areas found.</td></tr>';
+      const isFiltered = !!search || _typeFilter !== 'all' || _statusFilter !== 'all';
+      utils.showEnhancedEmptyState('awardAreasTableBody', 5, {
+        icon: isFiltered ? 'bi-search' : 'bi-geo-alt',
+        message: isFiltered ? 'No areas match your filters' : 'No areas found',
+        isFiltered,
+        clearAction: isFiltered ? 'nomineeUploads.resetAreaFilters' : '',
+      });
       return;
     }
 
@@ -169,14 +299,17 @@ const nomineeUploads = (() => {
           count > 0
             ? '<span class="badge bg-success">Imported</span>'
             : '<span class="badge bg-secondary">Empty</span>';
-        const btnLabel = count > 0 ? 'Replace CSV' : 'Upload CSV';
-        const btnClass = count > 0 ? 'btn-outline-secondary' : 'btn-primary';
+        const btnLabel = count > 0 ? 'Re-upload' : 'Upload Spreadsheet';
+        // Outline, not solid, for every row -- the header's "Import
+        // Spreadsheet" button is the page's one strong call-to-action;
+        // row buttons stay visually secondary to it even for empty areas.
+        const btnClass = count > 0 ? 'btn-outline-secondary' : 'btn-outline-primary';
         return `<tr>
           <td class="fw-semibold">${utils.escapeHtml(a.display_name)}</td>
           <td><span class="badge bg-light text-dark border">${utils.escapeHtml(_typeLabel(a))}</span></td>
           <td>${count}</td>
           <td>${status}</td>
-          <td>
+          <td class="text-end">
             <button class="btn btn-sm ${btnClass}" data-action="nomineeUploads.openUploadModal" data-args='["${a.id}"]'>
               <i class="bi bi-cloud-upload me-1"></i>${btnLabel}
             </button>
@@ -201,6 +334,50 @@ const nomineeUploads = (() => {
     _populateYearSelect();
     const modalEl = document.getElementById('nomineeUploadModal');
     if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  // Top-level "Import Spreadsheet" entry point (Award Areas / Entries tab
+  // headers) -- no area pre-selected, so the admin picks one from a dropdown
+  // inside the modal instead of from a specific row's button.
+  function openImportModal() {
+    _currentArea = null;
+    _resetForm();
+    const wrapper = document.getElementById('nomineeAreaPickerWrapper');
+    if (wrapper) wrapper.classList.remove('d-none');
+    const picker = document.getElementById('nomineeUploadAreaPicker');
+    if (picker) picker.value = '';
+    const fileInput = document.getElementById('nomineeFileInput');
+    if (fileInput) fileInput.disabled = true; // until an area is chosen below
+    const nameEl = document.getElementById('nomineeUploadAreaName');
+    if (nameEl) nameEl.textContent = 'select an area below';
+    _populateAreaPicker();
+    _populateYearSelect();
+    const modalEl = document.getElementById('nomineeUploadModal');
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  function _populateAreaPicker() {
+    const select = document.getElementById('nomineeUploadAreaPicker');
+    if (!select) return;
+    const sorted = _areas.slice().sort((a, b) => a.display_name.localeCompare(b.display_name));
+    select.innerHTML =
+      '<option value="">Select an area…</option>' +
+      sorted
+        .map(
+          (a) =>
+            `<option value="${a.id}">${utils.escapeHtml(a.display_name)} (${utils.escapeHtml(_typeLabel(a))})</option>`
+        )
+        .join('');
+  }
+
+  function _onAreaPickerChange() {
+    const select = document.getElementById('nomineeUploadAreaPicker');
+    const areaId = select ? select.value : '';
+    _currentArea = _areas.find((a) => a.id === areaId) || null;
+    const nameEl = document.getElementById('nomineeUploadAreaName');
+    if (nameEl) nameEl.textContent = _currentArea ? _currentArea.display_name : '';
+    const fileInput = document.getElementById('nomineeFileInput');
+    if (fileInput) fileInput.disabled = !_currentArea;
   }
 
   // Current year plus a small window either side, so an admin uploading a
@@ -561,7 +738,15 @@ const nomineeUploads = (() => {
     _lastValidation = null;
 
     const fileInput = document.getElementById('nomineeFileInput');
-    if (fileInput) fileInput.value = '';
+    if (fileInput) {
+      fileInput.value = '';
+      fileInput.disabled = false; // callers re-disable if an area still needs picking
+    }
+
+    const pickerWrapper = document.getElementById('nomineeAreaPickerWrapper');
+    if (pickerWrapper) pickerWrapper.classList.add('d-none');
+    const picker = document.getElementById('nomineeUploadAreaPicker');
+    if (picker) picker.value = '';
 
     const sheetNotice = document.getElementById('nomineeSheetNameNotice');
     if (sheetNotice) sheetNotice.innerHTML = '';
@@ -618,6 +803,13 @@ const nomineeUploads = (() => {
     loadAreasTable,
     filterAreasTable,
     openUploadModal,
+    openImportModal,
+    setTypeFilter,
+    setStatusFilter,
+    setYearFilter,
+    sortAreas,
+    resetAreaFilters,
+    _onAreaPickerChange,
     // Underscore-prefixed utilities exposed for unit testing
     _parseCSV,
     _splitLine,

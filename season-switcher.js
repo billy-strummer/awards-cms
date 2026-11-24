@@ -121,6 +121,36 @@ const seasonSwitcherModule = {
       });
     }
   },
+
+  /**
+   * Re-fetch the available seasons and rebuild the dropdown — used after
+   * something creates `award_years` rows for a season that wasn't in the
+   * cached list yet (e.g. the Season Rollover Wizard), so it becomes
+   * selectable without a full page reload. Optionally also switches to a
+   * given season once it's confirmed to exist, broadcasting the usual
+   * change event so every tab syncs to it.
+   * @param {string|number} [selectSeason] - A season to switch to after refreshing, if it exists.
+   * @returns {Promise<void>}
+   */
+  async refresh(selectSeason) {
+    const select = document.getElementById(SELECT_ID);
+    if (!select) return;
+
+    const previous = select.value;
+    this._years = null;
+    const years = await this._loadYears();
+    select.innerHTML =
+      '<option value="">All Seasons</option>' +
+      years.map((year) => `<option value="${year}">${year}</option>`).join('');
+
+    if (selectSeason != null && years.includes(Number(selectSeason))) {
+      this.setSeason(String(selectSeason));
+    } else if (previous && years.includes(Number(previous))) {
+      select.value = previous;
+    } else {
+      select.value = '';
+    }
+  },
 };
 
 ModuleRegistry.register('seasonSwitcherModule', seasonSwitcherModule);

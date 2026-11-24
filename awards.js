@@ -6,6 +6,7 @@ const awardsModule = {
   selectedAwards: new Set(),
   currentSort: { column: 'award_name', direction: 'asc' },
   _loading: false,
+  _pendingRollover: null,
 
   // Server-side pagination state
   _serverPagination: false,
@@ -2624,6 +2625,196 @@ const awardsModule = {
     } catch (error) {
       console.error('Error rolling over awards:', error);
       utils.showToast('Failed to roll over awards: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
+  },
+
+  // ── Season Rollover Wizard (Roadmap 1.3) ───────────────────────────────
+  // A dedicated, operator-driven alternative to rolloverToNextYear() above:
+  // that one always auto-detects "most recent loaded year -> +1" with a
+  // single browser confirm() dialog. This wizard lets the operator pick an
+  // explicit Source/Target season, shows a live preview count before
+  // executing, and refreshes the Global Season Switcher so the newly
+  // created season is immediately selectable. rolloverToNextYear() is left
+  // untouched — it remains available from the Bulk Actions menu as its own
+  // one-click shortcut for the common case.
+
+  /**
+   * Open the Season Rollover Wizard modal: populate the Source Season
+   * dropdown from every distinct year that actually has awards, default
+   * Target Season to source+1, and compute the initial preview.
+   * @returns {Promise<void>}
+   */
+  async openRolloverWizard() {
+    const sourceSelect = document.getElementById('rolloverSourceSeason');
+    const targetInput = document.getElementById('rolloverTargetSeason');
+    const previewEl = document.getElementById('rolloverPreview');
+    const confirmBtn = document.getElementById('rolloverConfirmBtn');
+    if (!sourceSelect || !targetInput || !previewEl || !confirmBtn) return;
+
+    this._pendingRollover = null;
+    confirmBtn.disabled = true;
+    previewEl.innerHTML = '<span class="text-muted">Loading seasons…</span>';
+
+    let years = [];
+    try {
+      /* selectAll: justified — wizard needs every distinct season that actually has awards */
+      const rows = await apiClient.selectAll('awards', { select: 'year' });
+      years = [...new Set((rows || []).map((r) => r.year).filter(Boolean))].sort((a, b) => b - a);
+    } catch (error) {
+      console.error('Error loading seasons for rollover wizard:', error);
+    }
+
+    const modal = document.getElementById('rolloverWizardModal');
+
+    if (years.length === 0) {
+      sourceSelect.innerHTML = '';
+      targetInput.value = '';
+      previewEl.innerHTML = '<span class="text-muted">No existing seasons to roll over from yet.</span>';
+      if (modal) new bootstrap.Modal(modal).show();
+      return;
+    }
+
+    sourceSelect.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join('');
+    sourceSelect.value = String(years[0]);
+    targetInput.value = String(years[0] + 1);
+
+    if (modal) new bootstrap.Modal(modal).show();
+    await this.updateRolloverPreview();
+  },
+
+  /**
+   * Recompute the Season Rollover Wizard's preview: how many award
+   * categories from the chosen Source Season would be cloned into the
+   * chosen Target Season as Draft, after skipping any that already exist
+   * there (same award_name + area/county — the same duplicate key
+   * rolloverToNextYear() already uses). Enables the Confirm button only
+   * when there's at least one category to roll over.
+   * @returns {Promise<void>}
+   */
+  async updateRolloverPreview() {
+    const sourceSelect = document.getElementById('rolloverSourceSeason');
+    const targetInput = document.getElementById('rolloverTargetSeason');
+    const previewEl = document.getElementById('rolloverPreview');
+    const confirmBtn = document.getElementById('rolloverConfirmBtn');
+    if (!sourceSelect || !targetInput || !previewEl || !confirmBtn) return;
+
+    this._pendingRollover = null;
+    confirmBtn.disabled = true;
+
+    const sourceYear = parseInt(sourceSelect.value, 10);
+    const targetYear = parseInt(targetInput.value, 10);
+
+    if (!sourceYear || isNaN(sourceYear)) {
+      previewEl.innerHTML = '<span class="text-muted">Choose a source season.</span>';
+      return;
+    }
+    if (!targetYear || isNaN(targetYear) || targetYear < 2020 || targetYear > 2040) {
+      previewEl.innerHTML = '<span class="text-danger">Enter a valid target season (2020–2040).</span>';
+      return;
+    }
+    if (targetYear === sourceYear) {
+      previewEl.innerHTML = '<span class="text-danger">Target season must be different from the source season.</span>';
+      return;
+    }
+
+    previewEl.innerHTML = '<span class="text-muted">Calculating…</span>';
+
+    try {
+      /* selectAll: justified — preview requires the complete source-year dataset to clone */
+      const sourceAwards =
+        (await apiClient.selectAll('awards', {
+          select:
+            'award_name, area_id, country, sector, county, description, criteria, scoring_criteria, display_order, tenant_id',
+          filters: { year: sourceYear },
+        })) || [];
+
+      if (sourceAwards.length === 0) {
+        previewEl.innerHTML = `<span class="text-muted">No award categories found for ${sourceYear}.</span>`;
+        return;
+      }
+
+      /* selectAll: justified — duplicate guard requires the complete target-year dataset */
+      const existingTarget =
+        (await apiClient.selectAll('awards', {
+          select: 'award_name, area_id, county',
+          filters: { year: targetYear },
+        })) || [];
+
+      const existingKeys = new Set(existingTarget.map((a) => `${a.award_name}|||${a.area_id || a.county}`));
+      const awardsToRoll = sourceAwards.filter((a) => !existingKeys.has(`${a.award_name}|||${a.area_id || a.county}`));
+      const skippedCount = sourceAwards.length - awardsToRoll.length;
+
+      this._pendingRollover = { sourceYear, targetYear, awardsToRoll };
+
+      if (awardsToRoll.length === 0) {
+        previewEl.innerHTML = `<span class="text-muted">All ${sourceAwards.length} ${sourceYear} award categories already exist in ${targetYear} — nothing to roll over.</span>`;
+        return;
+      }
+
+      const categoryLabel = awardsToRoll.length === 1 ? 'award category' : 'award categories';
+      let html = `Will create the <strong>${targetYear}</strong> season and clone <strong>${awardsToRoll.length}</strong> ${categoryLabel} as <strong>Draft</strong> — 0 nominees or winners will be copied.`;
+      if (skippedCount > 0) {
+        html += `<br><span class="text-muted small">${skippedCount} already exist in ${targetYear} and will be skipped.</span>`;
+      }
+      previewEl.innerHTML = html;
+      confirmBtn.disabled = false;
+    } catch (error) {
+      console.error('Error calculating rollover preview:', error);
+      previewEl.innerHTML = `<span class="text-danger">Could not calculate preview: ${error.message}</span>`;
+    }
+  },
+
+  /**
+   * Execute the Season Rollover Wizard using the preview computed by
+   * updateRolloverPreview(): inserts one new, Draft, zero-nominee
+   * award_years row per category carried over, then refreshes the Global
+   * Season Switcher so the new season is immediately selectable.
+   * @returns {Promise<void>}
+   */
+  async confirmRolloverWizard() {
+    const pending = this._pendingRollover;
+    if (!pending || pending.awardsToRoll.length === 0) return;
+    const { sourceYear, targetYear, awardsToRoll } = pending;
+
+    bootstrap.Modal.getInstance(document.getElementById('rolloverWizardModal'))?.hide();
+
+    try {
+      utils.showLoading();
+
+      const newAwards = awardsToRoll.map((a) => ({
+        award_name: a.award_name,
+        area_id: a.area_id || null,
+        country: a.country || null,
+        sector: a.sector,
+        county: a.county || null,
+        description: a.description || null,
+        criteria: a.criteria || null,
+        scoring_criteria: a.scoring_criteria || null,
+        display_order: a.display_order || 0,
+        tenant_id: a.tenant_id || null,
+        year: targetYear,
+        status: 'Draft',
+        is_active: true,
+        show_on_website: true,
+      }));
+
+      await apiClient.insert('awards', newAwards);
+
+      this._pendingRollover = null;
+      utils.showToast(
+        `${newAwards.length} award categories rolled over from ${sourceYear} to ${targetYear} as Draft`,
+        'success'
+      );
+
+      if (typeof seasonSwitcherModule !== 'undefined' && typeof seasonSwitcherModule.refresh === 'function') {
+        await seasonSwitcherModule.refresh(String(targetYear));
+      }
+      await this.loadAwards();
+    } catch (error) {
+      console.error('Error running season rollover:', error);
+      utils.showToast('Failed to roll over season: ' + error.message, 'error');
     } finally {
       utils.hideLoading();
     }

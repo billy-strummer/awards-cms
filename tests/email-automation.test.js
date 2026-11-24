@@ -912,6 +912,7 @@ describe('Email Automation - send-nominee-outreach', () => {
         contact_email: 'jane@example.com',
         award_category: 'Roofing Company',
         entry_title: 'Fallback Title',
+        entry_number: 'BTA-2027-0042',
         organisations: { company_name: 'Acme Roofing Ltd' },
       },
     ]);
@@ -937,6 +938,58 @@ describe('Email Automation - send-nominee-outreach', () => {
     expect(sentHtml).toContain('Cardiff');
     expect(sentHtml).toContain('2027');
     expect(sentHtml).toContain("Congratulations, you've been nominated!");
+  });
+
+  test('includes a shareable voting link (Roadmap 2.3) built from APP_URL, the entry_number and UTM params', async () => {
+    process.env.APP_URL = 'https://admin.britishtradeawards.com';
+    mockTableResponses['entries'] = entriesChain([
+      {
+        id: 'e1',
+        contact_name: 'Jane',
+        contact_email: 'jane@example.com',
+        award_category: 'Roofing Company',
+        entry_number: 'BTA-2027-0042',
+        organisations: { company_name: 'Acme Roofing Ltd' },
+      },
+    ]);
+
+    const req = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+      },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+
+    const sentHtml = mockEmailsSend.mock.calls[0][0].html;
+    expect(sentHtml).toContain('https://admin.britishtradeawards.com/vote.html?entry=BTA-2027-0042');
+    expect(sentHtml).toContain('utm_source=nominee_share');
+    expect(sentHtml).toContain('utm_medium=email');
+    expect(sentHtml).toContain('utm_campaign=official_nominee_2027');
+  });
+
+  test('does not throw when an entry has no entry_number yet (voting link omitted)', async () => {
+    mockTableResponses['entries'] = entriesChain([
+      { id: 'e1', contact_name: 'Jane', contact_email: 'jane@example.com', award_category: 'Roofing' },
+    ]);
+
+    const req = createReq({
+      body: {
+        action: 'send-nominee-outreach',
+        areaName: 'Cardiff',
+        season: 2027,
+        subject: 'Subject',
+        introCopy: 'Intro',
+      },
+    });
+    const res = createRes();
+    await emailAutomationHandler(req, res);
+
+    expect(res.body.sent).toBe(1);
   });
 
   test('records sentEntryIds only for entries that actually sent successfully', async () => {

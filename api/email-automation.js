@@ -835,6 +835,28 @@ async function sendWinnerAnnouncementsEndpoint(req, res) {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * The same per-entry public voting URL shape as
+ * nomineeBadgeModule.buildShareableVotingLink() on the client (and
+ * entriesModule.showVotingLink()'s existing vote.html?entry=... pattern),
+ * with UTM params appended — built here with APP_URL since there is no
+ * window.location on the server. Returns null when the entry has no
+ * entry_number yet.
+ * @param {string} entryNumber
+ * @param {string|number} season
+ * @returns {string|null}
+ */
+function buildNomineeVotingLink(entryNumber, season) {
+  if (!entryNumber) return null;
+  const appUrl = process.env.APP_URL || 'https://admin.britishtradeawards.com';
+  const params = new URLSearchParams({
+    utm_source: 'nominee_share',
+    utm_medium: 'email',
+    utm_campaign: `official_nominee_${season}`,
+  });
+  return `${appUrl}/vote.html?entry=${encodeURIComponent(entryNumber)}&${params.toString()}`;
+}
+
 // POST /api/email-automation?action=send-nominee-outreach
 /**
  * Region-level nominee outreach (Roadmap 2.2). The recipient list is
@@ -865,7 +887,7 @@ async function sendNomineeOutreachEndpoint(req, res) {
     const { data: entries, error } = await supabase
       .from('entries')
       .select(
-        'id, contact_name, contact_email, award_category, entry_title, nominee_outreach_sent_at, organisations(company_name)'
+        'id, contact_name, contact_email, award_category, entry_title, entry_number, nominee_outreach_sent_at, organisations(company_name)'
       )
       .eq('county_city', areaName)
       .eq('year', seasonNum);
@@ -889,6 +911,7 @@ async function sendNomineeOutreachEndpoint(req, res) {
             award_category: entry.award_category || '',
             area_name: areaName,
             season: String(seasonNum),
+            voting_link: buildNomineeVotingLink(entry.entry_number, seasonNum) || '',
           }).then((ok) => ({ ok, entryId: entry.id }))
         )
       );

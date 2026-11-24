@@ -22,6 +22,9 @@ const dom = new JSDOM(
     <div id="outreachPreview"></div>
     <button id="outreachSendBtn"></button>
   </div>
+  <div id="mediaKitPickerModal">
+    <select id="mediaKitNomineeSelect"></select>
+  </div>
 </body></html>`,
   { url: 'http://localhost' }
 );
@@ -100,10 +103,13 @@ describe('regionHubModule', () => {
     document.getElementById('outreachRecipientSummary').textContent = '';
     document.getElementById('outreachPreview').innerHTML = '';
     document.getElementById('outreachSendBtn').disabled = false;
+    document.getElementById('mediaKitNomineeSelect').innerHTML = '';
     global.nomineeUploads = { getYearFilter: jest.fn(() => 2027), openUploadModal: jest.fn() };
     global.window.nomineeUploads = global.nomineeUploads;
     global.entriesModule = { filterByArea: jest.fn() };
     global.window.entriesModule = global.entriesModule;
+    global.nomineeBadgeModule = { showMediaKitModal: jest.fn() };
+    global.window.nomineeBadgeModule = global.nomineeBadgeModule;
     global.window.open = jest.fn();
     apiClient._getToken = jest.fn().mockResolvedValue('test-token');
     global.fetch = jest.fn();
@@ -562,6 +568,83 @@ describe('regionHubModule', () => {
         expect(spy).toHaveBeenCalledWith(expect.stringContaining('Failed to send outreach'), 'error');
         expect(regionHubModule._outreachStats()).toEqual({ total: 1, withEmail: 1, notContacted: 1, sent: 0 });
         spy.mockRestore();
+      });
+    });
+  });
+
+  describe('Nominee Media Kit picker (Roadmap 2.3)', () => {
+    function mockOpenDataWithOutreach(outreach) {
+      apiClient.selectAll = jest.fn((table, opts) => {
+        if (table === 'award_years') return Promise.resolve([]);
+        if (opts.select.includes('nominee_outreach_sent_at')) return Promise.resolve(outreach);
+        return Promise.resolve([]);
+      });
+    }
+
+    describe('openMediaKitPicker()', () => {
+      test('populates the picker select from the outreach entries and shows the modal', async () => {
+        mockOpenDataWithOutreach([
+          { id: 'e1', entry_title: 'Acme Ltd', contact_email: 'a@example.com' },
+          { id: 'e2', organisations: { company_name: 'Beta Co' }, contact_email: 'b@example.com' },
+        ]);
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+
+        regionHubModule.openMediaKitPicker();
+
+        const options = [...document.getElementById('mediaKitNomineeSelect').options].map((o) => ({
+          value: o.value,
+          label: o.textContent,
+        }));
+        expect(options).toEqual([
+          { value: 'e1', label: 'Acme Ltd' },
+          { value: 'e2', label: 'Beta Co' },
+        ]);
+        expect(modalShow).toHaveBeenCalled();
+      });
+
+      test('does nothing when there are no outreach entries at all', async () => {
+        mockOpenDataWithOutreach([]);
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        regionHubModule.openMediaKitPicker();
+        expect(modalShow).not.toHaveBeenCalled();
+      });
+
+      test('does nothing when outreach data is unavailable', async () => {
+        apiClient.selectAll = jest.fn((table, opts) => {
+          if (opts.select && opts.select.includes('nominee_outreach_sent_at')) return Promise.reject(new Error('boom'));
+          return Promise.resolve([]);
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        regionHubModule.openMediaKitPicker();
+        expect(modalShow).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('generateMediaKitForPicked()', () => {
+      test('hides the picker and opens the Media Kit for the selected nominee, with the area name and season', async () => {
+        mockOpenDataWithOutreach([
+          { id: 'e1', entry_title: 'Acme Ltd', contact_email: 'a@example.com' },
+          { id: 'e2', organisations: { company_name: 'Beta Co' }, contact_email: 'b@example.com' },
+        ]);
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        regionHubModule.openMediaKitPicker();
+        document.getElementById('mediaKitNomineeSelect').value = 'e2';
+
+        regionHubModule.generateMediaKitForPicked();
+
+        expect(modalHide).toHaveBeenCalled();
+        expect(nomineeBadgeModule.showMediaKitModal).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'e2' }),
+          2027,
+          'Cardiff'
+        );
+      });
+
+      test('does nothing when nothing is selected or outreach data is unavailable', async () => {
+        apiClient.selectAll = jest.fn().mockResolvedValue([]);
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        regionHubModule.generateMediaKitForPicked();
+        expect(nomineeBadgeModule.showMediaKitModal).not.toHaveBeenCalled();
       });
     });
   });

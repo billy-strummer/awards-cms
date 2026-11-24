@@ -147,7 +147,7 @@ const regionHubModule = (() => {
       try {
         _outreachEntries = await apiClient.selectAll('entries', {
           select:
-            'id, contact_name, contact_email, award_category, entry_title, nominee_outreach_sent_at, organisations(company_name)',
+            'id, contact_name, contact_email, award_category, entry_title, entry_number, allow_public_voting, nominee_outreach_sent_at, organisations(company_name)',
           filters: { county_city: displayName, year: _season },
         });
       } catch (outreachError) {
@@ -253,6 +253,9 @@ const regionHubModule = (() => {
         <button class="btn btn-outline-secondary btn-sm" data-action="regionHubModule.viewOnLiveSite">
           <i class="bi bi-globe me-1"></i>View on Live Site <i class="bi bi-box-arrow-up-right ms-1 small"></i>
         </button>
+        <button class="btn btn-outline-secondary btn-sm" data-action="regionHubModule.openMediaKitPicker" ${_outreachEntries === null || _outreachEntries.length === 0 ? 'disabled' : ''}>
+          <i class="bi bi-award me-1"></i>Nominee Media Kit
+        </button>
       </div>
     `;
   }
@@ -315,6 +318,47 @@ const regionHubModule = (() => {
   function viewOnLiveSite() {
     if (!_area) return;
     window.open('public-voting.html?city=' + encodeURIComponent(_area.display_name), '_blank');
+  }
+
+  // ── Nominee Media Kit (Roadmap 2.3) ─────────────────────────────
+
+  /**
+   * Open a small nominee picker, populated from the same outreach entries
+   * already fetched for the Outreach section — the Region Hub has no
+   * single "current nominee" in context (it's scoped to a whole area), so
+   * picking one is the entry point before nomineeBadgeModule.showMediaKitModal()
+   * can render its kit.
+   */
+  function openMediaKitPicker() {
+    if (!_area || !_outreachEntries || _outreachEntries.length === 0) return;
+    const selectEl = document.getElementById('mediaKitNomineeSelect');
+    const modalEl = document.getElementById('mediaKitPickerModal');
+    if (!selectEl || !modalEl) {
+      utils.showToast('Nominee picker not found — please reload the page.', 'error');
+      return;
+    }
+
+    selectEl.innerHTML = _outreachEntries
+      .map(
+        (e) =>
+          `<option value="${utils.escapeHtml(e.id)}">${utils.escapeHtml(_nomineeDisplayName(e) || 'Nominee')}</option>`
+      )
+      .join('');
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  /** Generate the kit for whichever nominee is currently selected in the picker. */
+  function generateMediaKitForPicked() {
+    const selectEl = document.getElementById('mediaKitNomineeSelect');
+    if (!selectEl || !_outreachEntries) return;
+    const entry = _outreachEntries.find((e) => e.id === selectEl.value);
+    if (!entry) return;
+
+    bootstrap.Modal.getInstance(document.getElementById('mediaKitPickerModal'))?.hide();
+    if (typeof nomineeBadgeModule !== 'undefined') {
+      nomineeBadgeModule.showMediaKitModal(entry, _season, _area.display_name);
+    }
   }
 
   // ── Nominee outreach (Roadmap 2.2) ──────────────────────────────
@@ -443,6 +487,8 @@ const regionHubModule = (() => {
     openOutreachModal,
     updateOutreachPreview,
     confirmSendOutreach,
+    openMediaKitPicker,
+    generateMediaKitForPicked,
     // Exposed for unit testing
     _deriveLifecycleStage,
     _categoryBreakdown,

@@ -49,6 +49,7 @@ const nomineeVoting = {
   entryId: null,
   voterEmail: sessionStorage.getItem('voterEmail') || null,
   hasVoted: false,
+  sponsors: { region: null, category: null }, // Roadmap 3.1
 
   /**
    * Initialize voting system
@@ -83,7 +84,7 @@ const nomineeVoting = {
         params.entry_id = entryId;
       }
 
-      const { entry } = await votingApi('load_entry', params);
+      const { entry, sponsors } = await votingApi('load_entry', params);
 
       if (!entry) {
         this.showError();
@@ -92,6 +93,7 @@ const nomineeVoting = {
 
       this.entry = entry;
       this.entryId = entry.id;
+      this.sponsors = sponsors || { region: null, category: null };
 
       // Check if user has already voted
       if (this.voterEmail) {
@@ -156,6 +158,9 @@ const nomineeVoting = {
       logoEl.alt = 'Company Logo';
     }
 
+    // Sponsor branding (Roadmap 3.1)
+    this.renderSponsors(this.sponsors);
+
     // Award badge
     document.getElementById('awardBadge').textContent = award?.award_name || 'Award';
 
@@ -204,6 +209,67 @@ const nomineeVoting = {
       voteButton.innerHTML = '<i class="bi bi-check-circle me-2"></i>You Already Voted';
       voteButton.disabled = true;
     }
+  },
+
+  /**
+   * Render the region/category sponsor branding strip (Roadmap 3.1), if
+   * any is assigned and active. Built with createElement/textContent
+   * throughout (matching this file's own existing convention), not
+   * innerHTML with interpolated values, since sponsor_name/sponsor_website
+   * are admin-entered strings rendered on a public page.
+   * @param {{region: Object|null, category: Object|null}} sponsors
+   */
+  renderSponsors(sponsors) {
+    const container = document.getElementById('sponsorSection');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const items = [];
+    if (sponsors?.category) items.push({ label: 'Category Sponsor', sponsor: sponsors.category });
+    if (sponsors?.region) items.push({ label: 'Region Sponsor', sponsor: sponsors.region });
+
+    if (items.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    items.forEach(({ label, sponsor }) => {
+      const row = document.createElement('div');
+      row.className = 'text-center mb-2';
+
+      const labelEl = document.createElement('div');
+      labelEl.className = 'small text-muted';
+      labelEl.textContent = label;
+      row.appendChild(labelEl);
+
+      const hasLink = typeof sponsor.sponsor_website === 'string' && /^https?:\/\//i.test(sponsor.sponsor_website);
+      const inner = document.createElement(hasLink ? 'a' : 'div');
+      if (hasLink) {
+        inner.href = sponsor.sponsor_website;
+        inner.target = '_blank';
+        inner.rel = 'noopener noreferrer';
+      }
+      inner.className = 'd-inline-flex align-items-center gap-2';
+
+      if (sponsor.sponsor_logo_url) {
+        const img = document.createElement('img');
+        img.src = sponsor.sponsor_logo_url;
+        img.alt = sponsor.sponsor_name || 'Sponsor';
+        img.style.height = '28px';
+        img.style.maxWidth = '120px';
+        img.style.objectFit = 'contain';
+        inner.appendChild(img);
+      }
+
+      const nameEl = document.createElement('span');
+      nameEl.textContent = sponsor.sponsor_name || 'Sponsor';
+      inner.appendChild(nameEl);
+
+      row.appendChild(inner);
+      container.appendChild(row);
+    });
+
+    container.style.display = 'block';
   },
 
   /**

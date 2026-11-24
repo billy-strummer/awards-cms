@@ -19,6 +19,13 @@ const regionHubModule = (() => {
   // drawer already had working.
   let _outreachEntries = null; // [{id, contact_name, contact_email, award_category/entry_title/organisations, nominee_outreach_sent_at}] or null if unavailable
   let _pendingOutreach = null; // {recipients, subject, introCopy, includeAlreadySent} set by openOutreachModal/updateOutreachPreview
+  // Region (Headline) Sponsor (Roadmap 3.1) — also fetched independently,
+  // in its own try/catch: it depends on sponsor_assignments.area_id/year
+  // (migrations/098), columns that may not exist yet in every environment.
+  // A missing column must only disable the Sponsor card, never break the
+  // rest of this drawer.
+  let _regionSponsor = null; // {id, company_name, logo_url, website} | null (no sponsor assigned)
+  let _regionSponsorUnavailable = false; // true only when the lookup itself failed
 
   function _typeLabel(areaType) {
     if (areaType === 'borough') return 'London Borough';
@@ -115,6 +122,8 @@ const regionHubModule = (() => {
     _categoriesConfigured = [];
     _outreachEntries = null;
     _pendingOutreach = null;
+    _regionSponsor = null;
+    _regionSponsorUnavailable = false;
 
     const offcanvasEl = document.getElementById('regionHubOffcanvas');
     const contentEl = document.getElementById('regionHubContent');
@@ -153,6 +162,24 @@ const regionHubModule = (() => {
       } catch (outreachError) {
         console.warn('[regionHubModule] Outreach data unavailable (has migrations/097 been applied?):', outreachError);
         _outreachEntries = null;
+      }
+
+      // Independent of everything above, for the same reason: a 400 from
+      // not-yet-migrated sponsor_assignments.area_id/year columns must only
+      // disable the Sponsor card below, not the whole drawer.
+      try {
+        const assignments = await apiClient.selectAll('sponsor_assignments', {
+          select: 'sponsor_id, sponsors(id, company_name, logo_url, website, is_active)',
+          filters: { area_id: areaId, year: _season, assignment_type: 'region' },
+        });
+        const active = (assignments || []).find((a) => a.sponsors && a.sponsors.is_active);
+        _regionSponsor = active ? active.sponsors : null;
+      } catch (sponsorError) {
+        console.warn(
+          '[regionHubModule] Region sponsor data unavailable (has migrations/098 been applied?):',
+          sponsorError
+        );
+        _regionSponsorUnavailable = true;
       }
 
       _render();
@@ -215,6 +242,11 @@ const regionHubModule = (() => {
             <div class="text-muted small">Pending / Approved</div>
           </div>
         </div>
+      </div>
+
+      <div class="mb-3">
+        <h6 class="small text-uppercase text-muted mb-2">Region Sponsor</h6>
+        ${_renderSponsorSection()}
       </div>
 
       <div class="mb-3">
@@ -291,6 +323,121 @@ const regionHubModule = (() => {
       </button>
       ${stats.withEmail === 0 ? '<p class="text-muted small mt-1 mb-0">No nominees with a valid email address yet.</p>' : ''}
     `;
+  }
+
+  function _renderSponsorSection() {
+    if (_regionSponsorUnavailable) {
+      return '<p class="text-muted small">Sponsor data unavailable right now — please try reopening this area.</p>';
+    }
+    if (!_regionSponsor) {
+      return `
+        <p class="text-muted small mb-2">No Sponsor Assigned</p>
+        <button class="btn btn-outline-secondary btn-sm w-100" data-action="regionHubModule.openSponsorPicker">
+          <i class="bi bi-building me-1"></i>Assign Sponsor
+        </button>
+      `;
+    }
+    return `
+      <div class="d-flex align-items-center gap-2 mb-2">
+        ${
+          _regionSponsor.logo_url
+            ? `<img src="${utils.escapeHtml(_regionSponsor.logo_url)}" alt="" style="width:40px;height:40px;object-fit:contain;" class="border rounded bg-white p-1">`
+            : '<i class="bi bi-building fs-4 text-muted"></i>'
+        }
+        <div>
+          <div class="fw-semibold">${utils.escapeHtml(_regionSponsor.company_name || 'Sponsor')}</div>
+          ${
+            _regionSponsor.website
+              ? `<a href="${utils.escapeHtml(_regionSponsor.website)}" target="_blank" rel="noopener" class="small">${utils.escapeHtml(_regionSponsor.website)}</a>`
+              : ''
+          }
+        </div>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm w-100" data-action="regionHubModule.openSponsorPicker">
+        <i class="bi bi-arrow-repeat me-1"></i>Change Sponsor
+      </button>
+    `;
+  }
+
+  // ── Region Sponsor (Roadmap 3.1) ────────────────────────────────
+
+  /**
+   * Open the sponsor picker, populated from active sponsors and
+   * pre-selecting the one currently assigned to this area + season, if any.
+   * @returns {Promise<void>}
+   */
+  async function openSponsorPicker() {
+    if (!_area || _regionSponsorUnavailable) return;
+    const selectEl = document.getElementById('sponsorPickerSelect');
+    const modalEl = document.getElementById('sponsorPickerModal');
+    if (!selectEl || !modalEl) {
+      utils.showToast('Sponsor picker not found — please reload the page.', 'error');
+      return;
+    }
+
+    selectEl.innerHTML = '<option value="">No Sponsor</option>';
+    try {
+      const sponsors = await apiClient.selectAll('sponsors', {
+        select: 'id, company_name',
+        filters: { is_active: true },
+        sort: { column: 'company_name', ascending: true },
+      });
+      selectEl.innerHTML +=
+        (sponsors || [])
+          .map((s) => `<option value="${utils.escapeHtml(s.id)}">${utils.escapeHtml(s.company_name)}</option>`)
+          .join('') || '';
+      selectEl.value = _regionSponsor ? _regionSponsor.id : '';
+    } catch (error) {
+      console.error('Error loading sponsors:', error);
+      utils.showToast('Failed to load sponsors: ' + error.message, 'error');
+      return;
+    }
+
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  /**
+   * Assign (or, with an empty selection, clear) the region-level sponsor
+   * for this area + season — delete-then-insert, the same convention the
+   * existing category-sponsor assignment code (marketing.js) already uses,
+   * rather than relying on a DB uniqueness constraint.
+   * @returns {Promise<void>}
+   */
+  async function saveSponsorAssignment() {
+    if (!_area) return;
+    const selectEl = document.getElementById('sponsorPickerSelect');
+    if (!selectEl) return;
+    const sponsorId = selectEl.value || null;
+
+    bootstrap.Modal.getInstance(document.getElementById('sponsorPickerModal'))?.hide();
+
+    try {
+      utils.showLoading();
+      await apiClient.delete('sponsor_assignments', { area_id: _area.id, year: _season, assignment_type: 'region' });
+      if (sponsorId) {
+        await apiClient.insert('sponsor_assignments', {
+          sponsor_id: sponsorId,
+          area_id: _area.id,
+          year: _season,
+          assignment_type: 'region',
+        });
+        const { data: sponsorRows } = await apiClient.select('sponsors', {
+          select: 'id, company_name, logo_url, website',
+          filters: { id: sponsorId },
+          pageSize: 1,
+        });
+        _regionSponsor = (sponsorRows && sponsorRows[0]) || null;
+      } else {
+        _regionSponsor = null;
+      }
+      _render();
+      utils.showToast(sponsorId ? 'Sponsor assigned' : 'Sponsor cleared', 'success');
+    } catch (error) {
+      console.error('Error saving sponsor assignment:', error);
+      utils.showToast('Failed to save sponsor: ' + error.message, 'error');
+    } finally {
+      utils.hideLoading();
+    }
   }
 
   // ── Quick actions ─────────────────────────────────────────────
@@ -489,6 +636,8 @@ const regionHubModule = (() => {
     confirmSendOutreach,
     openMediaKitPicker,
     generateMediaKitForPicked,
+    openSponsorPicker,
+    saveSponsorAssignment,
     // Exposed for unit testing
     _deriveLifecycleStage,
     _categoryBreakdown,

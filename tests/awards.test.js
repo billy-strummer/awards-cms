@@ -1346,6 +1346,105 @@ describe('Awards Module - viewDetails()', () => {
     bodyEl.remove();
   });
 
+  test('shows the assigned category sponsor', async () => {
+    STATE.allAwards = [...sampleAwards];
+    const modalEl = document.createElement('div');
+    modalEl.id = 'awardDetailsModal';
+    document.body.appendChild(modalEl);
+    const titleEl = document.createElement('div');
+    titleEl.id = 'awardDetailsModalTitle';
+    document.body.appendChild(titleEl);
+    const bodyEl = document.createElement('div');
+    bodyEl.id = 'awardDetailsModalBody';
+    document.body.appendChild(bodyEl);
+
+    const origAssignmentsModule = global.assignmentsModule;
+    global.assignmentsModule = { getStatusBadge: (status) => `<span class="badge">${status}</span>` };
+
+    const origSelect = apiClient.select;
+    apiClient.select = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [{ sponsors: { company_name: 'Acme Ltd' } }] });
+
+    await awardsModule.viewDetails('award-1');
+    expect(bodyEl.innerHTML).toContain('Acme Ltd');
+
+    apiClient.select = origSelect;
+    global.assignmentsModule = origAssignmentsModule;
+    modalEl.remove();
+    titleEl.remove();
+    bodyEl.remove();
+  });
+
+  test('shows "No Sponsor Assigned" when the award has no category sponsor', async () => {
+    STATE.allAwards = [...sampleAwards];
+    const modalEl = document.createElement('div');
+    modalEl.id = 'awardDetailsModal';
+    document.body.appendChild(modalEl);
+    const titleEl = document.createElement('div');
+    titleEl.id = 'awardDetailsModalTitle';
+    document.body.appendChild(titleEl);
+    const bodyEl = document.createElement('div');
+    bodyEl.id = 'awardDetailsModalBody';
+    document.body.appendChild(bodyEl);
+
+    const origAssignmentsModule = global.assignmentsModule;
+    global.assignmentsModule = { getStatusBadge: (status) => `<span class="badge">${status}</span>` };
+
+    const origSelect = apiClient.select;
+    apiClient.select = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] });
+
+    await awardsModule.viewDetails('award-1');
+    expect(bodyEl.innerHTML).toContain('No Sponsor Assigned');
+
+    apiClient.select = origSelect;
+    global.assignmentsModule = origAssignmentsModule;
+    modalEl.remove();
+    titleEl.remove();
+    bodyEl.remove();
+  });
+
+  test('does not fail the details modal when the sponsor lookup fails', async () => {
+    STATE.allAwards = [...sampleAwards];
+    const modalEl = document.createElement('div');
+    modalEl.id = 'awardDetailsModal';
+    document.body.appendChild(modalEl);
+    const titleEl = document.createElement('div');
+    titleEl.id = 'awardDetailsModalTitle';
+    document.body.appendChild(titleEl);
+    const bodyEl = document.createElement('div');
+    bodyEl.id = 'awardDetailsModalBody';
+    document.body.appendChild(bodyEl);
+
+    const origAssignmentsModule = global.assignmentsModule;
+    global.assignmentsModule = { getStatusBadge: (status) => `<span class="badge">${status}</span>` };
+
+    const origSelect = apiClient.select;
+    apiClient.select = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('sponsor lookup error'));
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await awardsModule.viewDetails('award-1');
+    expect(bodyEl.innerHTML).toContain('No Sponsor Assigned');
+    expect(consoleSpy).toHaveBeenCalledWith('Could not load the category sponsor:', 'sponsor lookup error');
+
+    consoleSpy.mockRestore();
+    apiClient.select = origSelect;
+    global.assignmentsModule = origAssignmentsModule;
+    modalEl.remove();
+    titleEl.remove();
+    bodyEl.remove();
+  });
+
   test('handles error in viewDetails', async () => {
     STATE.allAwards = [...sampleAwards];
     const modalEl = document.createElement('div');
@@ -1668,7 +1767,7 @@ describe('Awards Module - saveAward()', () => {
       'awardFormPrev2nd',
       'awardFormPrev3rd',
     ];
-    const selects = ['awardFormCountry', 'awardFormArea', 'awardFormSector'];
+    const selects = ['awardFormCountry', 'awardFormArea', 'awardFormSector', 'awardFormSponsor'];
     formEls = [];
 
     // Remove any stale elements left behind by earlier tests
@@ -1803,6 +1902,205 @@ describe('Awards Module - saveAward()', () => {
     consoleSpy.mockRestore();
     apiClient.select = origSelect;
     apiClient.insert = origInsert;
+  });
+
+  test('assigns the selected category sponsor on a new award', async () => {
+    const sponsorSelect = document.getElementById('awardFormSponsor');
+    sponsorSelect.innerHTML = '<option value="sponsor-1">Acme Ltd</option>';
+    sponsorSelect.value = 'sponsor-1';
+    const origSelect = apiClient.select;
+    const origInsert = apiClient.insert;
+    const origDelete = apiClient.delete;
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [{ id: 'new-1' }] });
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    awardsModule.loadAwards = jest.fn().mockResolvedValue();
+    awardsModule._logAwardAudit = jest.fn().mockResolvedValue();
+
+    await awardsModule.saveAward();
+
+    expect(apiClient.delete).toHaveBeenCalledWith('sponsor_assignments', { award_id: 'new-1' });
+    expect(apiClient.insert).toHaveBeenCalledWith('sponsor_assignments', {
+      sponsor_id: 'sponsor-1',
+      award_id: 'new-1',
+    });
+
+    apiClient.select = origSelect;
+    apiClient.insert = origInsert;
+    apiClient.delete = origDelete;
+  });
+
+  test('clears the category sponsor when "No Sponsor" is selected on an existing award', async () => {
+    document.getElementById('awardFormId').value = 'existing-1';
+    document.getElementById('awardFormSponsor').value = '';
+    const origSelect = apiClient.select;
+    const origUpdate = apiClient.update;
+    const origInsert = apiClient.insert;
+    const origDelete = apiClient.delete;
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.update = jest.fn().mockResolvedValue({ data: [{ id: 'existing-1' }] });
+    apiClient.insert = jest.fn().mockResolvedValue({});
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    awardsModule.loadAwards = jest.fn().mockResolvedValue();
+    awardsModule._logAwardAudit = jest.fn().mockResolvedValue();
+
+    await awardsModule.saveAward();
+
+    expect(apiClient.delete).toHaveBeenCalledWith('sponsor_assignments', { award_id: 'existing-1' });
+    expect(apiClient.insert).not.toHaveBeenCalledWith('sponsor_assignments', expect.anything());
+
+    apiClient.select = origSelect;
+    apiClient.update = origUpdate;
+    apiClient.insert = origInsert;
+    apiClient.delete = origDelete;
+  });
+
+  test('does not fail the award save when the sponsor assignment save fails', async () => {
+    document.getElementById('awardFormId').value = 'existing-1';
+    document.getElementById('awardFormSponsor').value = 'sponsor-1';
+    const origSelect = apiClient.select;
+    const origUpdate = apiClient.update;
+    const origDelete = apiClient.delete;
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.update = jest.fn().mockResolvedValue({ data: [{ id: 'existing-1' }] });
+    apiClient.delete = jest.fn().mockRejectedValue(new Error('sponsor save error'));
+    awardsModule.loadAwards = jest.fn().mockResolvedValue();
+    awardsModule._logAwardAudit = jest.fn().mockResolvedValue();
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await awardsModule.saveAward();
+
+    expect(apiClient.update).toHaveBeenCalledWith(
+      'awards',
+      'existing-1',
+      expect.objectContaining({ award_name: 'Test Award' })
+    );
+    expect(consoleSpy).toHaveBeenCalledWith('Could not save the category sponsor assignment:', 'sponsor save error');
+
+    consoleSpy.mockRestore();
+    apiClient.select = origSelect;
+    apiClient.update = origUpdate;
+    apiClient.delete = origDelete;
+  });
+
+  test('skips the sponsor assignment save when a new award insert returns no id', async () => {
+    document.getElementById('awardFormSponsor').value = 'sponsor-1';
+    const origSelect = apiClient.select;
+    const origInsert = apiClient.insert;
+    const origDelete = apiClient.delete;
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.insert = jest.fn().mockResolvedValue({ data: [] });
+    apiClient.delete = jest.fn().mockResolvedValue({});
+    awardsModule.loadAwards = jest.fn().mockResolvedValue();
+    awardsModule._logAwardAudit = jest.fn().mockResolvedValue();
+
+    await awardsModule.saveAward();
+
+    expect(apiClient.delete).not.toHaveBeenCalledWith('sponsor_assignments', expect.anything());
+
+    apiClient.select = origSelect;
+    apiClient.insert = origInsert;
+    apiClient.delete = origDelete;
+  });
+});
+
+describe('Awards Module - _populateAwardSponsorSelect()', () => {
+  let select;
+
+  beforeEach(() => {
+    select = document.createElement('select');
+    select.id = 'awardFormSponsor';
+    document.body.appendChild(select);
+  });
+
+  afterEach(() => {
+    select.remove();
+  });
+
+  test('returns early if the sponsor select is not on the page', async () => {
+    select.remove();
+    await expect(awardsModule._populateAwardSponsorSelect(null)).resolves.toBeUndefined();
+  });
+
+  test('populates active sponsors and pre-selects the assigned sponsor', async () => {
+    const origSelectAll = apiClient.selectAll;
+    const origSelect = apiClient.select;
+    apiClient.selectAll = jest.fn().mockResolvedValue([
+      { id: 'sponsor-1', company_name: 'Acme Ltd' },
+      { id: 'sponsor-2', company_name: 'Beta Co' },
+    ]);
+    apiClient.select = jest.fn().mockResolvedValue({ data: [{ sponsor_id: 'sponsor-2' }] });
+
+    await awardsModule._populateAwardSponsorSelect('award-1');
+
+    expect(select.innerHTML).toContain('Acme Ltd');
+    expect(select.innerHTML).toContain('Beta Co');
+    expect(select.querySelector('option[value="sponsor-2"]').selected).toBe(true);
+    expect(select.querySelector('option[value="sponsor-1"]').selected).toBe(false);
+
+    apiClient.selectAll = origSelectAll;
+    apiClient.select = origSelect;
+  });
+
+  test('shows only "No Sponsor" when the award has no sponsor assignment', async () => {
+    const origSelectAll = apiClient.selectAll;
+    const origSelect = apiClient.select;
+    apiClient.selectAll = jest.fn().mockResolvedValue([{ id: 'sponsor-1', company_name: 'Acme Ltd' }]);
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+
+    await awardsModule._populateAwardSponsorSelect('award-1');
+
+    expect(select.querySelector('option[value=""]').selected).toBe(true);
+    expect(select.querySelector('option[value="sponsor-1"]').selected).toBe(false);
+
+    apiClient.selectAll = origSelectAll;
+    apiClient.select = origSelect;
+  });
+
+  test('handles a new, unsaved award (no awardId) without looking up an assignment', async () => {
+    const origSelectAll = apiClient.selectAll;
+    const origSelect = apiClient.select;
+    apiClient.selectAll = jest.fn().mockResolvedValue([{ id: 'sponsor-1', company_name: 'Acme Ltd' }]);
+    apiClient.select = jest.fn().mockResolvedValue({ data: [] });
+
+    await awardsModule._populateAwardSponsorSelect(null);
+
+    expect(apiClient.select).not.toHaveBeenCalled();
+    expect(select.innerHTML).toContain('Acme Ltd');
+
+    apiClient.selectAll = origSelectAll;
+    apiClient.select = origSelect;
+  });
+
+  test('handles errors loading sponsors gracefully', async () => {
+    const origSelectAll = apiClient.selectAll;
+    apiClient.selectAll = jest.fn().mockRejectedValue(new Error('load error'));
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await awardsModule._populateAwardSponsorSelect('award-1');
+
+    expect(consoleSpy).toHaveBeenCalledWith('Could not populate sponsors:', 'load error');
+    expect(select.innerHTML).toContain('No Sponsor');
+
+    consoleSpy.mockRestore();
+    apiClient.selectAll = origSelectAll;
+  });
+
+  test('handles errors loading the current assignment without failing the whole populate', async () => {
+    const origSelectAll = apiClient.selectAll;
+    const origSelect = apiClient.select;
+    apiClient.selectAll = jest.fn().mockResolvedValue([{ id: 'sponsor-1', company_name: 'Acme Ltd' }]);
+    apiClient.select = jest.fn().mockRejectedValue(new Error('assignment error'));
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await awardsModule._populateAwardSponsorSelect('award-1');
+
+    expect(consoleSpy).toHaveBeenCalledWith('Could not load the current category sponsor:', 'assignment error');
+    expect(select.innerHTML).toContain('Acme Ltd');
+
+    consoleSpy.mockRestore();
+    apiClient.selectAll = origSelectAll;
+    apiClient.select = origSelect;
   });
 });
 

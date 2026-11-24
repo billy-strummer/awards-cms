@@ -909,3 +909,171 @@ describe('Voting Proxy API - load_homepage_data()', () => {
     expect(res.body.categories['BUILDING & CONSTRUCTION']).toEqual(['Roofing Company', 'Plastering Company']);
   });
 });
+
+// ---------------------------------------------------------------------------
+// load_entry sponsor branding (Roadmap 3.1) — safe, allowlisted region/
+// category sponsor info surfaced on the public vote.html page.
+// ---------------------------------------------------------------------------
+describe('Voting Proxy API - load_entry() sponsor branding (Roadmap 3.1)', () => {
+  const defaultFromImpl = () => {
+    currentChain = chainable();
+    return currentChain;
+  };
+
+  afterEach(() => {
+    // mockFrom uses mockImplementation in these tests, which jest.clearAllMocks()
+    // (the file's own top-level beforeEach) does not reset -- restore the
+    // file's own default behaviour so later tests aren't affected.
+    mockFrom.mockImplementation(defaultFromImpl);
+  });
+
+  function mockEntryWithTables({ entry, sponsorAssignmentsByTable = {}, areaRow = null }) {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'entries') return chainable({ data: entry, error: null });
+      if (table === 'areas') return chainable({ data: areaRow, error: null });
+      if (table === 'sponsor_assignments') {
+        // Distinguish the category (.eq('award_id', ...)) call from the
+        // region (.eq('area_id', ...)) call by which filter method is
+        // invoked first, since both go through the same table.
+        const obj = chainable({ data: [], error: null });
+        obj.eq = jest.fn((col) => {
+          obj._lastCol = col;
+          return obj;
+        });
+        obj.limit = jest.fn(() => {
+          const rows =
+            obj._lastCol === 'award_id' ? sponsorAssignmentsByTable.category : sponsorAssignmentsByTable.region;
+          return Promise.resolve({ data: rows || [], error: null });
+        });
+        return obj;
+      }
+      return chainable({ data: [], error: null });
+    });
+  }
+
+  test('exposes an active category sponsor allowlisted to name/logo/website only', async () => {
+    mockEntryWithTables({
+      entry: { id: '1', award_id: 'award-1', county_city: null, year: null },
+      sponsorAssignmentsByTable: {
+        category: [
+          {
+            sponsors: {
+              company_name: 'Acme Corp',
+              logo_url: 'https://example.com/logo.png',
+              website: 'https://acme.example.com',
+              is_active: true,
+              email: 'secret@acme.example.com',
+              sponsorship_amount: 50000,
+            },
+          },
+        ],
+      },
+    });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.sponsors.category).toEqual({
+      sponsor_name: 'Acme Corp',
+      sponsor_logo_url: 'https://example.com/logo.png',
+      sponsor_website: 'https://acme.example.com',
+    });
+    expect(res.body.sponsors.category.email).toBeUndefined();
+    expect(res.body.sponsors.category.sponsorship_amount).toBeUndefined();
+  });
+
+  test('does not expose an inactive category sponsor', async () => {
+    mockEntryWithTables({
+      entry: { id: '1', award_id: 'award-1', county_city: null, year: null },
+      sponsorAssignmentsByTable: {
+        category: [{ sponsors: { company_name: 'Inactive Co', is_active: false } }],
+      },
+    });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.sponsors.category).toBeNull();
+  });
+
+  test('resolves the region sponsor via county_city -> areas.display_name match, scoped to the entry year', async () => {
+    mockEntryWithTables({
+      entry: { id: '1', award_id: null, county_city: 'Cardiff', year: 2027 },
+      areaRow: { id: 'area-1' },
+      sponsorAssignmentsByTable: {
+        region: [{ sponsors: { company_name: 'Beta Co', logo_url: null, website: null, is_active: true } }],
+      },
+    });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.sponsors.region).toEqual({
+      sponsor_name: 'Beta Co',
+      sponsor_logo_url: null,
+      sponsor_website: null,
+    });
+  });
+
+  test('returns both region and category sponsors when both are assigned and active', async () => {
+    mockEntryWithTables({
+      entry: { id: '1', award_id: 'award-1', county_city: 'Cardiff', year: 2027 },
+      areaRow: { id: 'area-1' },
+      sponsorAssignmentsByTable: {
+        category: [{ sponsors: { company_name: 'Acme Corp', is_active: true } }],
+        region: [{ sponsors: { company_name: 'Beta Co', is_active: true } }],
+      },
+    });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.sponsors.category.sponsor_name).toBe('Acme Corp');
+    expect(res.body.sponsors.region.sponsor_name).toBe('Beta Co');
+  });
+
+  test('returns {region: null, category: null} when the entry has no award_id/county_city/year at all', async () => {
+    mockEntryWithTables({ entry: { id: '1', award_id: null, county_city: null, year: null } });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.sponsors).toEqual({ region: null, category: null });
+  });
+
+  test('returns {region: null, category: null} when county_city has no matching area row', async () => {
+    mockEntryWithTables({
+      entry: { id: '1', award_id: null, county_city: 'Nowhere', year: 2027 },
+      areaRow: null,
+    });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.body.sponsors).toEqual({ region: null, category: null });
+  });
+
+  test('still returns the entry successfully even if sponsor branding lookup throws (migration not applied)', async () => {
+    mockFrom.mockImplementation((table) => {
+      if (table === 'entries') return chainable({ data: { id: '1', award_id: 'award-1' }, error: null });
+      if (table === 'sponsor_assignments') {
+        return { select: () => ({ eq: () => ({ limit: () => Promise.reject(new Error('column does not exist')) }) }) };
+      }
+      return chainable({ data: [], error: null });
+    });
+
+    const req = createReq({ body: { action: 'load_entry', entry_number: 'BTA-2027-0001' } });
+    const res = createRes();
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.entry).toBeTruthy();
+    expect(res.body.sponsors).toEqual({ region: null, category: null });
+  });
+});

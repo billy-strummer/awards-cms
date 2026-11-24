@@ -25,6 +25,9 @@ const dom = new JSDOM(
   <div id="mediaKitPickerModal">
     <select id="mediaKitNomineeSelect"></select>
   </div>
+  <div id="sponsorPickerModal">
+    <select id="sponsorPickerSelect"><option value="">No Sponsor</option></select>
+  </div>
 </body></html>`,
   { url: 'http://localhost' }
 );
@@ -104,6 +107,7 @@ describe('regionHubModule', () => {
     document.getElementById('outreachPreview').innerHTML = '';
     document.getElementById('outreachSendBtn').disabled = false;
     document.getElementById('mediaKitNomineeSelect').innerHTML = '';
+    document.getElementById('sponsorPickerSelect').innerHTML = '<option value="">No Sponsor</option>';
     global.nomineeUploads = { getYearFilter: jest.fn(() => 2027), openUploadModal: jest.fn() };
     global.window.nomineeUploads = global.nomineeUploads;
     global.entriesModule = { filterByArea: jest.fn() };
@@ -645,6 +649,169 @@ describe('regionHubModule', () => {
         await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
         regionHubModule.generateMediaKitForPicked();
         expect(nomineeBadgeModule.showMediaKitModal).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Region Sponsor (Roadmap 3.1)', () => {
+    function mockOpenDataWithSponsor({ sponsorAssignments = [] } = {}) {
+      apiClient.selectAll = jest.fn((table, opts) => {
+        if (table === 'award_years') return Promise.resolve([]);
+        if (table === 'sponsor_assignments') return Promise.resolve(sponsorAssignments);
+        if (opts && opts.select && opts.select.includes('nominee_outreach_sent_at')) return Promise.resolve([]);
+        return Promise.resolve([]);
+      });
+    }
+
+    describe('_renderSponsorSection() via open()', () => {
+      test('shows "No Sponsor Assigned" when none is assigned', async () => {
+        mockOpenDataWithSponsor({ sponsorAssignments: [] });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        expect(document.getElementById('regionHubContent').innerHTML).toContain('No Sponsor Assigned');
+      });
+
+      test("shows the assigned active sponsor's name/logo/website", async () => {
+        mockOpenDataWithSponsor({
+          sponsorAssignments: [
+            {
+              sponsor_id: 's1',
+              sponsors: {
+                id: 's1',
+                company_name: 'Acme Corp',
+                logo_url: 'https://example.com/logo.png',
+                website: 'https://acme.example.com',
+                is_active: true,
+              },
+            },
+          ],
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        const html = document.getElementById('regionHubContent').innerHTML;
+        expect(html).toContain('Acme Corp');
+        expect(html).toContain('https://acme.example.com');
+        expect(html).toContain('logo.png');
+      });
+
+      test('ignores an inactive sponsor assignment, showing "No Sponsor Assigned"', async () => {
+        mockOpenDataWithSponsor({
+          sponsorAssignments: [{ sponsor_id: 's1', sponsors: { company_name: 'Inactive Co', is_active: false } }],
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        expect(document.getElementById('regionHubContent').innerHTML).toContain('No Sponsor Assigned');
+      });
+
+      test('shows an unavailable message when the sponsor lookup fails, without breaking the rest of the drawer', async () => {
+        apiClient.selectAll = jest.fn((table) => {
+          if (table === 'sponsor_assignments') return Promise.reject(new Error('column does not exist'));
+          return Promise.resolve([]);
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        const html = document.getElementById('regionHubContent').innerHTML;
+        expect(html).toContain('Sponsor data unavailable');
+        expect(html).toContain('Cardiff');
+      });
+    });
+
+    describe('openSponsorPicker()', () => {
+      test('populates the select with active sponsors and pre-selects the current one', async () => {
+        mockOpenDataWithSponsor({
+          sponsorAssignments: [
+            { sponsor_id: 's1', sponsors: { id: 's1', company_name: 'Acme Corp', is_active: true } },
+          ],
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+
+        apiClient.selectAll = jest.fn().mockResolvedValue([
+          { id: 's1', company_name: 'Acme Corp' },
+          { id: 's2', company_name: 'Beta Co' },
+        ]);
+
+        await regionHubModule.openSponsorPicker();
+
+        const select = document.getElementById('sponsorPickerSelect');
+        const options = [...select.options].map((o) => ({ value: o.value, label: o.textContent }));
+        expect(options).toEqual([
+          { value: '', label: 'No Sponsor' },
+          { value: 's1', label: 'Acme Corp' },
+          { value: 's2', label: 'Beta Co' },
+        ]);
+        expect(select.value).toBe('s1');
+        expect(modalShow).toHaveBeenCalled();
+      });
+
+      test('pre-selects "No Sponsor" when none is currently assigned', async () => {
+        mockOpenDataWithSponsor({ sponsorAssignments: [] });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        apiClient.selectAll = jest.fn().mockResolvedValue([{ id: 's1', company_name: 'Acme Corp' }]);
+        await regionHubModule.openSponsorPicker();
+        expect(document.getElementById('sponsorPickerSelect').value).toBe('');
+      });
+
+      test('does nothing when sponsor data is unavailable', async () => {
+        apiClient.selectAll = jest.fn((table) => {
+          if (table === 'sponsor_assignments') return Promise.reject(new Error('boom'));
+          return Promise.resolve([]);
+        });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        await regionHubModule.openSponsorPicker();
+        expect(modalShow).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('saveSponsorAssignment()', () => {
+      beforeEach(async () => {
+        mockOpenDataWithSponsor({ sponsorAssignments: [] });
+        await regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+      });
+
+      test('deletes the existing assignment and inserts the newly selected sponsor', async () => {
+        document.getElementById('sponsorPickerSelect').innerHTML =
+          '<option value="">No Sponsor</option><option value="s1">Acme Corp</option>';
+        document.getElementById('sponsorPickerSelect').value = 's1';
+        apiClient.delete = jest.fn().mockResolvedValue({});
+        apiClient.insert = jest.fn().mockResolvedValue({});
+        apiClient.select = jest
+          .fn()
+          .mockResolvedValue({ data: [{ id: 's1', company_name: 'Acme Corp', logo_url: null, website: null }] });
+
+        await regionHubModule.saveSponsorAssignment();
+
+        expect(apiClient.delete).toHaveBeenCalledWith('sponsor_assignments', {
+          area_id: 'area-1',
+          year: 2027,
+          assignment_type: 'region',
+        });
+        expect(apiClient.insert).toHaveBeenCalledWith('sponsor_assignments', {
+          sponsor_id: 's1',
+          area_id: 'area-1',
+          year: 2027,
+          assignment_type: 'region',
+        });
+        expect(modalHide).toHaveBeenCalled();
+        expect(document.getElementById('regionHubContent').innerHTML).toContain('Acme Corp');
+      });
+
+      test('clears the sponsor when "No Sponsor" is selected, without inserting a replacement', async () => {
+        document.getElementById('sponsorPickerSelect').value = '';
+        apiClient.delete = jest.fn().mockResolvedValue({});
+        apiClient.insert = jest.fn().mockResolvedValue({});
+
+        await regionHubModule.saveSponsorAssignment();
+
+        expect(apiClient.delete).toHaveBeenCalled();
+        expect(apiClient.insert).not.toHaveBeenCalled();
+        expect(document.getElementById('regionHubContent').innerHTML).toContain('No Sponsor Assigned');
+      });
+
+      test('shows an error toast when the save fails', async () => {
+        document.getElementById('sponsorPickerSelect').value = '';
+        apiClient.delete = jest.fn().mockRejectedValue(new Error('db down'));
+        const spy = jest.spyOn(utils, 'showToast');
+
+        await regionHubModule.saveSponsorAssignment();
+
+        expect(spy).toHaveBeenCalledWith(expect.stringContaining('Failed to save sponsor'), 'error');
+        spy.mockRestore();
       });
     });
   });

@@ -19,6 +19,10 @@
 > 11. At the end of every task, explicitly report whether the work is untracked, committed locally, or pushed remotely.
 > 12. Preserve the existing substantive CMS roadmap (the BTA-00x task sequence and related work) when starting a new session — continuity administration must never silently replace or reorder the underlying project work.
 
+## ACTIVE WORK: BTA CMS Roadmap (HIGHEST PRIORITY — overarching execution plan)
+
+> **CLAUDE: `BTA-CMS-ROADMAP.md` is the active, cross-session execution checklist for finishing the CMS as a commercial-grade platform, organized into sequential phases (0: UI/UX polish & live-data stabilization; 1: region-first operational tooling; 2: public-site sync & nominee growth; 3: sponsorship & judging workflows), each item a `[ ]` checkbox with target files and acceptance criteria, with a Status Log table at the top. Read it at the start of every session alongside `BTA-CMS-PROJECT-TASKS.md`. Work the next relevant unchecked item the user is asking about, check it off (`[x]`) and update its Status Log in the same commit as the work that completes it. It sits above the other `*-AUDIT-TODO.md` active-work items below as the overarching plan those audits feed into — it does not replace them. As of 2026-11-24, item `0.1` (Award Areas UX Overhaul) is implemented, tested and pushed on `claude/award-areas-ux-overhaul` as PR #366 — open and clean, awaiting merge, not yet done.**
+
 ## Design System Rules
 
 > **CLAUDE: Read these rules before touching any HTML page.**

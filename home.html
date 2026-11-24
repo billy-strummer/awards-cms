@@ -707,6 +707,35 @@
       100% { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
+    /* Homepage promotional banner slot — populated live by home.js from
+       Marketing -> Website Banners (Roadmap 2.1). Hidden (zero footprint,
+       no layout shift) whenever there is no currently active banner, so
+       the hero above is unaffected and looks exactly as it does today. */
+    .homepage-banner-slot {
+      background: var(--bg-secondary);
+      border-top: 1px solid rgba(201, 162, 39, 0.15);
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .homepage-banner-slot[hidden] {
+      display: none;
+    }
+
+    .homepage-banner-slot a,
+    .homepage-banner-slot .banner-static {
+      display: inline-block;
+      max-width: 100%;
+    }
+
+    .homepage-banner-slot img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      margin: 0 auto;
+    }
+
     /* ============================================================
        SECTION 2 — FEATURE BENTO BOXES
     ============================================================ */
@@ -2684,6 +2713,12 @@
 
 
 </section>
+
+<!-- Promotional banner slot -- populated live by home.js from Marketing ->
+     Website Banners (Roadmap 2.1). Hidden by default; home.js only reveals
+     it when an active, in-date-range banner exists, and leaves it hidden
+     (the hero above is the only "default hero content") otherwise. -->
+<section id="homepage-banner-slot" class="homepage-banner-slot" aria-label="Promotion" hidden></section>
 
 
 <!-- ============================================================

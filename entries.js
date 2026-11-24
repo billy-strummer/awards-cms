@@ -406,7 +406,7 @@ const entriesModule = {
                    data-on-change="entriesModule.toggleSelectEntry" data-id="${entry.id}"
                    ${this.selectedEntryIds.has(entry.id) ? 'checked' : ''}>
           </td>
-          <td><strong>${utils.escapeHtml(entry.entry_number)}</strong>${entry.priority_rank != null ? ` <span class="badge bg-warning text-dark" title="Priority Rank from upload">#${entry.priority_rank}</span>` : ''}</td>
+          <td><strong>${utils.escapeHtml(entry.entry_number)}</strong>${entry.priority_rank != null ? ` <span class="badge bg-light text-dark border" title="Priority Rank from upload"><i class="bi bi-sort-numeric-down me-1"></i>${entry.priority_rank}</span>` : ''}</td>
           <td>${utils.escapeHtml(companyName)}</td>
           <td>${utils.escapeHtml(awardName)}</td>
           <td>
@@ -1013,7 +1013,7 @@ const entriesModule = {
                         </tr>
                         <tr>
                           <td class="text-muted">Priority Rank:</td>
-                          <td>${entry.priority_rank != null ? `<span class="badge bg-warning text-dark">#${entry.priority_rank}</span>` : '<span class="text-muted">N/A</span>'}</td>
+                          <td>${entry.priority_rank != null ? `<span class="badge bg-light text-dark border"><i class="bi bi-sort-numeric-down me-1"></i>${entry.priority_rank}</span>` : '<span class="text-muted">N/A</span>'}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Entry Type:</td>

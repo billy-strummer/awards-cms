@@ -59,6 +59,7 @@ document.addEventListener('show.bs.modal', function (e) {
     { key: 'orgsWorkflowDismissed', id: 'orgsGettingStarted' },
     { key: 'winnersWorkflowDismissed', id: 'winnersGettingStarted' },
     { key: 'entriesWorkflowDismissed', id: 'entriesGettingStarted' },
+    { key: 'awardAreasWorkflowDismissed', id: 'awardAreasGettingStarted' },
     { key: 'mediaGalleryWorkflowDismissed', id: 'mediaGalleryGettingStarted' },
     { key: 'eventsWorkflowDismissed', id: 'eventsGettingStarted' },
     { key: 'reportsWorkflowDismissed', id: 'reportsGettingStarted' },

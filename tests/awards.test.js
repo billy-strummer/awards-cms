@@ -42,6 +42,11 @@ const dom = new JSDOM(
   <div id="cloneAwardModal"></div>
   <input id="cloneAwardYear" type="number" value="" />
   <div id="cloneAwardDesc"></div>
+  <div id="rolloverWizardModal"></div>
+  <select id="rolloverSourceSeason"></select>
+  <input id="rolloverTargetSeason" type="number" value="" />
+  <div id="rolloverPreview"></div>
+  <button id="rolloverConfirmBtn" disabled></button>
   <div id="awardsImportModal"></div>
   <input id="awardsImportFile" type="file" />
   <div id="awardsImportPreview" class="d-none"></div>
@@ -2068,6 +2073,244 @@ describe('Awards Module - rolloverToNextYear()', () => {
 
     apiClient.selectAll = origSelectAll;
     apiClient.insert = origInsert;
+  });
+});
+
+describe('Awards Module - Season Rollover Wizard (openRolloverWizard / updateRolloverPreview / confirmRolloverWizard)', () => {
+  let origSelectAll;
+  let origInsert;
+
+  beforeEach(() => {
+    origSelectAll = apiClient.selectAll;
+    origInsert = apiClient.insert;
+    document.getElementById('rolloverSourceSeason').innerHTML = '';
+    document.getElementById('rolloverTargetSeason').value = '';
+    document.getElementById('rolloverPreview').innerHTML = '';
+    document.getElementById('rolloverConfirmBtn').disabled = true;
+    awardsModule._pendingRollover = null;
+    awardsModule.loadAwards = jest.fn().mockResolvedValue();
+  });
+
+  afterEach(() => {
+    apiClient.selectAll = origSelectAll;
+    apiClient.insert = origInsert;
+    delete global.seasonSwitcherModule;
+  });
+
+  describe('openRolloverWizard()', () => {
+    test('populates the source season dropdown and defaults target to source+1', async () => {
+      apiClient.selectAll = jest.fn().mockResolvedValueOnce([{ year: 2026 }, { year: 2027 }, { year: 2027 }]);
+      await awardsModule.openRolloverWizard();
+      const sourceSelect = document.getElementById('rolloverSourceSeason');
+      expect([...sourceSelect.options].map((o) => o.value)).toEqual(['2027', '2026']);
+      expect(sourceSelect.value).toBe('2027');
+      expect(document.getElementById('rolloverTargetSeason').value).toBe('2028');
+    });
+
+    test('shows a message and does not throw when there are no existing seasons at all', async () => {
+      apiClient.selectAll = jest.fn().mockResolvedValueOnce([]);
+      await awardsModule.openRolloverWizard();
+      expect(document.getElementById('rolloverPreview').textContent).toContain('No existing seasons');
+    });
+
+    test('is a safe no-op when the modal markup is missing from the page', async () => {
+      document.getElementById('rolloverSourceSeason').remove();
+      await expect(awardsModule.openRolloverWizard()).resolves.toBeUndefined();
+      const el = document.createElement('select');
+      el.id = 'rolloverSourceSeason';
+      document.body.appendChild(el);
+    });
+  });
+
+  describe('updateRolloverPreview()', () => {
+    function setSeasons(source, target) {
+      document.getElementById('rolloverSourceSeason').innerHTML = `<option value="${source}">${source}</option>`;
+      document.getElementById('rolloverSourceSeason').value = String(source);
+      document.getElementById('rolloverTargetSeason').value = String(target);
+    }
+
+    test('rejects a target season equal to the source season', async () => {
+      setSeasons(2027, 2027);
+      await awardsModule.updateRolloverPreview();
+      expect(document.getElementById('rolloverPreview').textContent).toContain('must be different');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(true);
+    });
+
+    test('rejects an out-of-range target season', async () => {
+      setSeasons(2027, 1999);
+      await awardsModule.updateRolloverPreview();
+      expect(document.getElementById('rolloverPreview').textContent).toContain('valid target season');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(true);
+    });
+
+    test('reports when the source season has no award categories', async () => {
+      setSeasons(2027, 2028);
+      apiClient.selectAll = jest.fn().mockResolvedValueOnce([]);
+      await awardsModule.updateRolloverPreview();
+      expect(document.getElementById('rolloverPreview').textContent).toContain('No award categories found for 2027');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(true);
+    });
+
+    test('computes the preview count, excluding categories that already exist in the target season', async () => {
+      setSeasons(2027, 2028);
+      apiClient.selectAll = jest
+        .fn()
+        .mockResolvedValueOnce([
+          { award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' },
+          { award_name: 'Best Builder', area_id: 'area-essex', county: 'Essex' },
+        ])
+        .mockResolvedValueOnce([{ award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' }]);
+      await awardsModule.updateRolloverPreview();
+      const preview = document.getElementById('rolloverPreview').textContent;
+      expect(preview).toContain('2028');
+      expect(preview).toContain('1');
+      expect(preview).toContain('already exist');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(false);
+      expect(awardsModule._pendingRollover.awardsToRoll).toHaveLength(1);
+    });
+
+    test('reports nothing-to-roll-over and keeps Confirm disabled when every category already exists', async () => {
+      setSeasons(2027, 2028);
+      apiClient.selectAll = jest
+        .fn()
+        .mockResolvedValueOnce([{ award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' }])
+        .mockResolvedValueOnce([{ award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' }]);
+      await awardsModule.updateRolloverPreview();
+      expect(document.getElementById('rolloverPreview').textContent).toContain('nothing to roll over');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(true);
+    });
+
+    test('shows an error message if the query fails', async () => {
+      setSeasons(2027, 2028);
+      apiClient.selectAll = jest.fn().mockRejectedValue(new Error('network down'));
+      await awardsModule.updateRolloverPreview();
+      expect(document.getElementById('rolloverPreview').textContent).toContain('network down');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(true);
+    });
+  });
+
+  describe('confirmRolloverWizard()', () => {
+    test('does nothing if there is no pending preview', async () => {
+      awardsModule._pendingRollover = null;
+      apiClient.insert = jest.fn();
+      await awardsModule.confirmRolloverWizard();
+      expect(apiClient.insert).not.toHaveBeenCalled();
+    });
+
+    test('inserts one Draft award per category, carrying structural fields but not dates, sponsors or prior winners', async () => {
+      awardsModule._pendingRollover = {
+        sourceYear: 2027,
+        targetYear: 2028,
+        awardsToRoll: [
+          {
+            award_name: 'Best Plumber',
+            area_id: 'area-kent',
+            country: 'England',
+            sector: 'MECHANICAL, ELECTRICAL & PLUMBING',
+            county: 'Kent',
+            description: 'Top plumbing award',
+            criteria: 'Judged on workmanship',
+            scoring_criteria: '[{"label":"Quality","weight":1}]',
+            display_order: 2,
+            tenant_id: 'tenant-1',
+          },
+        ],
+      };
+      apiClient.insert = jest.fn().mockResolvedValue({});
+
+      await awardsModule.confirmRolloverWizard();
+
+      expect(apiClient.insert).toHaveBeenCalledWith('awards', [
+        {
+          award_name: 'Best Plumber',
+          area_id: 'area-kent',
+          country: 'England',
+          sector: 'MECHANICAL, ELECTRICAL & PLUMBING',
+          county: 'Kent',
+          description: 'Top plumbing award',
+          criteria: 'Judged on workmanship',
+          scoring_criteria: '[{"label":"Quality","weight":1}]',
+          display_order: 2,
+          tenant_id: 'tenant-1',
+          year: 2028,
+          status: 'Draft',
+          is_active: true,
+          show_on_website: true,
+        },
+      ]);
+      expect(awardsModule._pendingRollover).toBeNull();
+    });
+
+    test('refreshes the Global Season Switcher and selects the new target season on success', async () => {
+      awardsModule._pendingRollover = {
+        sourceYear: 2027,
+        targetYear: 2028,
+        awardsToRoll: [{ award_name: 'Best Plumber', area_id: 'area-kent' }],
+      };
+      apiClient.insert = jest.fn().mockResolvedValue({});
+      global.seasonSwitcherModule = { refresh: jest.fn().mockResolvedValue() };
+
+      await awardsModule.confirmRolloverWizard();
+
+      expect(global.seasonSwitcherModule.refresh).toHaveBeenCalledWith('2028');
+    });
+
+    test('does not throw when seasonSwitcherModule is not loaded', async () => {
+      awardsModule._pendingRollover = {
+        sourceYear: 2027,
+        targetYear: 2028,
+        awardsToRoll: [{ award_name: 'Best Plumber', area_id: 'area-kent' }],
+      };
+      apiClient.insert = jest.fn().mockResolvedValue({});
+      delete global.seasonSwitcherModule;
+
+      await expect(awardsModule.confirmRolloverWizard()).resolves.toBeUndefined();
+    });
+
+    test('shows an error toast and leaves pending state untouched on insert failure', async () => {
+      awardsModule._pendingRollover = {
+        sourceYear: 2027,
+        targetYear: 2028,
+        awardsToRoll: [{ award_name: 'Best Plumber', area_id: 'area-kent' }],
+      };
+      apiClient.insert = jest.fn().mockRejectedValue(new Error('insert failed'));
+      const spy = jest.spyOn(utils, 'showToast');
+
+      await awardsModule.confirmRolloverWizard();
+
+      expect(spy).toHaveBeenCalledWith(expect.stringContaining('Failed to roll over season'), 'error');
+      spy.mockRestore();
+    });
+  });
+
+  describe('idempotency: running the wizard twice for the same source/target is a no-op the second time', () => {
+    test('the second preview finds nothing left to roll over after the first run actually inserted', async () => {
+      document.getElementById('rolloverSourceSeason').innerHTML = '<option value="2027">2027</option>';
+      document.getElementById('rolloverSourceSeason').value = '2027';
+      document.getElementById('rolloverTargetSeason').value = '2028';
+
+      // First run: one category doesn't exist yet in the target season.
+      apiClient.selectAll = jest
+        .fn()
+        .mockResolvedValueOnce([{ award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' }])
+        .mockResolvedValueOnce([]);
+      await awardsModule.updateRolloverPreview();
+      expect(awardsModule._pendingRollover.awardsToRoll).toHaveLength(1);
+
+      apiClient.insert = jest.fn().mockResolvedValue({});
+      await awardsModule.confirmRolloverWizard();
+
+      // Second run against the same source/target: the category now exists in 2028.
+      apiClient.selectAll = jest
+        .fn()
+        .mockResolvedValueOnce([{ award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' }])
+        .mockResolvedValueOnce([{ award_name: 'Best Plumber', area_id: 'area-kent', county: 'Kent' }]);
+      await awardsModule.updateRolloverPreview();
+
+      expect(document.getElementById('rolloverPreview').textContent).toContain('nothing to roll over');
+      expect(document.getElementById('rolloverConfirmBtn').disabled).toBe(true);
+      expect(apiClient.insert).toHaveBeenCalledTimes(1);
+    });
   });
 });
 

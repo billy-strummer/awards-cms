@@ -196,4 +196,57 @@ describe('seasonSwitcherModule', () => {
       document.removeEventListener('bta:season-change', handler);
     });
   });
+
+  describe('refresh() — picking up seasons created after init() (Season Rollover Wizard)', () => {
+    beforeEach(async () => {
+      apiClient.selectAll = jest.fn().mockResolvedValue([{ year: 2026 }, { year: 2027 }]);
+      await seasonSwitcherModule.init();
+    });
+
+    test('is a safe no-op when the dropdown element is missing', async () => {
+      document.body.innerHTML = '';
+      await expect(seasonSwitcherModule.refresh()).resolves.toBeUndefined();
+    });
+
+    test('rebuilds the dropdown to include a brand-new year not present at init() time', async () => {
+      apiClient.selectAll = jest.fn().mockResolvedValue([{ year: 2026 }, { year: 2027 }, { year: 2028 }]);
+      await seasonSwitcherModule.refresh();
+      const select = document.getElementById('globalSeasonSwitcher');
+      const values = [...select.options].map((o) => o.value);
+      expect(values).toContain('2028');
+    });
+
+    test('with no argument, keeps the current selection if it is still valid', async () => {
+      seasonSwitcherModule.setSeason('2026');
+      apiClient.selectAll = jest.fn().mockResolvedValue([{ year: 2026 }, { year: 2027 }, { year: 2028 }]);
+      await seasonSwitcherModule.refresh();
+      expect(document.getElementById('globalSeasonSwitcher').value).toBe('2026');
+    });
+
+    test('with no argument, falls back to "All Seasons" if the current selection no longer exists', async () => {
+      seasonSwitcherModule.setSeason('2026');
+      apiClient.selectAll = jest.fn().mockResolvedValue([{ year: 2027 }, { year: 2028 }]);
+      await seasonSwitcherModule.refresh();
+      expect(document.getElementById('globalSeasonSwitcher').value).toBe('');
+    });
+
+    test('switches to and broadcasts the given season when it exists in the refreshed list', async () => {
+      apiClient.selectAll = jest.fn().mockResolvedValue([{ year: 2026 }, { year: 2027 }, { year: 2028 }]);
+      const handler = jest.fn();
+      document.addEventListener('bta:season-change', handler);
+      await seasonSwitcherModule.refresh('2028');
+      expect(document.getElementById('globalSeasonSwitcher').value).toBe('2028');
+      expect(localStorage.getItem('btaGlobalSeason')).toBe('2028');
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler.mock.calls[0][0].detail).toEqual({ season: '2028' });
+      document.removeEventListener('bta:season-change', handler);
+    });
+
+    test('does not switch to a given season that does not exist in the refreshed list', async () => {
+      seasonSwitcherModule.setSeason('2026');
+      apiClient.selectAll = jest.fn().mockResolvedValue([{ year: 2026 }, { year: 2027 }]);
+      await seasonSwitcherModule.refresh('2099');
+      expect(document.getElementById('globalSeasonSwitcher').value).toBe('2026');
+    });
+  });
 });

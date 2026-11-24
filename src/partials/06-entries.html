@@ -137,10 +137,16 @@
                   <option value="rejected">Rejected</option>
                 </select>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-trophy me-1" aria-hidden="true"></i>Award Category</label>
                 <select class="form-select form-select-sm" id="entriesAwardFilter" data-on-change="entriesModule.filterEntries">
                   <option value="">All Awards</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>Area</label>
+                <select class="form-select form-select-sm" id="entriesAreaFilter" data-on-change="entriesModule.filterEntries">
+                  <option value="">All Areas</option>
                 </select>
               </div>
               <div class="col-md-1">
@@ -161,6 +167,10 @@
                 <label class="form-label filter-bar-field-label mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Search</label>
                 <input type="text" class="form-control form-control-sm" id="entriesSearchInput" placeholder="Search entries…">
               </div>
+              <!-- Set programmatically (e.g. from the Region Hub's category breakdown) — not a
+                   visible dropdown of its own, but still a real, clearable active filter. -->
+              <input type="hidden" id="entriesCategoryFilter" value="">
+            </div>
             </div>
             <div class="mt-2 d-flex gap-2">
               <div class="btn-group btn-group-sm">

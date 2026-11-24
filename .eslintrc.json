@@ -38,6 +38,7 @@
     "crmModule": "readonly",
     "dashboardModule": "readonly",
     "seasonSwitcherModule": "readonly",
+    "regionHubModule": "readonly",
     "rbacModule": "readonly",
     "securityModule": "readonly",
     "emailBuilder": "readonly",

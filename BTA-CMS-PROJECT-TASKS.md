@@ -3171,3 +3171,47 @@ Lint: clean. Full suite: **86/86 suites, 6,913/6,913 tests pass**. Build: clean 
 ### VII.7 — Git/worktree state
 
 All changes on branch `claude/global-season-switcher` (created off post-#368-merge `main`), to be committed and pushed, PR to be opened into `main` and held unmerged pending review, per instruction.
+
+---
+
+## VIII. 1.1 merged; 1.2 Unified Region Hub (2026-11-24)
+
+### VIII.1 — 1.1 merged
+
+PR #369 merged into `main` (merge commit `d39e7e6`) per explicit authorization. Local `main` fast-forwarded, merged local branch (`claude/global-season-switcher`) deleted, `claude/unified-region-hub` created off the updated `main` — confirmed by `git merge-base`, not assumed.
+
+### VIII.2 — Investigation before building anything (per the task's own step 1)
+
+Read `03a-award-areas.html`, `nominee-uploads.js`, and the areas/entries/awards data model directly rather than assuming the task description's framing already matched the schema:
+- **Row-click behaviour before this task: none.** Area rows in `_renderAreasTable()` were plain, non-interactive `<tr>`s; the only clickable element per row was the Upload/Re-upload button.
+- **Area-to-data linkage is two different mechanisms for the same conceptual relationship**, both pre-existing: `entries.county_city` is a plain TEXT column matched against `areas.display_name` (not a FK — confirmed via schema and `nominee-uploads.js`'s own `_areaEntryCounts` logic); `award_years.area_id` IS a proper FK to `areas.id`. Region Hub's own queries use both correctly for what each actually models (entries by name-match, configured categories by FK).
+- **No `lifecycle_stage` or sponsor-status field exists on `areas`** anywhere in any migration — confirmed by schema grep, not assumed from the roadmap's own caveat alone.
+- **"Categories Covered X/12" in the task description is illustrative, not a literal constant.** Checked `config.js`'s `STANDARD_CATEGORIES` (a hierarchical sector→company-type list used for CSV category-matching) — no flat "12 categories" denominator exists anywhere. Built as a dynamically computed `coveredCount / totalCategories` from each area+season's actual `award_years` + `entries` data instead of hardcoding 12.
+- **No public URL "slug" field exists** on `areas`, nor in `home-data.js`'s `REGION_DATA` (which has no slugs/URLs at all). Found instead, by tracing the actual public-site code rather than assuming a slug existed: `public-voting.html?city=<name>` is a genuine, already-working, deep-linkable public filter — confirmed end-to-end through `public-voting.js` → `api/voting-proxy.js`'s `load_entries` action, which does `.eq('county_city', city)`.
+- **The Entries tab had no Area or Category filter at all before this task** — confirmed by reading `entries.js`'s full filter machinery and `06-entries.html`'s filter bar; the search box only covers `entry_title`/`entry_number`, not `county_city`. The task's own step 2 ("click straight through to filtered Entries for that area + category") was not satisfiable without building one, so one was built, following the existing status/award/year/selfNom filter pattern exactly rather than inventing a new one.
+- **A genuine, pre-existing, unrelated bug found incidentally**: `winner-pipeline.js` references `winnerPipelineOffcanvas`/`winnerPipelineContent` markup via `bootstrap.Offcanvas.getOrCreateInstance(...)`, but that markup does not exist in any partial HTML file anywhere in the repository — only in the JS module and its own test file (which fakes the element to make its tests pass). In production, clicking its trigger shows "Pipeline panel not found — please reload the page." Not fixed (out of scope for this task), but flagged here and in the roadmap as a new, honestly-reported discrepancy; Region Hub's own drawer markup was added for real in `03a-award-areas.html` specifically to avoid repeating this mistake.
+
+### VIII.3 — Design decisions made, with the reasoning on record
+
+- **Season source**: Region Hub reads the season from `nomineeUploads.getYearFilter()` (Award Areas' own currently-displayed year, already kept in sync by the 1.1 season switcher) rather than reading `seasonSwitcherModule` directly — it scopes to whatever year the table the user is actually looking at is showing, which is the same thing in practice but doesn't create a second, parallel dependency on the global switcher.
+- **Lifecycle stage is explicitly a computed heuristic, not stored state**: derived purely from already-fetched `entries.status`/`is_shortlisted` for that area+season (0 entries → Not Started; any `winner` → Winners Announced; any shortlisted → Active/Voting; else → Nominees Imported). Documented as such in both the module and this record, not presented as a real schema field.
+- **Category breakdown unions configured categories (`award_years`) with any category that actually has entries** — so a real nominee under an uncategorised/unconfigured award is never silently hidden from the breakdown for lack of prior setup, and a configured-but-empty category still shows as 0 rather than disappearing.
+- **The category-level Entries filter is a hidden input (`entriesCategoryFilter`), not a 7th visible dropdown.** It is a real, fully wired filter — reuses all of Entries' existing filter-chip/clear/localStorage/saved-view machinery (which reads generically via `.value` regardless of element type) — but is only ever set programmatically by the Region Hub's category-breakdown click-through, never by direct user interaction, so no extra visible clutter was added to the filter bar for a control nobody would otherwise use standalone.
+- **Sponsor status, named in the roadmap's original (pre-refinement) Goal line, was not built.** The user's own explicit, refined instructions for this task (Header/Lifecycle Badge, Key Metrics Strip, Category Breakdown, Quick Actions) superseded that line and did not ask for it — treated as a deliberate scope decision already made by the user, not a gap to silently fill or to flag as missing.
+- **"View on Live Site ↗" opens `public-voting.html?city=<area display_name>`** (URL-encoded), reusing the confirmed-working public filter rather than inventing a new route or assuming `REGION_DATA` had something usable.
+
+### VIII.4 — Tests added
+
+`tests/region-hub.test.js` (new, 22 tests): `_deriveLifecycleStage()` (all 4 stages incl. co-occurring statuses), `_isApproved()`, `_typeLabel()` (incl. `undefined` fallback), `open()` (shows loading state before data resolves; scopes both queries to the area+season; renders name/type/season/lifecycle once resolved; renders category breakdown counts; shows a retry-able error state on query failure rather than leaving the spinner up; does not throw when the drawer markup is missing from the page), `_categoryBreakdown()` edge cases (configured-but-zero-entries category still shown; has-entries-but-never-configured category still shown), all 4 quick actions (`uploadSpreadsheet`, `viewFilteredEntries`, `viewFilteredEntriesForCategory`, `viewOnLiveSite` incl. special-character URL-encoding), `close()`'s missing-element safety.
+
+`tests/entries.test.js` (updated, 177 total): `_buildServerFilters()` area→`county_city` and category→`award_category` mapping; DOM-read test for both new fields; new `filterByArea()` describe block (4 tests) covering area+season, area+season+year-string, area+season+category, and explicitly clearing category when none is given (so a stale category filter from a prior Region Hub navigation can't leak into a later one).
+
+`tests/nominee-uploads.test.js` (updated, 47 total): fixed a test broken by the new "Open Hub" button becoming each row's first `<button>` (switched from positional `querySelector('button')` to the specific `data-action` selector); new test confirming the "Open Hub" button carries area id/name/type/country as `data-args`; new nested describe for `openUploadModal`'s preset-year parameter (pre-selects a given year when it's a valid option; falls back to the calendar-year default when the preset year is out of range) using the same local fixture setup/teardown pattern as the file's existing `_selectedYear` block, since `nomineeUploadYear` isn't part of the shared top-level fixture; new test for `getYearFilter()`.
+
+### VIII.5 — Verification
+
+Lint: clean (`npm run lint`, exit 0). Full suite: **87/87 suites, 6,946/6,946 tests pass** (`npm test`). Build: clean (`npm run build`) — `region-hub.js` confirmed present in the core bundle (29 modules), no new oversized chunks introduced.
+
+### VIII.6 — Git/worktree state
+
+All changes currently uncommitted in the working tree on branch `claude/unified-region-hub` (created off post-#369-merge `main`, confirmed via `git merge-base`), about to be committed and pushed; PR to be opened into `main` and held unmerged pending review, per instruction.

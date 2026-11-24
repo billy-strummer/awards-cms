@@ -44,6 +44,8 @@ const entriesModule = {
   currentFilters: {
     status: '',
     award: '',
+    area: '',
+    category: '',
     year: '',
     search: '',
     selfNom: '',
@@ -79,6 +81,14 @@ const entriesModule = {
         if (saved.award) {
           document.getElementById('entriesAwardFilter').value = saved.award;
           this.currentFilters.award = saved.award;
+        }
+        if (saved.area) {
+          document.getElementById('entriesAreaFilter').value = saved.area;
+          this.currentFilters.area = saved.area;
+        }
+        if (saved.category) {
+          document.getElementById('entriesCategoryFilter').value = saved.category;
+          this.currentFilters.category = saved.category;
         }
         if (saved.year) {
           document.getElementById('entriesYearFilter').value = saved.year;
@@ -167,6 +177,25 @@ const entriesModule = {
         '<option value="">All Years</option>' +
         uniqueYears.map((year) => `<option value="${year}">${year}</option>`).join('');
     }
+
+    /* selectAll: justified — small reference table (areas for filter dropdown) */
+    const areas = await apiClient.selectAll('areas', {
+      select: 'display_name',
+      filters: { is_active: true },
+      sort: { column: 'display_name', ascending: true },
+    });
+    const areaFilter = document.getElementById('entriesAreaFilter');
+    if (areaFilter && areas && areas.length > 0) {
+      const current = areaFilter.value;
+      areaFilter.innerHTML =
+        '<option value="">All Areas</option>' +
+        areas
+          .map(
+            (a) => `<option value="${utils.escapeHtml(a.display_name)}">${utils.escapeHtml(a.display_name)}</option>`
+          )
+          .join('');
+      if (current) areaFilter.value = current;
+    }
   },
 
   /**
@@ -218,6 +247,8 @@ const entriesModule = {
       }
     }
     if (this.currentFilters.award) filters.award_id = this.currentFilters.award;
+    if (this.currentFilters.area) filters.county_city = this.currentFilters.area;
+    if (this.currentFilters.category) filters.award_category = this.currentFilters.category;
     if (this.currentFilters.year) filters.year = parseInt(this.currentFilters.year);
     if (this.currentFilters.selfNom === 'self_nom') filters.is_self_nomination = true;
     if (this.currentFilters.selfNom === 'standard') filters.is_self_nomination = false;
@@ -348,6 +379,8 @@ const entriesModule = {
       const hasFilters = !!(
         this.currentFilters.status ||
         this.currentFilters.award ||
+        this.currentFilters.area ||
+        this.currentFilters.category ||
         this.currentFilters.year ||
         this.currentFilters.selfNom ||
         this.currentFilters.search
@@ -573,11 +606,32 @@ const entriesModule = {
   filterEntries() {
     this.currentFilters.status = document.getElementById('entriesStatusFilter').value;
     this.currentFilters.award = document.getElementById('entriesAwardFilter').value;
+    this.currentFilters.area = document.getElementById('entriesAreaFilter').value;
+    this.currentFilters.category = document.getElementById('entriesCategoryFilter').value;
     this.currentFilters.year = document.getElementById('entriesYearFilter').value;
     this.currentFilters.selfNom = document.getElementById('entriesSelfNomFilter').value;
 
     this._updateFilterCountBadge();
     this.applyFilters();
+  },
+
+  /**
+   * Filter directly to a specific area (and optionally season/category), as
+   * used by Award Areas' Region Hub quick actions.
+   * @param {string} areaName - The area's display_name (matches entries.county_city).
+   * @param {string|number} [year] - Optional season/year to also filter by.
+   * @param {string} [category] - Optional award_category to also filter by.
+   */
+  filterByArea(areaName, year, category) {
+    const areaEl = document.getElementById('entriesAreaFilter');
+    if (areaEl) areaEl.value = areaName;
+    if (year !== undefined && year !== null && year !== '') {
+      const yearEl = document.getElementById('entriesYearFilter');
+      if (yearEl) yearEl.value = String(year);
+    }
+    const categoryEl = document.getElementById('entriesCategoryFilter');
+    if (categoryEl) categoryEl.value = category || '';
+    this.filterEntries();
   },
 
   _updateFilterCountBadge() {
@@ -586,6 +640,8 @@ const entriesModule = {
     const count = [
       this.currentFilters.status,
       this.currentFilters.award,
+      this.currentFilters.area,
+      this.currentFilters.category,
       this.currentFilters.year,
       this.currentFilters.selfNom,
       this.currentFilters.search,
@@ -637,6 +693,16 @@ const entriesModule = {
 
       // Award filter
       if (this.currentFilters.award && entry.award_id !== this.currentFilters.award) {
+        return false;
+      }
+
+      // Area filter
+      if (this.currentFilters.area && entry.county_city !== this.currentFilters.area) {
+        return false;
+      }
+
+      // Category filter
+      if (this.currentFilters.category && entry.award_category !== this.currentFilters.category) {
         return false;
       }
 
@@ -736,6 +802,8 @@ const entriesModule = {
     utils.renderFilterChips('entriesActiveFilters', [
       { label: 'Status', fieldId: 'entriesStatusFilter', clearAction: 'entriesModule.clearFilter' },
       { label: 'Award', fieldId: 'entriesAwardFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Area', fieldId: 'entriesAreaFilter', clearAction: 'entriesModule.clearFilter' },
+      { label: 'Category', fieldId: 'entriesCategoryFilter', clearAction: 'entriesModule.clearFilter' },
       { label: 'Year', fieldId: 'entriesYearFilter', clearAction: 'entriesModule.clearFilter' },
       { label: 'Type', fieldId: 'entriesSelfNomFilter', clearAction: 'entriesModule.clearFilter' },
       { label: 'Search', fieldId: 'entriesSearchInput', clearAction: 'entriesModule.clearFilter' },
@@ -762,6 +830,8 @@ const entriesModule = {
     [
       'entriesStatusFilter',
       'entriesAwardFilter',
+      'entriesAreaFilter',
+      'entriesCategoryFilter',
       'entriesYearFilter',
       'entriesSelfNomFilter',
       'entriesSearchInput',
@@ -2748,6 +2818,8 @@ const entriesModule = {
     const filters = {
       status: document.getElementById('entriesStatusFilter')?.value || '',
       award: document.getElementById('entriesAwardFilter')?.value || '',
+      area: document.getElementById('entriesAreaFilter')?.value || '',
+      category: document.getElementById('entriesCategoryFilter')?.value || '',
       year: document.getElementById('entriesYearFilter')?.value || '',
       selfNom: document.getElementById('entriesSelfNomFilter')?.value || '',
       search: document.getElementById('entriesSearchInput')?.value || '',
@@ -2787,6 +2859,8 @@ const entriesModule = {
       if (!view) return;
       if (view.filters.status) document.getElementById('entriesStatusFilter').value = view.filters.status;
       if (view.filters.award) document.getElementById('entriesAwardFilter').value = view.filters.award;
+      if (view.filters.area) document.getElementById('entriesAreaFilter').value = view.filters.area;
+      if (view.filters.category) document.getElementById('entriesCategoryFilter').value = view.filters.category;
       if (view.filters.year) document.getElementById('entriesYearFilter').value = view.filters.year;
       if (view.filters.selfNom) document.getElementById('entriesSelfNomFilter').value = view.filters.selfNom;
       if (view.filters.search) document.getElementById('entriesSearchInput').value = view.filters.search;

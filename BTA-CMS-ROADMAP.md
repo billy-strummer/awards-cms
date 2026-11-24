@@ -14,7 +14,8 @@
 |---|---|---|---|---|
 | 2026-11-24 | Roadmap created | Done | this commit | Initial version of this file. |
 | 2026-11-24 | 0.1 Award Areas UX Overhaul | **Done — merged to `main`** | [#366](https://github.com/billy-strummer/awards-cms/pull/366) (merge commit `9233abf`) | Merged per explicit authorization. Branch `claude/award-areas-ux-overhaul` deleted locally; remote delete blocked by a 403 from this session's egress proxy (policy denial, not retried) — remote branch may still exist on `origin`, harmlessly, since its content is fully merged. |
-| 2026-11-24 | 0.2 Cross-Screen Admin UI/UX Polish | **Done — PR open, not yet merged** | `claude/admin-ui-polish-pass` → [#367](https://github.com/billy-strummer/awards-cms/pull/367) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section V. Could not verify a literal "¢" character or a "stale timestamp" header badge anywhere in source (exhaustive grep); fixed the concrete, verified bugs found instead — see Section V for the discrepancy report. |
+| 2026-11-24 | 0.2 Cross-Screen Admin UI/UX Polish | **Done — merged to `main`** | [#367](https://github.com/billy-strummer/awards-cms/pull/367) (merge commit `e462eb4`) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section V. Could not verify a literal "¢" character or a "stale timestamp" header badge anywhere in source (exhaustive grep); fixed the concrete, verified bugs found instead — see Section V for the discrepancy report. |
+| 2026-11-24 | 0.3 Fix Admin Data Load Errors | **Done (with honest limits) — PR open, not yet merged** | `claude/fix-admin-data-loads` → [#368](https://github.com/billy-strummer/awards-cms/pull/368) | See full evidence in `BTA-CMS-PROJECT-TASKS.md` Section VI. The 4 reported exceptions were not reproducible via live schema+code tracing; fixed the 2 concrete bugs found (Winners status filter, diagnosability) and flagged a new, separate schema-drift finding (`gdpr_consent`/`trophy_collected`/`announce_at` don't exist anywhere) for its own future task. |
 
 ---
 
@@ -46,15 +47,17 @@
   - [x] **Could not verify a "stale timestamp" header badge anywhere in Awards or Winners** (exhaustive grep for `stale`/`lastUpdated`/similar found nothing visible in either screen) — reported as a discrepancy, not fixed speculatively.
   - [x] Lint clean. 85/85 suites, 6,880/6,880 tests (1 test updated for new copy, 1 pre-existing latent test gap noted — see Section V). Production build clean.
 
-### `[ ]` 0.3 — Fix Admin Data Load Errors on Production
-**Status: not started. Not yet investigated.**
-- Reported symptoms (user's report, not yet reproduced or root-caused by a session): `Failed to load awards summary`, `Error loading completion data`, `Failed to load awards`, `Failed to load winners` — on production (`qdzyknercdqwhwijbcxf`).
-- Target files: TBD — needs a live, read-only pass against production first (check `get_advisors`, check the relevant `data-proxy.js` operations these screens call, check RLS/grant state post-migration-093/096, check browser console/network for the actual failing request and status code) before concluding a root cause. Given this project's history of RLS/grant exposure work on exactly this production project, a policy or grant side-effect is one plausible lead, not a confirmed cause.
+### `[x]` 0.3 — Fix Admin Data Load Errors on Production
+**Status: Done, with an honest limit on what "done" means here — see `BTA-CMS-PROJECT-TASKS.md` Section VI. The 4 reported exceptions were NOT reproducible via live schema + code tracing (every query structure checked out valid against production); fixed the 2 concrete, verified bugs the investigation did surface, and added diagnostics so a real recurrence is traceable without a live database session.**
+- Target files: `winners.js`, `tests/winners.test.js`, `api/data-proxy.js`, `utils.js`, `tests/data-proxy.test.js`, `tests/api-client.test.js`.
 - Acceptance criteria:
-  - [ ] Root cause confirmed with evidence (exact failing request, exact error, exact table/column/policy involved) — not patched blind.
-  - [ ] Every one of the 4 reported error messages reproduced or disproved individually.
-  - [ ] Fix applied and verified live on production (read-only verification preferred where possible; any further migration follows the existing test-first-then-authorized process).
-  - [ ] Lint clean, full suite green, build clean.
+  - [x] Root cause investigated with evidence: live production schema (`qdzyknercdqwhwijbcxf`) checked column-by-column, FK-by-FK, against every query the 4 screens issue; PostgREST relationship resolution independently confirmed live via direct REST calls; `ALLOWED_TABLES`/role-permission logic traced in `api/data-proxy.js`. **No query-structure bug reproducible** — service role (which the admin proxy uses) bypasses RLS entirely, so migrations 093/095/096 are not implicated.
+  - [x] Each of the 4 reported messages individually traced to its exact source line; none could be forced to reproduce from the current schema state. Concretely verified instead: production's `award_years` (hence the `awards` view), `award_assignments`, `winner_media` and `winners` tables are currently empty (0 rows); `entries` (29) and `organisations` (19) are not.
+  - [x] Found and fixed a real, verified bug surfaced by this trace: Winners' status filter dropdown was never sent to the server (`_buildServerFilters()` only forwarded `year`) — and critically, the column is `winner_status` (migration 025), not `status`, so naively "fixing" this by forwarding the dropdown's own key would have introduced the exact class of bug being hunted for.
+  - [x] Found, documented, not fixed in this task (flagged as its own follow-up, not patched blind): `winners.js`'s row rendering references `gdpr_consent`, `trophy_collected` and `announce_at` — none of which exist in any migration anywhere in the repo, test or production. Doesn't throw (the query uses `*`, not named columns) but is a real, silent correctness gap; deciding whether to add these columns or remove the dead UI is a product decision, not this task's to make unilaterally.
+  - [x] Diagnosability improvement: `api/data-proxy.js`'s catch-all now returns the Postgres/PostgREST error `code` (validated to a safe alphanumeric pattern) alongside the generic 500, and `utils.js`'s `apiClient._call` appends it to the thrown message — so a future real recurrence shows e.g. `Internal server error [42703]` in the toast instead of a bare, undiagnosable message.
+  - [x] Tests added: Winners status-filter→`winner_status` mapping; data-proxy empty-table-resolves-cleanly vs. real-Postgres-error-surfaces-code vs. malformed-code-is-dropped; apiClient code-suffix append/no-append.
+  - [x] Lint clean. 85/85 suites, 6,886/6,886 tests. Production build clean.
 
 ---
 

@@ -3081,3 +3081,45 @@ Lint: clean (`npm run lint`, zero errors). Full suite: **85/85 suites, 6,880/6,8
 ### V.5 — Git/worktree state
 
 All changes above are on branch `claude/admin-ui-polish-pass` (created off post-merge `main`), committed and pushed; PR opened into `main`, held unmerged pending the user's review per instruction.
+
+---
+
+## VI. 0.2 merged; 0.3 Fix Admin Data Load Errors — investigation and findings (2026-11-24)
+
+### VI.1 — 0.2 merged
+
+Re-verified PR #367 live (`mergeable_state: clean`, head `26e4779`) before merging, per explicit authorization. Merged via `mcp__github__merge_pull_request` (merge commit `e462eb4`). Fast-forwarded local `main`, deleted the merged local branch (`claude/admin-ui-polish-pass`), created `claude/fix-admin-data-loads` off the updated `main`.
+
+### VI.2 — 0.3 investigation: what was actually checked, and why none of it reproduced the reported errors
+
+The task named 4 error strings and asked to check `api/data-proxy.js`, auth/session headers, and table/column names against the verified schema. Each was checked directly against **live production** (`qdzyknercdqwhwijbcxf`), not assumed:
+
+- **Columns:** pulled `information_schema.columns` for `awards`/`award_years`, `entries`, `award_assignments`, `media_gallery`, `organisations`, `winners`. Every column the 4 screens' queries filter, sort, or select by name exists exactly as named.
+- **`awards` is a view** (`SELECT * FROM award_years`, `SECURITY DEFINER` — flagged by `get_advisors` as an ERROR-level finding, migration 069's own artifact). Confirmed this is a simple passthrough with no broken dependency — the `SECURITY DEFINER` flag is a real, separate security finding worth its own future task, but not a "failed to load" cause: a view being `SECURITY DEFINER` only changes *whose* RLS/grants apply, and the admin path never evaluates RLS at all (next point).
+- **The admin proxy uses the Supabase *service role*** (`api/data-proxy.js`'s `supabase` client, `SUPABASE_SERVICE_KEY`), which bypasses RLS and grants entirely by Postgres design. This means migrations 093/095/096 (RLS/grant hardening) **cannot be the cause** of any admin-side load failure — confirmed by checking `checkPermission`'s role-based logic (not RLS) is the only gate the proxy itself applies, and it is uniform across tables, not selectively broken for these 4 screens.
+- **FK/embed relationships:** `winners.js`'s `_fetchPage` embeds `awards:award_years!winners_award_id_fkey (*)` and `winner_media (*)`; `entries.js`'s embeds `organisations(...)`, `awards:award_years(...)`, `entry_files(count)`. Every named FK constraint exists exactly as named (`winners_award_id_fkey`: `winners`→`award_years`; `entries_award_id_fkey`: `entries`→`award_years`; `entries_organisation_id_fkey`: `entries`→`organisations`; `winner_media_winner_id_fkey`: the only FK from `winner_media` to `winners`, unambiguous). **Independently confirmed live**, not just via `pg_constraint`: ran both embed queries against the real PostgREST endpoint (anon key, `curl`) — both returned `42501 permission denied` at the *named* embedded table (not a `PGRST` relationship/schema-cache error), which only happens if PostgREST's schema cache already resolves the relationship correctly. This rules out a stale-schema-cache cause.
+- **`ALLOWED_TABLES`** in `api/data-proxy.js` includes every table the 4 screens touch (`awards`, `winners`, `entries`, `award_assignments`, `media_gallery`, `organisations`).
+- **Data state** (verified by direct row counts): `award_years` (hence `awards`), `award_assignments`, `media_gallery`, `winner_media` and `winners` are **all currently 0 rows** on production. `entries` has 29 rows, `organisations` has 19. This is a real, concrete fact — and explains why Awards/Winners/parts of the Dashboard currently show nothing — but does not itself explain a thrown exception: every one of these screens' empty-result handling (`showEnhancedEmptyState`/`showEmptyState`, both already calm per 0.2's own investigation) was independently re-confirmed resilient to zero rows, and the dashboard's own `Promise.allSettled`/per-widget try/catch isolates any one widget's failure from the others.
+
+**Conclusion:** none of the 4 reported exceptions could be reproduced or root-caused from the current live schema and code. Per the continuity protocol (report discrepancies, don't patch blind), this is being recorded as a genuine open discrepancy rather than papered over — the error strings may predate this session's own fixes, may have been transient, or may require real browser/network evidence (exact status code and response body) that no tool available in this environment can capture. The user was asked how to proceed given this and chose: fix what the investigation did verify, add diagnostics, and report honestly.
+
+### VI.3 — Concrete bugs found and fixed
+
+1. **Winners' status filter was silently never applied server-side.** `winners.js`'s `_buildServerFilters()` only ever forwarded `year`; the status dropdown (`winnerStatusFilter`) was read and saved to `localStorage` by `filterWinners()` but never included in the server-side filter object used when `_serverPagination` is active (which it always is for the main list load). Fixed by forwarding it — **as `filters.winner_status`, not `filters.status`**, since production's actual column (migration 025) is `winner_status`; sending the dropdown's own label as the column name would have introduced a real `42703 column does not exist` error of exactly the kind this task was hunting for.
+2. **Diagnosability of genuine future failures.** `api/data-proxy.js`'s catch-all previously logged the Postgres error code server-side only and returned a bare `{error: 'Internal server error'}` to the client — meaning a real recurrence of any of these 4 errors would show an admin a message with no traceable detail, and would need a live database session (like this one) to diagnose. Now the response includes `code` (the Postgres/PostgREST error code, validated against a strict alphanumeric pattern before being echoed — never the raw message/details/hint, which can contain table or column names), and `utils.js`'s `apiClient._call` appends it to the thrown message, e.g. `Internal server error [42703]`.
+
+### VI.4 — New finding, documented but deliberately not fixed (separate task, not this one's to decide)
+
+`winners.js`'s row-rendering code references `winner.gdpr_consent`, `winner.trophy_collected`, and `winner.announce_at` for the Consent toggle, trophy-collected toggle, and scheduled-announcement badge. **None of these three columns exist in any migration file anywhere in this repository** (confirmed by grepping every `.sql` file in `migrations/` and the root `database-*.sql` files) — not just absent from production, absent from the schema's own history entirely. Because the query's `select` uses `*` rather than naming columns, this does not throw — the fields are simply `undefined`, so these 3 UI elements always render their "not set" default state regardless of the real data. This is a genuine, previously-undocumented correctness gap, but deciding whether to add the columns (a new migration) or remove the dead UI referencing them is a product decision outside this task's scope (fixing data-*load errors*, not adding new schema) — flagged here for its own future task rather than acted on unilaterally.
+
+### VI.5 — Tests added
+
+`tests/winners.test.js`: `_buildServerFilters()` now covers the status→`winner_status` mapping explicitly (and the DOM fixture gained a `winnerStatusFilter` select it was previously missing). `tests/data-proxy.test.js`: a zero-row select resolves as success not error; a real Postgres error surfaces its `code` with no other leaked detail; a malformed/suspicious code is dropped rather than echoed. `tests/api-client.test.js`: the `[code]` suffix is appended when the server sends one, and omitted when it doesn't.
+
+### VI.6 — Verification
+
+Lint: clean. Full suite: **85/85 suites, 6,886/6,886 tests pass**. Build: clean.
+
+### VI.7 — Git/worktree state
+
+All changes on branch `claude/fix-admin-data-loads` (created off post-#367-merge `main`), to be committed and pushed, PR to be opened into `main` and held unmerged pending review, per instruction.

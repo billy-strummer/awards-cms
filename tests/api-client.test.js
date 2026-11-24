@@ -218,6 +218,27 @@ describe('apiClient', () => {
     await expect(apiClient.select('secret_table')).rejects.toThrow('Table not allowed');
   });
 
+  test('appends the server-supplied Postgres error code to the error message', async () => {
+    // Status 400 (not 429/5xx) so this doesn't exercise the retry path.
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Internal server error', code: '42703' }),
+    });
+
+    await expect(apiClient.select('winners')).rejects.toThrow('Internal server error [42703]');
+  });
+
+  test('does not append a code suffix when the server sent none', async () => {
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'Internal server error' }),
+    });
+
+    await expect(apiClient.select('winners')).rejects.toThrow(/^Internal server error$/);
+  });
+
   test('throws on 401 (not authenticated)', async () => {
     global.fetch.mockResolvedValue({
       ok: false,

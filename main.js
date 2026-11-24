@@ -37,6 +37,8 @@ export { winnersModule } from './winners.js';
 export { entriesModule } from './entries.js';
 export { assignmentsModule } from './assignments.js';
 export { dashboardModule } from './dashboard.js';
+export { regionHubModule } from './region-hub.js';
+export { judgingWorkspaceModule } from './judging-workspace.js';
 
 // Settings & admin
 export { settingsModule } from './settings.js';

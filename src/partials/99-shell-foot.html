@@ -4495,6 +4495,55 @@
     </div>
   </div>
 
+  <!-- ==================================================== -->
+  <!-- JUDGING & SHORTLIST WORKSPACE (Roadmap 3.2) -->
+  <!-- ==================================================== -->
+  <div class="modal fade" id="judgingWorkspaceModal" tabindex="-1" aria-labelledby="judgingWorkspaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="judgingWorkspaceModalLabel"><i class="bi bi-clipboard-check text-primary me-2"></i>Judging &amp; Shortlist Workspace</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div class="d-flex flex-wrap gap-2 align-items-end p-3 border-bottom bg-light">
+            <div>
+              <label for="judgingWorkspaceSeason" class="form-label small fw-semibold mb-1">Season</label>
+              <select class="form-select form-select-sm" id="judgingWorkspaceSeason" data-on-change="judgingWorkspaceModule.onFilterChange"></select>
+            </div>
+            <div>
+              <label for="judgingWorkspaceArea" class="form-label small fw-semibold mb-1">Area</label>
+              <select class="form-select form-select-sm" id="judgingWorkspaceArea" data-on-change="judgingWorkspaceModule.onFilterChange">
+                <option value="">All Areas</option>
+              </select>
+            </div>
+            <div>
+              <label for="judgingWorkspaceCategory" class="form-label small fw-semibold mb-1">Award Category</label>
+              <select class="form-select form-select-sm" id="judgingWorkspaceCategory" data-on-change="judgingWorkspaceModule.onFilterChange">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+            <div class="ms-auto">
+              <span class="badge bg-secondary" id="judgingWorkspaceCount">0 candidates</span>
+            </div>
+          </div>
+          <div class="d-flex" style="height: calc(100vh - 170px);">
+            <div class="border-end" style="width: 360px; overflow-y: auto;" id="judgingWorkspaceQueue">
+              <div class="text-center text-muted py-5">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+              </div>
+            </div>
+            <div class="flex-grow-1 overflow-y-auto p-4" id="judgingWorkspaceDetail">
+              <div class="text-center text-muted py-5">
+                <i class="bi bi-arrow-left-circle fs-2 d-block mb-2"></i>
+                Select a candidate from the queue.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Bootstrap JS Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
@@ -4518,6 +4567,7 @@
   <script src="areas-manager.js"></script>
   <script src="nominee-uploads.js"></script>
   <script src="region-hub.js"></script>
+  <script src="judging-workspace.js"></script>
   <script src="nominee-badge.js"></script>
   <script src="awards.js?v=2"></script>
   <script src="organisations.js"></script>

@@ -32,8 +32,10 @@ const winnersModule = {
       this._populateFiltersFromConstants();
 
       // Restore saved filters from localStorage
+      let savedYear;
       try {
         const saved = JSON.parse(localStorage.getItem('winnersFilters') || '{}');
+        savedYear = saved.year;
         if (saved.year) document.getElementById('winnerYearFilterSelect').value = saved.year;
         if (saved.award) document.getElementById('winnerAwardFilterSelect').value = saved.award;
         if (saved.search) document.getElementById('winnerSearchBox').value = saved.search;
@@ -48,7 +50,18 @@ const winnersModule = {
       console.debug(`Loaded winners (page 1, total: ${this._pagination.count})`); // eslint-disable-line no-console
 
       // Populate year filter from database
-      utils.populateYearFilterFromDB('winnerYearFilterSelect', { selectCurrent: true });
+      utils.populateYearFilterFromDB('winnerYearFilterSelect', { selectCurrent: true }).then(() => {
+        // A global season (BTA-CMS-ROADMAP 1.1) takes priority over this
+        // function's own calendar-year default, if one is already active
+        // and this tab's own saved filter didn't already set a year.
+        if (typeof seasonSwitcherModule === 'undefined' || savedYear) return;
+        const season = seasonSwitcherModule.getSeason();
+        const sel = document.getElementById('winnerYearFilterSelect');
+        if (season && sel && sel.value !== season && [...sel.options].some((opt) => opt.value === season)) {
+          sel.value = season;
+          this.filterWinners();
+        }
+      });
 
       // Initialise reusable keyboard navigation (once)
       if (!this._keyboardNavInit) {

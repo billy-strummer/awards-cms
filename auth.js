@@ -443,6 +443,13 @@ const authModule = {
       document.getElementById('userEmail').textContent = STATE.currentUser.email;
     }
 
+    // Initialize the global season switcher first, so its resolved
+    // default season is already in place by the time Dashboard's own
+    // stats load — not raced against it.
+    if (typeof seasonSwitcherModule !== 'undefined') {
+      await seasonSwitcherModule.init();
+    }
+
     // Load initial data
     dashboardModule.loadAllData();
 

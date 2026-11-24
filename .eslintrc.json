@@ -37,6 +37,7 @@
     "paymentsModule": "readonly",
     "crmModule": "readonly",
     "dashboardModule": "readonly",
+    "seasonSwitcherModule": "readonly",
     "rbacModule": "readonly",
     "securityModule": "readonly",
     "emailBuilder": "readonly",

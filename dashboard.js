@@ -147,30 +147,42 @@ const dashboardModule = {
     const dateStart = this._getDateRangeFilter();
     const dateFilters = dateStart ? { 'created_at@gte': dateStart } : {};
 
+    // Scope award-season-dependent counts (Awards, Winners) to the global
+    // Season Switcher when a specific season is selected — "All Seasons"
+    // (an empty value) leaves them unfiltered. Organisations aren't tied
+    // to a single award year, so they're never season-scoped.
+    const season = typeof seasonSwitcherModule !== 'undefined' ? seasonSwitcherModule.getSeason() : '';
+    const seasonFilters = season ? { ...dateFilters, year: season } : dateFilters;
+    const scopedAwards = () => (season ? STATE.allAwards.filter((a) => String(a.year) === season) : STATE.allAwards);
+    const scopedWinners = () => (season ? STATE.allWinners.filter((w) => String(w.year) === season) : STATE.allWinners);
+
     // Fetch accurate total counts from the server (STATE arrays only contain current page)
     let totalAwards, pendingAwards, totalOrgs, totalWinners, totalEntries;
     try {
       const [awardsResult, orgsResult, winnersResult, entriesResult] = await Promise.all([
-        apiClient.select('award_years', { select: 'id, status', page: 1, pageSize: 1, filters: dateFilters }),
+        apiClient.select('award_years', { select: 'id, status', page: 1, pageSize: 1, filters: seasonFilters }),
         apiClient.select('organisations', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
-        apiClient.select('winners', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
+        apiClient.select('winners', { select: 'id', page: 1, pageSize: 1, filters: seasonFilters }),
         apiClient.select('entries', { select: 'id', page: 1, pageSize: 1, filters: dateFilters }),
       ]);
-      totalAwards = awardsResult.count || STATE.allAwards.length;
-      totalOrgs = orgsResult.count || STATE.allOrganisations.length;
-      totalWinners = winnersResult.count || STATE.allWinners.length;
+      // ?? not || — a season/date range that legitimately matches zero
+      // records must show 0, not silently fall back to the unfiltered total.
+      totalAwards = awardsResult.count ?? scopedAwards().length;
+      totalOrgs = orgsResult.count ?? STATE.allOrganisations.length;
+      totalWinners = winnersResult.count ?? scopedWinners().length;
       totalEntries = entriesResult.count ?? (STATE.allEntries || []).length;
-      // Pending awards: filter local state by date range when active
-      const awardsInRange = dateStart
+      // Pending awards: filter local state by date range + season when active
+      let awardsInRange = dateStart
         ? STATE.allAwards.filter((a) => a.created_at && a.created_at >= dateStart)
         : STATE.allAwards;
+      if (season) awardsInRange = awardsInRange.filter((a) => String(a.year) === season);
       pendingAwards = awardsInRange.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
     } catch (_e) {
       // Fallback to local state if server count fails
-      totalAwards = STATE.allAwards.length;
-      pendingAwards = STATE.allAwards.filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
+      totalAwards = scopedAwards().length;
+      pendingAwards = scopedAwards().filter((a) => a.status === STATUS.DRAFT || a.status === STATUS.PENDING).length;
       totalOrgs = STATE.allOrganisations.length;
-      totalWinners = STATE.allWinners.length;
+      totalWinners = scopedWinners().length;
       totalEntries = (STATE.allEntries || []).length;
     }
 

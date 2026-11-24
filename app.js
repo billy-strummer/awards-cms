@@ -1279,6 +1279,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Note: winnerSearchBox debounced search is initialized via utils.initDebouncedSearch below
 
+  // --- Global Season Switcher sync ---
+  // Maps each season-aware tab to its own year-filter <select> and the
+  // same function its own dropdown's "change" listener (above) already
+  // calls — reuses each tab's existing filter logic rather than
+  // duplicating it. Shared by both the live season-change broadcast and
+  // the tab-switch handler below.
+  const seasonSyncMap = {
+    'awards-tab': { selectId: 'awardsYearFilterSelect', fn: () => awardsModule?.filterAwards() },
+    'entries-tab': { selectId: 'entriesYearFilter', fn: () => entriesModule?.filterEntries() },
+    'winners-tab': { selectId: 'winnerYearFilterSelect', fn: () => winnersModule?.filterWinners() },
+    // Award Areas has no "All Seasons" concept of its own — its filter is
+    // always a specific year — so it's skipped when the global season is
+    // "All Seasons" rather than being forced into a value it can't represent.
+    'award-areas-tab': {
+      selectId: 'awardAreasYearFilter',
+      fn: () => nomineeUploads?.setYearFilter(),
+      skipWhenAllSeasons: true,
+    },
+  };
+
+  function syncTabToSeason(tabId, season) {
+    const config = seasonSyncMap[tabId];
+    if (!config) return;
+    if (!season && config.skipWhenAllSeasons) return;
+    const select = document.getElementById(config.selectId);
+    if (!select) return;
+    // Only apply if that option actually exists in this tab's own dropdown
+    // yet (it may not be populated if the tab has never been visited) —
+    // next time it's populated, loadX()'s own selectCurrent default applies.
+    if (season && ![...select.options].some((opt) => opt.value === season)) return;
+    if (select.value === season) return;
+    select.value = season;
+    config.fn();
+  }
+
+  document.addEventListener('bta:season-change', (e) => {
+    const activeTab = document.querySelector('#appSidebar .sidebar-nav-link.active');
+    if (!activeTab) return;
+    // Dashboard has no year <select> of its own to sync — its stat cards
+    // read the season directly inside updateStats() — just re-render them.
+    if (activeTab.id === 'dashboard-tab') {
+      dashboardModule?.updateStats();
+      return;
+    }
+    syncTabToSeason(activeTab.id, e.detail.season);
+  });
+
   // --- Tab Navigation ---
   // Load winners data when Winners tab is clicked (lazy loading)
   const winnersTab = document.getElementById('winners-tab');
@@ -2092,6 +2139,17 @@ document.addEventListener('DOMContentLoaded', function () {
       if (config && utils.isDataStale(config.key) && STATE.currentUser) {
         console.debug('Auto-refreshing stale data for', config.key);
         config.fn();
+      }
+
+      // Sync this tab's own year filter to the current global season —
+      // covers switching season while viewing a different tab. Dashboard
+      // has no year <select> of its own — just re-render its stat cards.
+      if (typeof seasonSwitcherModule !== 'undefined') {
+        if (tabId === 'dashboard-tab') {
+          dashboardModule?.updateStats();
+        } else {
+          syncTabToSeason(tabId, seasonSwitcherModule.getSeason());
+        }
       }
 
       // Tab state in URL — supports #section/sub-tab format

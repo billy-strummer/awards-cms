@@ -3123,3 +3123,51 @@ Lint: clean. Full suite: **85/85 suites, 6,886/6,886 tests pass**. Build: clean.
 ### VI.7 — Git/worktree state
 
 All changes on branch `claude/fix-admin-data-loads` (created off post-#367-merge `main`), to be committed and pushed, PR to be opened into `main` and held unmerged pending review, per instruction.
+
+---
+
+## VII. 0.3 merged; 1.1 Global Season / Award Year Switcher (2026-11-24)
+
+### VII.1 — 0.3 merged
+
+Re-verified PR #368 live before merging, per explicit authorization. Note: `mergeable_state` read `"unstable"` rather than `"clean"` — checked `get_status` directly rather than assuming: both Vercel deployment checks (`awards-cms`, `awards-cms-pi1g`) reported `state: "success"`, confirming "unstable" was a branch-protection/review-state artifact, not a real conflict, before merging. Merged via `mcp__github__merge_pull_request` (merge commit `303d6c7`). Fast-forwarded local `main`, deleted the merged local branch (`claude/fix-admin-data-loads`), created `claude/global-season-switcher` off the updated `main`.
+
+### VII.2 — Investigation before building anything (per the task's own step 1)
+
+Read the actual header/sidebar structure in `src/partials/00-shell-head.html` rather than assuming the user's suggested filenames were exact — `src/partials/00-header.html` named in the task doesn't exist; the real file is `00-shell-head.html`, and the app's navigation is a **left sidebar** (`.sidebar-nav-link` buttons) plus a genuinely separate **top navbar** (`<nav class="navbar">`, holding Connection Status, Recently Viewed, Global Search, dark mode, user menu, logout) — the top navbar is what the task meant by "top admin header bar," and is where the switcher was added.
+
+Checked each of the 6 named screens' actual current year-filtering mechanism, not assumed:
+- **Awards**: own `awardsYearFilterSelect`, defaults via `utils.populateYearFilterFromDB(..., {selectCurrent:true})` to the **calendar** year, independent of any global state.
+- **Award Areas**: own `awardAreasYearFilter` (from 0.1) — its model has **no "All Seasons" equivalent at all**; `setYearFilter()` always coerces to a specific integer year (`_yearFilter = Number.isInteger(parsed) ? parsed : new Date().getFullYear()`), and its own fallback option range is hardcoded `[current-1, current, current+1, current+2]`.
+- **Entries**: own `entriesYearFilter`, options derived from loaded entry data (or a fresh query), no calendar-year auto-default — already closer to "respect whatever's set."
+- **Winners**: own `winnerYearFilterSelect`, same `populateYearFilterFromDB(..., {selectCurrent:true})` calendar-year-default pattern as Awards.
+- **Dashboard**: **no award-season filter of any kind** — only an unrelated `dashboardDateRangeGroup` (All Time/Month/Quarter/Year buttons) scoping KPI *growth* calculations by record-creation date, not by award year.
+- **Payments**: **no year/season filter or column anywhere** — grepped both the partial and `payments.js` for any `*YearFilter*` pattern; none exists.
+
+Each per-tab `<select>`'s own change-event wiring was also traced (not assumed to use the same pattern): Award Areas and Entries use declarative `data-on-change` attributes (`nomineeUploads.setYearFilter`, `entriesModule.filterEntries`); Awards and Winners are wired imperatively in `app.js` (`awardsModule.filterAwards`, `winnersModule.filterWinners`) — confirming `app.js` is already this app's established, central place for cross-cutting filter-change wiring, which the new switcher's own cross-tab sync logic was added alongside, not as a new, separate pattern.
+
+### VII.3 — Design decisions made, with the reasoning on record
+
+- **The switcher drives each tab's own *existing* filter function** (`filterAwards()`, `filterWinners()`, `filterEntries()`, `setYearFilter()`) rather than re-implementing per-tab filtering — zero duplicated query/filter logic.
+- **Award Areas is skipped on "All Seasons"** rather than forced into a value it structurally can't represent (confirmed above: its filter is never "all"). This is Award Areas' own pre-existing design, not something changed by this task, and the roadmap's own 0.1-non-regression acceptance criterion is satisfied by *not* touching it under that specific condition.
+- **Dashboard has no `<select>` of its own to sync** — instead, `dashboardModule.updateStats()` itself now reads the season directly and scopes the `award_years`/`winners` server queries (and their local-state fallbacks) to it. Only **Total Awards, Pending Approvals and Winners** are scoped — **Organisations is deliberately never scoped**, since an organisation isn't tied to a single award year; forcing that filter onto it would misrepresent the data, not clarify it.
+- **A real, pre-existing bug found and fixed as part of this change**: `updateStats()`'s success-path fallbacks used `awardsResult.count || STATE.allAwards.length` (and the same for `totalOrgs`/`totalWinners`) — `||` treats a legitimately-zero count (which the new season filter makes far more likely to occur honestly) the same as a missing/undefined one, silently falling back to the *unfiltered* total. Changed to `??`, matching the pattern `totalEntries` already correctly used. Without this fix, selecting a season with zero awards would have shown the all-seasons total instead of 0 — the new feature would have shipped with a real, demonstrable bug.
+- **Payments is not wired to filter by season.** Investigated first, not assumed: there is no year/season dimension anywhere in Payments' current data/query model. Wiring one in would mean designing and touching real invoice/payment query logic — a genuine scope expansion beyond "add a switcher and sync existing filters," and not something to do unilaterally mid-task. The switcher still broadcasts its event; Payments simply has nothing listening yet. Flagged here, not silently dropped.
+- **Awards and Winners' own calendar-year default is overridden by the global season** at their own load time (not just synced afterward) — but only when that specific tab doesn't already have its own saved per-tab filter (`localStorage`'s `awardsFilters.year` / `winnersFilters.year`), preserving "per-page filter compatibility" exactly as the task asked, rather than the global season always winning.
+- **Startup ordering in `auth.js`'s `showDashboard()`** was changed so `seasonSwitcherModule.init()` is `await`ed *before* `dashboardModule.loadAllData()` is kicked off — otherwise Dashboard's very first render would compute stats against no resolved season yet, race the switcher's own async DB lookup, and need a second, redundant re-render to correct itself.
+
+### VII.4 — A real regression found and fixed during testing (not shipped)
+
+Added `global.nomineeUploads` and `global.seasonSwitcherModule` test doubles to `tests/app.test.js`'s existing module-mocking block (following its own established pattern) so the new cross-tab wiring in `app.js` could be exercised. The first version of the `nomineeUploads` mock (`{ setYearFilter: jest.fn() }`) was incomplete — `app.js`'s unrelated, pre-existing `if (typeof nomineeUploads !== 'undefined') nomineeUploads.init();` line, previously silently skipped because `nomineeUploads` was never defined in this test file at all, started throwing `nomineeUploads.init is not a function` once the mock existed, because the app's entire `DOMContentLoaded` setup is one synchronous function — the throw aborted everything wired *after* that line, including every pre-existing filter/tab listener, not just the new code. Fixed by completing the mock (`{ init: jest.fn(), setYearFilter: jest.fn() }`). This was caught and fixed before it could mask a real issue — full suite is genuinely green, not green by accident.
+
+### VII.5 — Tests added
+
+`tests/season-switcher.test.js` (new, 16 tests): `getSeason()` persistence and its localStorage-failure fallback; `init()`'s dropdown population (all-seasons-plus-years, newest-first ordering, latest-season default, saved-season restoration, a saved season that no longer exists falling back to latest, the empty-table and query-failure fallback ranges, caching across repeated calls, a missing-element no-op); `setSeason()`'s persistence, dropdown update, and event broadcast (including for "All Seasons" itself); the `<select>`'s own `change` listener triggering `setSeason`. `tests/app.test.js` (11 new tests): switching to a season-aware tab syncs it; a tab outside the sync map is left alone; switching to Dashboard always re-renders its stats; a live season change applies to whichever tab is currently active and no other; Award Areas syncs on a real season and is skipped on "All Seasons"; no active tab is a safe no-op; an already-matching season doesn't re-trigger a redundant filter call; a season with no matching option in that tab's dropdown yet is a safe no-op.
+
+### VII.6 — Verification
+
+Lint: clean. Full suite: **86/86 suites, 6,913/6,913 tests pass**. Build: clean (`season-switcher.js` confirmed present in both the bundled `app.min.js` and the built `index.html`'s dropdown markup).
+
+### VII.7 — Git/worktree state
+
+All changes on branch `claude/global-season-switcher` (created off post-#368-merge `main`), to be committed and pushed, PR to be opened into `main` and held unmerged pending review, per instruction.

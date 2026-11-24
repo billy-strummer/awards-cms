@@ -14,6 +14,7 @@ const DIST_DIR = path.join(__dirname, 'dist');
 const JS_FILES = [
   'config.js',
   'utils.js',
+  'season-switcher.js',
   'auth.js',
   'location.js',
   'areas-manager.js',

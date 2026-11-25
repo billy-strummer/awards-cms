@@ -1,0 +1,144 @@
+/**
+ * Tests for api/_lib/award-categories.js — the master STANDARD_CATEGORIES
+ * list, the normalized-match fallback, and the custom-categories resolver
+ * used by the Award Areas CSV import to accept common spreadsheet variants
+ * (plural/singular, ampersand/"and", punctuation) and area-specific custom
+ * categories without ever silently guessing at a genuinely different word.
+ * Run with: npx jest tests/award-categories.test.js
+ */
+
+const {
+  STANDARD_CATEGORIES,
+  resolveCategory,
+  buildCustomCategoryResolver,
+  _normalizeCategoryKey,
+} = require('../api/_lib/award-categories');
+
+describe('resolveCategory() — exact match (unchanged behaviour)', () => {
+  test('matches an exact, correctly-cased category', () => {
+    expect(resolveCategory('Roofing Company')).toEqual({
+      category: 'Roofing Company',
+      sector: 'BUILDING & CONSTRUCTION',
+    });
+  });
+
+  test('is case-insensitive and trims whitespace', () => {
+    expect(resolveCategory('  roofing company  ')).toEqual({
+      category: 'Roofing Company',
+      sector: 'BUILDING & CONSTRUCTION',
+    });
+  });
+
+  test('returns null for empty, non-string, or unrecognised input', () => {
+    expect(resolveCategory('')).toBeNull();
+    expect(resolveCategory(null)).toBeNull();
+    expect(resolveCategory(undefined)).toBeNull();
+    expect(resolveCategory(42)).toBeNull();
+    expect(resolveCategory('Totally Made Up Category')).toBeNull();
+  });
+});
+
+describe('resolveCategory() — normalized fallback', () => {
+  test('matches a plural variant of the final word', () => {
+    expect(resolveCategory('Roofing Companies')).toEqual({
+      category: 'Roofing Company',
+      sector: 'BUILDING & CONSTRUCTION',
+    });
+    expect(resolveCategory('Pest Control Companies')).toEqual(
+      expect.objectContaining({ category: 'Pest Control Company' })
+    );
+  });
+
+  test('matches an irregular -y/-ies plural of the final word', () => {
+    // No category in the master list actually ends in "-y", but the
+    // normalizer's -ies -> -y rule must not corrupt an unrelated word
+    // ending in a bare "s" differently -- covered by the Companies case
+    // above; this confirms the function itself doesn't throw on a short
+    // last word the "trailing s" branch guards against (length > 3).
+    expect(_normalizeCategoryKey('Locksmiths')).toBe('locksmith');
+    expect(resolveCategory('Locksmiths')).toEqual(expect.objectContaining({ category: 'Locksmith' }));
+  });
+
+  test('treats "&" and "and" as equivalent', () => {
+    expect(resolveCategory('Window and Door Installer')).toEqual(
+      expect.objectContaining({ category: 'Window & Door Installer' })
+    );
+    expect(resolveCategory('Curtains and Blinds Installers')).toEqual(
+      expect.objectContaining({ category: 'Curtains & Blinds Installer' })
+    );
+  });
+
+  test('ignores stray punctuation and extra whitespace', () => {
+    expect(resolveCategory('Window  &  Door   Installer.')).toEqual(
+      expect.objectContaining({ category: 'Window & Door Installer' })
+    );
+  });
+
+  test('does NOT match a genuinely different word — no fuzzy/distance matching', () => {
+    // The real-world example this was built for: the master list has
+    // "Swimming Pool & Hot Tub Company", not "...Specialist". Silently
+    // remapping these would risk misclassifying the entry.
+    expect(resolveCategory('Swimming Pool & Hot Tub Specialist')).toBeNull();
+    expect(resolveCategory('Roofing Compant')).toBeNull();
+  });
+});
+
+describe('_normalizeCategoryKey() — no collisions across the master list', () => {
+  test('every STANDARD_CATEGORIES entry normalizes to a distinct key', () => {
+    const seen = new Map();
+    const collisions = [];
+    for (const categories of Object.values(STANDARD_CATEGORIES)) {
+      for (const category of categories) {
+        const key = _normalizeCategoryKey(category);
+        if (seen.has(key) && seen.get(key) !== category) {
+          collisions.push([seen.get(key), category, key]);
+        }
+        seen.set(key, category);
+      }
+    }
+    expect(collisions).toEqual([]);
+  });
+});
+
+describe('buildCustomCategoryResolver()', () => {
+  test('resolves an exact match against the provided rows', () => {
+    const resolver = buildCustomCategoryResolver([
+      { name: 'Swimming Pool & Hot Tub Specialist', sector_name: 'SPECIALIST TRADES' },
+    ]);
+    expect(resolver.resolve('Swimming Pool & Hot Tub Specialist')).toEqual({
+      category: 'Swimming Pool & Hot Tub Specialist',
+      sector: 'SPECIALIST TRADES',
+    });
+  });
+
+  test('resolves a normalized (plural/ampersand) variant against the provided rows too', () => {
+    const resolver = buildCustomCategoryResolver([
+      { name: 'Local Trade Specialist', sector_name: 'SPECIALIST TRADES' },
+    ]);
+    expect(resolver.resolve('Local Trade Specialists')).toEqual(
+      expect.objectContaining({ category: 'Local Trade Specialist' })
+    );
+  });
+
+  test('defaults sector to SPECIALIST TRADES when a row has no sector_name', () => {
+    const resolver = buildCustomCategoryResolver([{ name: 'Mystery Trade' }]);
+    expect(resolver.resolve('Mystery Trade')).toEqual({ category: 'Mystery Trade', sector: 'SPECIALIST TRADES' });
+  });
+
+  test('returns null for an empty or missing rows list', () => {
+    expect(buildCustomCategoryResolver([]).resolve('Anything')).toBeNull();
+    expect(buildCustomCategoryResolver(undefined).resolve('Anything')).toBeNull();
+  });
+
+  test('ignores rows with no name', () => {
+    const resolver = buildCustomCategoryResolver([{ sector_name: 'X' }, null, { name: '' }]);
+    expect(resolver.resolve('X')).toBeNull();
+  });
+
+  test('returns null for empty, non-string, or unrecognised input', () => {
+    const resolver = buildCustomCategoryResolver([{ name: 'Known Category' }]);
+    expect(resolver.resolve('')).toBeNull();
+    expect(resolver.resolve(null)).toBeNull();
+    expect(resolver.resolve('Unknown Category')).toBeNull();
+  });
+});

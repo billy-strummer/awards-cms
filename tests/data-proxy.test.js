@@ -1324,6 +1324,355 @@ describe('Data Proxy API', () => {
         }
       });
     });
+
+    // --- category matching: normalized variants + custom_categories ---
+    describe('category matching', () => {
+      function recordingChain(resolveWith, singleResolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          chain._lastInsertPayload = payload;
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve(singleResolveWith || { data: { id: 'generated-id' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      test('accepts a plural/ampersand spreadsheet variant of a standard category', async () => {
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'custom_categories') return recordingChain({ data: [], error: null });
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'validate',
+            rows: [{ company_name: 'Acme Ltd', category: 'Roofing Companies' }],
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.valid).toBe(true);
+          expect(res.body.unknownCategories).toEqual([]);
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+
+      test('accepts a category matching an area-scoped custom_categories row', async () => {
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'custom_categories') {
+            return recordingChain({
+              data: [
+                { name: 'Swimming Pool & Hot Tub Specialist', sector_name: 'SPECIALIST TRADES', area_id: 'area-1' },
+              ],
+              error: null,
+            });
+          }
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'validate',
+            rows: [{ company_name: 'Acme Ltd', category: 'Swimming Pool & Hot Tub Specialist' }],
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.valid).toBe(true);
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+
+      test('ignores a custom_categories row scoped to a different area', async () => {
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'custom_categories') {
+            return recordingChain({
+              data: [{ name: 'Local Only Trade', sector_name: 'SPECIALIST TRADES', area_id: 'area-999' }],
+              error: null,
+            });
+          }
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'validate',
+            rows: [{ company_name: 'Acme Ltd', category: 'Local Only Trade' }],
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.valid).toBe(false);
+          expect(res.body.unknownCategories).toEqual(['Local Only Trade']);
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+
+      test('reports a deduplicated unknownCategories list even when many rows share the same bad category', async () => {
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'custom_categories') return recordingChain({ data: [], error: null });
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'validate',
+            rows: Array.from({ length: 48 }, (_, i) => ({
+              company_name: `Company ${i}`,
+              category: 'Swimming Pool & Hot Tub Specialist',
+            })),
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.valid).toBe(false);
+          expect(res.body.unknownCategories).toEqual(['Swimming Pool & Hot Tub Specialist']);
+          // Row-level detail is still preserved -- one error per row, just not duplicated in the summary.
+          expect(res.body.errors.filter((e) => e.field === 'category').length).toBe(48);
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+    });
+  });
+
+  // --- award_area_create_categories: auto-create missing categories ---
+  describe('award_area_create_categories operation', () => {
+    function createCategoriesReq(overrides = {}) {
+      return createReq({
+        body: {
+          operation: 'award_area_create_categories',
+          areaId: 'area-1',
+          categoryNames: ['Swimming Pool & Hot Tub Specialist'],
+          ...overrides,
+        },
+      });
+    }
+
+    function recordingChain(resolveWith, singleResolveWith) {
+      const chain = {};
+      ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+        (m) => {
+          chain[m] = (...args) => {
+            void args;
+            return chain;
+          };
+        }
+      );
+      chain.insert = (payload) => {
+        chain._lastInsertPayload = payload;
+        return chain;
+      };
+      chain.eq = () => chain;
+      chain.ilike = () => chain;
+      chain.limit = () => chain;
+      chain.maybeSingle = () => Promise.resolve(resolveWith);
+      chain.single = () => Promise.resolve(singleResolveWith || { data: { id: 'generated-id' }, error: null });
+      chain.then = (resolve) => resolve(resolveWith);
+      return chain;
+    }
+
+    test('requires editor role or above', async () => {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'viewer' }, error: null, count: 1 });
+        return chainable();
+      });
+      const req = createCategoriesReq();
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('rejects a missing areaId', async () => {
+      const req = createCategoriesReq({ areaId: undefined });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects an empty categoryNames array', async () => {
+      const req = createCategoriesReq({ categoryNames: [] });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects more than 100 category names', async () => {
+      const req = createCategoriesReq({ categoryNames: Array.from({ length: 101 }, (_, i) => `Cat ${i}`) });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.statusCode).toBe(500);
+    });
+
+    test('rejects an unknown area', async () => {
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'admin' }, error: null, count: 1 });
+        return chainable();
+      });
+      mockFrom.mockImplementationOnce((table) => {
+        if (table === 'areas') return chainable({ data: null, error: null });
+        return chainable();
+      });
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return chainable({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') return chainable({ data: null, error: null });
+        return chainable();
+      });
+      try {
+        const req = createCategoriesReq();
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(500);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
+    test('creates a custom_categories row for each unresolved name, scoped to the area', async () => {
+      let insertedPayload = null;
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({ data: { id: 'area-1', country: 'England' }, error: null });
+        }
+        if (table === 'custom_categories') {
+          const chain = recordingChain({ data: [], error: null });
+          chain.insert = (payload) => {
+            insertedPayload = payload;
+            return chain;
+          };
+          return chain;
+        }
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = createCategoriesReq({ categoryNames: ['Swimming Pool & Hot Tub Specialist'] });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+        expect(res.body.created).toEqual(['Swimming Pool & Hot Tub Specialist']);
+        expect(res.body.skipped).toEqual([]);
+        expect(insertedPayload).toMatchObject({
+          name: 'Swimming Pool & Hot Tub Specialist',
+          sector_name: 'SPECIALIST TRADES',
+          area_id: 'area-1',
+          is_active: true,
+        });
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
+    test('skips a name that already resolves against the standard category list', async () => {
+      let createInsertCalled = false;
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') return recordingChain({ data: { id: 'area-1', country: 'England' }, error: null });
+        if (table === 'custom_categories') {
+          const chain = recordingChain({ data: [], error: null });
+          chain.insert = () => {
+            createInsertCalled = true;
+            return chain;
+          };
+          return chain;
+        }
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = createCategoriesReq({ categoryNames: ['Roofing Company'] });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+        expect(res.body.created).toEqual([]);
+        expect(res.body.skipped).toEqual(['Roofing Company']);
+        expect(createInsertCalled).toBe(false);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
+    test('skips a later name in the same request that normalizes to one just created', async () => {
+      const insertedPayloads = [];
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') return recordingChain({ data: { id: 'area-1', country: 'England' }, error: null });
+        if (table === 'custom_categories') {
+          const chain = recordingChain({ data: [], error: null });
+          chain.insert = (payload) => {
+            insertedPayloads.push(payload);
+            return chain;
+          };
+          return chain;
+        }
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = createCategoriesReq({ categoryNames: ['Mystery Trade', 'Mystery Trades'] });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+        expect(res.body.created).toEqual(['Mystery Trade']);
+        expect(res.body.skipped).toEqual(['Mystery Trades']);
+        expect(insertedPayloads).toHaveLength(1);
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
   });
 
   // --- award_area_import_rollback: undo an accidental spreadsheet import ---

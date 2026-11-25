@@ -36,6 +36,7 @@ const dom = new JSDOM(
     </div>
     <input type="file" id="nomineeFileInput">
     <div id="nomineeUploadConfirmBtn"></div>
+    <div id="nomineeValidationContainer"></div>
   </div>
   <div id="recentImportsModal">
     <div id="recentImportsAreaName"></div>
@@ -79,6 +80,7 @@ win.apiClient = {
   selectAll: async () => [],
   insert: async () => ({ data: [], error: null }),
   post: async () => ({ data: [], error: null }),
+  _getTenantId: () => 'default',
 };
 
 // Minimal bootstrap mock -- openUploadModal()/openImportModal() show a
@@ -571,6 +573,141 @@ describe('nomineeUploads - getYearFilter()', () => {
 });
 
 // -----------------------------------------------------------------------
+// Category validation summary + auto-create missing categories
+// -----------------------------------------------------------------------
+describe('nomineeUploads - category validation rendering', () => {
+  const areas = [{ id: 'a1', display_name: 'Somerset', country: 'England', area_type: 'county', sort_order: 1 }];
+
+  beforeEach(async () => {
+    jest.spyOn(win.apiClient, 'select').mockResolvedValue({ data: areas, error: null });
+    jest.spyOn(win.apiClient, 'selectAll').mockResolvedValue([]);
+    await uploads.loadAreasTable();
+    uploads.openUploadModal('a1');
+  });
+
+  afterEach(() => {
+    win.apiClient.select.mockRestore();
+    win.apiClient.selectAll.mockRestore();
+    if (win.apiClient.post.mockRestore) win.apiClient.post.mockRestore();
+  });
+
+  test('renders a deduplicated category summary with an auto-create button, filtering those rows out of the detail table', () => {
+    uploads._renderValidation({
+      valid: false,
+      rowCount: 48,
+      unknownCategories: ['Swimming Pool & Hot Tub Specialist'],
+      errors: Array.from({ length: 48 }, (_, i) => ({
+        row: i + 1,
+        field: 'category',
+        message: 'Unknown award category "Swimming Pool & Hot Tub Specialist"',
+      })),
+    });
+
+    const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
+    expect(html).toContain('1 unknown award category');
+    expect(html).toContain('Swimming Pool &amp; Hot Tub Specialist');
+    expect(html).toContain('Somerset');
+    // The 48 duplicate per-row category errors are summarised above (once),
+    // not repeated in the detail table below -- the whole point of this fix.
+    expect((html.match(/<li>Swimming Pool/g) || []).length).toBe(1);
+    expect(html).not.toContain('<td class="small text-danger">');
+    expect(win.document.getElementById('nomineeAutoCreateCategoriesBtn')).not.toBeNull();
+  });
+
+  test('keeps non-category errors in the detail table alongside the category summary', () => {
+    uploads._renderValidation({
+      valid: false,
+      rowCount: 2,
+      unknownCategories: ['Mystery Trade'],
+      errors: [
+        { row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' },
+        { row: 2, field: 'company_name', message: 'Missing organisation name' },
+      ],
+    });
+    const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
+    // The company_name error is still shown row-by-row...
+    expect(html).toContain('Missing organisation name');
+    // ...but the category error is represented once, in the summary, not
+    // also repeated as its own row in the detail table below.
+    expect(html).toContain('Mystery Trade');
+    expect((html.match(/<li>Mystery Trade/g) || []).length).toBe(1);
+    expect(html).not.toContain('Unknown award category &quot;Mystery Trade&quot;');
+  });
+
+  test('renders the original plain error table when there are no unknown categories', () => {
+    uploads._renderValidation({
+      valid: false,
+      rowCount: 1,
+      unknownCategories: [],
+      errors: [{ row: 1, field: 'email', message: 'Invalid email address "x"' }],
+    });
+    const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
+    expect(html).toContain('Invalid email address');
+    expect(win.document.getElementById('nomineeAutoCreateCategoriesBtn')).toBeNull();
+  });
+
+  test('renders the success state unchanged when valid', () => {
+    uploads._renderValidation({ valid: true, rowCount: 10 });
+    const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
+    expect(html).toContain('All 10 rows validated');
+  });
+
+  describe('_autoCreateCategories()', () => {
+    test('creates the categories, shows a success toast, and re-runs validation', async () => {
+      const postSpy = jest.spyOn(win.apiClient, 'post').mockImplementation((op) => {
+        if (op === 'award_area_create_categories') {
+          return Promise.resolve({ created: ['Mystery Trade'], skipped: [] });
+        }
+        if (op === 'award_area_import') {
+          return Promise.resolve({ valid: true, rowCount: 0, unknownCategories: [], errors: [] });
+        }
+        return Promise.resolve({});
+      });
+      const toastSpy = jest.spyOn(win.utils, 'showToast');
+
+      uploads._renderValidation({
+        valid: false,
+        rowCount: 1,
+        unknownCategories: ['Mystery Trade'],
+        errors: [{ row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' }],
+      });
+      await uploads._autoCreateCategories(['Mystery Trade']);
+
+      expect(postSpy).toHaveBeenCalledWith('award_area_create_categories', {
+        areaId: 'a1',
+        categoryNames: ['Mystery Trade'],
+      });
+      expect(toastSpy).toHaveBeenCalledWith(expect.stringContaining('1 category created'), 'success');
+      expect(postSpy).toHaveBeenCalledWith('award_area_import', expect.objectContaining({ mode: 'validate' }));
+      toastSpy.mockRestore();
+    });
+
+    test('shows an error toast and re-enables the button when creation fails', async () => {
+      jest.spyOn(win.apiClient, 'post').mockRejectedValue(new Error('boom'));
+      const toastSpy = jest.spyOn(win.utils, 'showToast');
+
+      uploads._renderValidation({
+        valid: false,
+        rowCount: 1,
+        unknownCategories: ['Mystery Trade'],
+        errors: [{ row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' }],
+      });
+      await uploads._autoCreateCategories(['Mystery Trade']);
+
+      expect(toastSpy).toHaveBeenCalledWith('boom', 'error', 'Could Not Create Categories');
+      expect(win.document.getElementById('nomineeAutoCreateCategoriesBtn').disabled).toBe(false);
+      toastSpy.mockRestore();
+    });
+
+    test('does nothing when there is no current area or no category names', async () => {
+      const postSpy = jest.spyOn(win.apiClient, 'post');
+      await uploads._autoCreateCategories([]);
+      expect(postSpy).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// -----------------------------------------------------------------------
 // Recent Imports / batch rollback — undoing an accidental spreadsheet
 // import without deleting up to 500 entries one row at a time.
 // -----------------------------------------------------------------------
@@ -772,15 +909,13 @@ describe('nomineeUploads - Recent Imports / batch rollback', () => {
 
     test('_confirmRollback aborts when the user declines the confirm dialog', async () => {
       win.document.querySelectorAll('.recent-import-checkbox')[0].checked = true;
-      jest
-        .spyOn(win.apiClient, 'post')
-        .mockResolvedValueOnce({
-          action: 'preview',
-          totalEntries: 1,
-          deletableCount: 1,
-          blockedCount: 0,
-          blockedEntries: [],
-        });
+      jest.spyOn(win.apiClient, 'post').mockResolvedValueOnce({
+        action: 'preview',
+        totalEntries: 1,
+        deletableCount: 1,
+        blockedCount: 0,
+        blockedEntries: [],
+      });
       await uploads._previewRollback();
 
       const confirmSpy = jest.spyOn(win.utils, 'confirmDialog').mockResolvedValue(false);

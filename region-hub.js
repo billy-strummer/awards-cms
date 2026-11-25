@@ -26,6 +26,12 @@ const regionHubModule = (() => {
   // rest of this drawer.
   let _regionSponsor = null; // {id, company_name, logo_url, website} | null (no sponsor assigned)
   let _regionSponsorUnavailable = false; // true only when the lookup itself failed
+  // Guards against a slow, stale open() call overwriting a newer one's
+  // result -- e.g. clicking area A's "Open Hub" then area B's before A's
+  // fetches resolve. Without this, whichever response simply arrives last
+  // wins and gets rendered, which can show one area's data (or its sponsor
+  // fetch failing) inside what the drawer header says is a different area.
+  let _openToken = 0;
 
   function _typeLabel(areaType) {
     if (areaType === 'borough') return 'London Borough';
@@ -113,17 +119,11 @@ const regionHubModule = (() => {
    * @returns {Promise<void>}
    */
   async function open(areaId, displayName, areaType, country) {
-    _area = { id: areaId, display_name: displayName, area_type: areaType, country };
-    _season =
+    const token = ++_openToken;
+    const season =
       typeof nomineeUploads !== 'undefined' && nomineeUploads.getYearFilter
         ? nomineeUploads.getYearFilter()
         : new Date().getFullYear();
-    _entries = [];
-    _categoriesConfigured = [];
-    _outreachEntries = null;
-    _pendingOutreach = null;
-    _regionSponsor = null;
-    _regionSponsorUnavailable = false;
 
     const offcanvasEl = document.getElementById('regionHubOffcanvas');
     const contentEl = document.getElementById('regionHubContent');
@@ -136,32 +136,42 @@ const regionHubModule = (() => {
       '<div class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
     bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
 
+    // Fetched into locals, not straight into module state -- so a slower,
+    // now-stale call (see _openToken above) never partially overwrites a
+    // newer call's already-committed result. Committed and rendered only
+    // once, right at the end, after confirming this call is still current.
+    let entries = [];
+    let categoriesConfigured = [];
+    let outreachEntries = null;
+    let regionSponsor = null;
+    let regionSponsorUnavailable = false;
+
     try {
       const [entriesResult, awardsResult] = await Promise.all([
         apiClient.selectAll('entries', {
           select: 'award_category, status, is_shortlisted',
-          filters: { county_city: displayName, year: _season },
+          filters: { county_city: displayName, year: season },
         }),
         apiClient.selectAll('award_years', {
           select: 'award_category',
-          filters: { area_id: areaId, year: _season },
+          filters: { area_id: areaId, year: season },
         }),
       ]);
-      _entries = entriesResult || [];
-      _categoriesConfigured = [...new Set((awardsResult || []).map((a) => a.award_category).filter(Boolean))].sort();
+      entries = entriesResult || [];
+      categoriesConfigured = [...new Set((awardsResult || []).map((a) => a.award_category).filter(Boolean))].sort();
 
       // Independent of the Promise.all above, deliberately: a 400 from a
       // not-yet-migrated nominee_outreach_sent_at column must only disable
       // the Outreach section below, not the whole drawer.
       try {
-        _outreachEntries = await apiClient.selectAll('entries', {
+        outreachEntries = await apiClient.selectAll('entries', {
           select:
             'id, contact_name, contact_email, award_category, entry_title, entry_number, allow_public_voting, nominee_outreach_sent_at, organisations(company_name)',
-          filters: { county_city: displayName, year: _season },
+          filters: { county_city: displayName, year: season },
         });
       } catch (outreachError) {
         console.warn('[regionHubModule] Outreach data unavailable (has migrations/097 been applied?):', outreachError);
-        _outreachEntries = null;
+        outreachEntries = null;
       }
 
       // Independent of everything above, for the same reason: a 400 from
@@ -170,20 +180,31 @@ const regionHubModule = (() => {
       try {
         const assignments = await apiClient.selectAll('sponsor_assignments', {
           select: 'sponsor_id, sponsors(id, company_name, logo_url, website, is_active)',
-          filters: { area_id: areaId, year: _season, assignment_type: 'region' },
+          filters: { area_id: areaId, year: season, assignment_type: 'region' },
         });
         const active = (assignments || []).find((a) => a.sponsors && a.sponsors.is_active);
-        _regionSponsor = active ? active.sponsors : null;
+        regionSponsor = active ? active.sponsors : null;
       } catch (sponsorError) {
         console.warn(
           '[regionHubModule] Region sponsor data unavailable (has migrations/098 been applied?):',
           sponsorError
         );
-        _regionSponsorUnavailable = true;
+        regionSponsorUnavailable = true;
       }
 
+      if (token !== _openToken) return; // superseded by a newer open() call while this one was fetching
+
+      _area = { id: areaId, display_name: displayName, area_type: areaType, country };
+      _season = season;
+      _entries = entries;
+      _categoriesConfigured = categoriesConfigured;
+      _outreachEntries = outreachEntries;
+      _pendingOutreach = null;
+      _regionSponsor = regionSponsor;
+      _regionSponsorUnavailable = regionSponsorUnavailable;
       _render();
     } catch (error) {
+      if (token !== _openToken) return; // superseded -- a newer call's own state must not be clobbered by this error
       contentEl.innerHTML = `
         <div class="text-center py-5 text-muted">
           <i class="bi bi-exclamation-circle display-6 d-block mb-2 opacity-50"></i>

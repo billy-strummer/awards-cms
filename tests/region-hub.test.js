@@ -241,6 +241,68 @@ describe('regionHubModule', () => {
       el.innerHTML = '<div id="regionHubContent"></div>';
       document.body.appendChild(el);
     });
+
+    describe('staleness guard (rapid open() calls for different areas)', () => {
+      // Clicking one area's "Open Hub" then a different one's before the
+      // first's fetches resolve must never let the slower, now-stale call's
+      // result clobber the newer one's -- whichever network response simply
+      // arrives last previously won, regardless of which the user actually
+      // opened last.
+      function deferred() {
+        let resolve, reject;
+        const promise = new Promise((res, rej) => {
+          resolve = res;
+          reject = rej;
+        });
+        return { promise, resolve, reject };
+      }
+
+      test('a slow first call resolving after a faster second call does not overwrite the second area', async () => {
+        const slow = deferred();
+        const fast = deferred();
+        apiClient.selectAll = jest.fn((table, opts) => {
+          if (table === 'entries' && opts.filters.county_city === 'Cardiff') return slow.promise;
+          if (table === 'entries' && opts.filters.county_city === 'Swansea') return fast.promise;
+          return Promise.resolve([]);
+        });
+
+        const firstOpen = regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        const secondOpen = regionHubModule.open('area-2', 'Swansea', 'city', 'Wales');
+
+        // Second (newer) area's data arrives first...
+        fast.resolve([{ award_category: 'Electrical Company', status: 'submitted' }]);
+        await secondOpen;
+        // ...then the first (now-stale) area's slower fetch finally resolves.
+        slow.resolve([{ award_category: 'Roofing Company', status: 'submitted' }]);
+        await firstOpen;
+
+        const html = document.getElementById('regionHubContent').innerHTML;
+        expect(html).toContain('Swansea');
+        expect(html).not.toContain('Cardiff');
+      });
+
+      test('a slow first call rejecting after a faster second call does not show a stale error over the second area', async () => {
+        const slow = deferred();
+        const fast = deferred();
+        apiClient.selectAll = jest.fn((table, opts) => {
+          if (table === 'entries' && opts.filters.county_city === 'Cardiff') return slow.promise;
+          if (table === 'entries' && opts.filters.county_city === 'Swansea') return fast.promise;
+          return Promise.resolve([]);
+        });
+
+        const firstOpen = regionHubModule.open('area-1', 'Cardiff', 'city', 'Wales');
+        const secondOpen = regionHubModule.open('area-2', 'Swansea', 'city', 'Wales');
+
+        fast.resolve([{ award_category: 'Electrical Company', status: 'submitted' }]);
+        await secondOpen;
+        slow.reject(new Error('network down'));
+        await firstOpen;
+
+        const html = document.getElementById('regionHubContent').innerHTML;
+        expect(html).toContain('Swansea');
+        expect(html).not.toContain("Couldn't load this area");
+      });
+    });
   });
 
   describe('_categoryBreakdown() via open()', () => {

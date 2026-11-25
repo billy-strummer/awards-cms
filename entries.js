@@ -2188,6 +2188,14 @@ const entriesModule = {
       utils.showToast('Entry deleted successfully', 'success');
       await this.loadEntries();
       await this.loadStats();
+      // Award Areas' own entry counts/status badges are fetched once and
+      // cached (nominee-uploads.js's loadAreasTable()) -- without this,
+      // deleting the last entry for an area leaves its row showing
+      // "Imported" with a stale count until the Award Areas tab happens to
+      // be reloaded for some other reason.
+      if (typeof nomineeUploads !== 'undefined' && nomineeUploads.loadAreasTable) {
+        nomineeUploads.loadAreasTable();
+      }
     } catch (error) {
       console.error('Error deleting entry:', error);
       // BTA-116 (m2): the full error detail stays in the console for support/
@@ -2465,6 +2473,12 @@ const entriesModule = {
             );
 
             utils.showToast(`${count} entries deleted`, 'success');
+            // See the equivalent comment in deleteEntry() -- a bulk delete
+            // is exactly the kind of action that leaves Award Areas' cached
+            // counts stale.
+            if (typeof nomineeUploads !== 'undefined' && nomineeUploads.loadAreasTable) {
+              nomineeUploads.loadAreasTable();
+            }
           } catch (error) {
             console.error('Error bulk deleting:', error);
             utils.showToast('Failed to delete entries: ' + error.message, 'error');

@@ -99,17 +99,95 @@ for (const [sector, categories] of Object.entries(STANDARD_CATEGORIES)) {
 }
 
 /**
+ * Normalize a category name down to a matching key that treats common,
+ * textually-equivalent spreadsheet variants as the same category:
+ * ampersand vs "and", stray punctuation, extra whitespace, and a plural
+ * vs singular final word (e.g. "Roofing Companies" vs "Roofing Company",
+ * "Curtains & Blinds Installers" vs "Curtains & Blinds Installer").
+ *
+ * Deliberately only the FINAL word is singularized, not every word — the
+ * trade-type noun at the end ("Company"/"Companies", "Installer"/
+ * "Installers") is what spreadsheets vary on in practice; singularizing
+ * every word risks unrelated categories colliding (verified empirically
+ * against the full STANDARD_CATEGORIES list: 0 collisions as written).
+ *
+ * This is NOT fuzzy/distance-based matching — a genuinely different word
+ * (e.g. "Specialist" where the master list has "Company") still produces
+ * a different key and is correctly left unmatched, since silently
+ * remapping to a differently-worded category could misclassify an entry
+ * rather than flag it for a human to confirm.
+ * @param {string} name
+ * @returns {string}
+ */
+function _normalizeCategoryKey(name) {
+  const s = String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const words = s.split(' ');
+  const last = words[words.length - 1];
+  if (last.endsWith('ies') && last.length > 4) {
+    words[words.length - 1] = last.slice(0, -3) + 'y';
+  } else if (last.endsWith('s') && !last.endsWith('ss') && last.length > 3) {
+    words[words.length - 1] = last.slice(0, -1);
+  }
+  return words.join(' ');
+}
+
+/** Normalized category key -> { category, sector } lookup, built from CATEGORY_LOOKUP. */
+const NORMALIZED_CATEGORY_LOOKUP = new Map();
+for (const [, { category, sector }] of CATEGORY_LOOKUP) {
+  NORMALIZED_CATEGORY_LOOKUP.set(_normalizeCategoryKey(category), { category, sector });
+}
+
+/**
  * Resolve a free-text category name (as typed in a CSV) to its canonical
  * category name + parent sector, or null if it doesn't match any known
- * category. Case-insensitive, whitespace-trimmed exact match only —
- * deliberately no fuzzy matching here, since an unrecognised category
- * must be reported as an error, not silently guessed at.
+ * category. First tries an exact (case-insensitive, trimmed) match, then
+ * falls back to the normalized match described in `_normalizeCategoryKey`
+ * (ampersand/"and", punctuation, plural-vs-singular final word). Still no
+ * general fuzzy matching — a genuinely different word is reported as an
+ * unrecognised category, not silently guessed at.
  * @param {string} rawCategory
  * @returns {{category: string, sector: string}|null}
  */
 function resolveCategory(rawCategory) {
   if (!rawCategory || typeof rawCategory !== 'string') return null;
-  return CATEGORY_LOOKUP.get(rawCategory.trim().toLowerCase()) || null;
+  const exact = CATEGORY_LOOKUP.get(rawCategory.trim().toLowerCase());
+  if (exact) return exact;
+  return NORMALIZED_CATEGORY_LOOKUP.get(_normalizeCategoryKey(rawCategory)) || null;
 }
 
-module.exports = { STANDARD_CATEGORIES, resolveCategory };
+/**
+ * Build an exact + normalized lookup from a set of admin-managed
+ * `custom_categories` rows (settings.js), the same shape `resolveCategory`
+ * uses for the fixed STANDARD_CATEGORIES list. Categories are global or
+ * scoped to one area/country (see settings.js) — the caller is responsible
+ * for pre-filtering `rows` to the ones applicable to the area being
+ * imported into.
+ * @param {Array<{name: string, sector_name: string}>} rows
+ * @returns {{resolve: (rawCategory: string) => {category: string, sector: string}|null}}
+ */
+function buildCustomCategoryResolver(rows) {
+  const exactMap = new Map();
+  const normalizedMap = new Map();
+  for (const row of rows || []) {
+    if (!row || !row.name) continue;
+    const entry = { category: row.name, sector: row.sector_name || 'SPECIALIST TRADES' };
+    exactMap.set(row.name.trim().toLowerCase(), entry);
+    normalizedMap.set(_normalizeCategoryKey(row.name), entry);
+  }
+  return {
+    resolve(rawCategory) {
+      if (!rawCategory || typeof rawCategory !== 'string') return null;
+      const exact = exactMap.get(rawCategory.trim().toLowerCase());
+      if (exact) return exact;
+      return normalizedMap.get(_normalizeCategoryKey(rawCategory)) || null;
+    },
+  };
+}
+
+module.exports = { STANDARD_CATEGORIES, resolveCategory, buildCustomCategoryResolver, _normalizeCategoryKey };

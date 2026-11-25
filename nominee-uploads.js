@@ -634,7 +634,30 @@ const nomineeUploads = (() => {
       return;
     }
 
-    const rows = result.errors
+    const unknownCategories = result.unknownCategories || [];
+    // Every "unknown category" row-level error is already represented once
+    // in the summary below -- repeating all of them in the per-row table
+    // too is exactly the "48 duplicate errors burying the real issue"
+    // problem this is fixing. Other error kinds (missing name, bad email,
+    // etc.) are still genuinely row-specific and stay in that table.
+    const otherErrors = unknownCategories.length ? result.errors.filter((e) => e.field !== 'category') : result.errors;
+
+    const categorySummary = unknownCategories.length
+      ? `
+      <div class="alert alert-warning py-2 small mb-2">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>${unknownCategories.length} unknown award categor${unknownCategories.length === 1 ? 'y' : 'ies'}</strong> found across this file:
+        <ul class="mb-2 mt-1">
+          ${unknownCategories.map((c) => `<li>${utils.escapeHtml(c)}</li>`).join('')}
+        </ul>
+        <button type="button" class="btn btn-sm btn-outline-dark" id="nomineeAutoCreateCategoriesBtn">
+          <i class="bi bi-magic me-1"></i>Auto-create ${unknownCategories.length === 1 ? 'this category' : 'these categories'} for ${utils.escapeHtml(_currentArea.display_name)}
+        </button>
+        <div class="form-text mt-1">Creates each as a custom category scoped to this area (sector "Specialist Trades" by default — reassign it later in Settings if needed), then re-checks the file.</div>
+      </div>`
+      : '';
+
+    const rows = otherErrors
       .map(
         (e) =>
           `<tr><td class="small text-muted">${e.row}</td><td class="small">${utils.escapeHtml(e.field)}</td><td class="small text-danger">${utils.escapeHtml(e.message)}</td></tr>`
@@ -642,15 +665,52 @@ const nomineeUploads = (() => {
       .join('');
 
     container.innerHTML = `
+      ${categorySummary}
       <div class="alert alert-danger py-2 small mb-2">
         <i class="bi bi-exclamation-triangle-fill me-1"></i>${result.errors.length} error${result.errors.length > 1 ? 's' : ''} found — fix these in your CSV and upload again. Nothing has been imported.
       </div>
-      <div class="table-responsive" style="max-height:220px;overflow-y:auto;">
+      ${
+        otherErrors.length > 0
+          ? `<div class="table-responsive" style="max-height:220px;overflow-y:auto;">
         <table class="table table-sm table-bordered mb-0">
           <thead class="table-light sticky-top"><tr><th class="small">Row</th><th class="small">Field</th><th class="small">Error</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>`;
+      </div>`
+          : ''
+      }`;
+
+    const autoCreateBtn = document.getElementById('nomineeAutoCreateCategoriesBtn');
+    if (autoCreateBtn) autoCreateBtn.addEventListener('click', () => _autoCreateCategories(unknownCategories));
+  }
+
+  async function _autoCreateCategories(categoryNames) {
+    if (!_currentArea || !categoryNames || categoryNames.length === 0) return;
+    const btn = document.getElementById('nomineeAutoCreateCategoriesBtn');
+    const original = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating…';
+    }
+    try {
+      const result = await apiClient.post('award_area_create_categories', {
+        areaId: _currentArea.id,
+        categoryNames,
+      });
+      const createdCount = (result.created || []).length;
+      const skippedCount = (result.skipped || []).length;
+      utils.showToast(
+        `${createdCount} categor${createdCount === 1 ? 'y' : 'ies'} created${skippedCount > 0 ? `, ${skippedCount} already existed` : ''}.`,
+        'success'
+      );
+      await _runValidation();
+    } catch (err) {
+      utils.showToast(err.message || 'Unknown error', 'error', 'Could Not Create Categories');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    }
   }
 
   function _updateConfirmButton() {
@@ -1087,6 +1147,9 @@ const nomineeUploads = (() => {
     _previewRollback,
     _renderRollbackPreview,
     _confirmRollback,
+    _runValidation,
+    _renderValidation,
+    _autoCreateCategories,
   };
 })();
 

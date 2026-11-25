@@ -22,7 +22,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
-const { resolveCategory } = require('./_lib/award-categories');
+const { resolveCategory, buildCustomCategoryResolver } = require('./_lib/award-categories');
 const { findMatchingOrganisation, escapeLikePattern } = require('./_lib/organisation-matching');
 const { createTestDataFixtures } = require('./_lib/test-data-fixtures');
 
@@ -1383,10 +1383,28 @@ async function executeAwardAreaImport(body, user) {
   if (areaErr) throw areaErr;
   if (!area) throw new Error('award_area_import: unknown area — it may have been deleted');
 
+  // Admin-managed custom categories (settings.js) applicable to this area —
+  // either scoped directly to it, scoped to its country with no more
+  // specific area set, or fully global (no area/country set at all).
+  // Checked as a second source of truth alongside the fixed
+  // STANDARD_CATEGORIES list: an area/country that already has its own
+  // approved local category must not have every one of its rows rejected
+  // as "unknown" just because that category isn't in the master list.
+  const { data: customCategoryRows, error: customCategoryErr } = await supabase
+    .from('custom_categories')
+    .select('name, sector_name, area_id, country')
+    .eq('is_active', true);
+  if (customCategoryErr) throw customCategoryErr;
+  const applicableCustomCategories = (customCategoryRows || []).filter((c) =>
+    c.area_id ? c.area_id === area.id : c.country ? c.country === area.country : true
+  );
+  const customCategoryResolver = buildCustomCategoryResolver(applicableCustomCategories);
+
   // ── Validate every row ──────────────────────────────────────────
   const errors = [];
   const seenCompanyNames = new Map(); // normalised name -> first row number
   const validatedRows = [];
+  const unknownCategorySet = new Set(); // distinct unrecognised category strings, for a one-line summary + auto-create
 
   rows.forEach((raw, idx) => {
     const rowNum = idx + 1;
@@ -1399,8 +1417,9 @@ async function executeAwardAreaImport(body, user) {
 
     let resolvedCategory = null;
     if (category) {
-      resolvedCategory = resolveCategory(category);
+      resolvedCategory = resolveCategory(category) || customCategoryResolver.resolve(category);
       if (!resolvedCategory) {
+        unknownCategorySet.add(category);
         errors.push({
           row: rowNum,
           field: 'category',
@@ -1461,7 +1480,14 @@ async function executeAwardAreaImport(body, user) {
   });
 
   if (mode === 'validate' || errors.length > 0) {
-    return { mode: 'validate', valid: errors.length === 0, errors, rowCount: rows.length, area };
+    return {
+      mode: 'validate',
+      valid: errors.length === 0,
+      errors,
+      rowCount: rows.length,
+      area,
+      unknownCategories: [...unknownCategorySet].sort(),
+    };
   }
 
   // ── Import — errors is empty at this point ──────────────────────
@@ -1721,6 +1747,85 @@ async function executeAwardAreaImport(body, user) {
     },
     rowResults,
   };
+}
+
+/**
+ * Create one `custom_categories` row (settings.js's existing admin-managed
+ * category mechanism) per distinct category name the Award Areas CSV
+ * importer couldn't resolve against STANDARD_CATEGORIES or an area's
+ * existing custom categories — the "Auto-create missing categories for
+ * this area" action in the upload modal's validation step.
+ *
+ * Scoped to the one area being imported into (`area_id`), not the whole
+ * country or globally — a name typo'd or genuinely area-specific in one
+ * county's spreadsheet should not silently become selectable everywhere.
+ * Defaults every created category to the 'SPECIALIST TRADES' sector, the
+ * closest fit for an unanticipated trade category; staff can move it to a
+ * different sector afterwards via Settings > Custom Sectors & Categories,
+ * same as any other custom category.
+ *
+ * Re-resolves each name against both sources immediately before creating
+ * it (not just against the snapshot the validation step saw) and skips
+ * any that already resolve — including against another name in this same
+ * request once created — so calling this twice, or two editors acting on
+ * the same unknown-categories list at once, never creates near-duplicates.
+ * @param {Object} body - { areaId: string, categoryNames: string[] }
+ * @returns {Promise<{created: string[], skipped: string[]}>}
+ */
+async function executeAwardAreaCreateCategories(body) {
+  const areaId = body.areaId;
+  const categoryNames = Array.isArray(body.categoryNames)
+    ? [...new Set(body.categoryNames.map((n) => String(n || '').trim()).filter(Boolean))]
+    : [];
+  if (!areaId) throw new Error('award_area_create_categories: areaId is required');
+  if (categoryNames.length === 0) {
+    throw new Error('award_area_create_categories: categoryNames must be a non-empty array');
+  }
+  if (categoryNames.length > 100) {
+    throw new Error('award_area_create_categories: maximum 100 categories per request');
+  }
+
+  const { data: area, error: areaErr } = await supabase
+    .from('areas')
+    .select('id, country')
+    .eq('id', areaId)
+    .maybeSingle();
+  if (areaErr) throw areaErr;
+  if (!area) throw new Error('award_area_create_categories: unknown area — it may have been deleted');
+
+  const { data: customCategoryRows, error: customCategoryErr } = await supabase
+    .from('custom_categories')
+    .select('name, sector_name, area_id, country')
+    .eq('is_active', true);
+  if (customCategoryErr) throw customCategoryErr;
+  const applicableCustomCategories = (customCategoryRows || []).filter((c) =>
+    c.area_id ? c.area_id === area.id : c.country ? c.country === area.country : true
+  );
+
+  const created = [];
+  const skipped = [];
+  for (const name of categoryNames) {
+    const resolver = buildCustomCategoryResolver(applicableCustomCategories);
+    if (resolveCategory(name) || resolver.resolve(name)) {
+      skipped.push(name);
+      continue;
+    }
+    const { error: insErr } = await supabase.from('custom_categories').insert({
+      name,
+      sector_name: 'SPECIALIST TRADES',
+      area_id: area.id,
+      is_active: true,
+      sort_order: 0,
+    });
+    if (insErr) throw insErr;
+    created.push(name);
+    // So a later name in this same request that happens to be a
+    // normalized match of one just created (e.g. plural/singular) is
+    // skipped too, rather than creating a near-duplicate pair.
+    applicableCustomCategories.push({ name, sector_name: 'SPECIALIST TRADES', area_id: area.id });
+  }
+
+  return { created, skipped };
 }
 
 /**
@@ -2544,6 +2649,25 @@ module.exports = async function handler(req, res) {
       }
       const importResult = await executeAwardAreaImport(body, user);
       return res.status(200).json(importResult);
+    }
+
+    // 7b1a. Award Areas "Auto-create missing categories" — inserts a
+    // custom_categories row (scoped to this one area) for each distinct
+    // category name the importer's validation step couldn't resolve.
+    // Same role gate as the import itself; this is a narrow, purpose-built
+    // write to one table for one legitimate reason, not a general grant —
+    // ROLE_PERMISSIONS.editor.write deliberately does not include
+    // 'custom_categories' (that table's own direct CRUD stays admin-only
+    // via settings.js), so this goes through its own operation rather than
+    // the generic insert path.
+    if (body.operation === 'award_area_create_categories') {
+      if (!hasMinimumRole(role, 'editor')) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden', message: 'Creating categories requires editor role or above' });
+      }
+      const createResult = await executeAwardAreaCreateCategories(body);
+      return res.status(200).json(createResult);
     }
 
     // 7b2. Award Areas import batch rollback — bulk-undo one or more

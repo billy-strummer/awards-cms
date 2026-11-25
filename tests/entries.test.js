@@ -2178,3 +2178,74 @@ describe('Entries Module - openMediaKit() (Roadmap 2.3)', () => {
     expect(nomineeBadgeModule.showMediaKitModal).toHaveBeenCalledWith(entry, 2027, 'Cardiff');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Award Areas entry-count refresh on deletion
+// ---------------------------------------------------------------------------
+// nominee-uploads.js's Award Areas table fetches entry counts once and
+// caches them (loadAreasTable()) -- without a refresh here, deleting an
+// entry leaves that area's row showing a stale "Imported"/count until the
+// Award Areas tab happens to reload for some other reason.
+describe('Entries Module - Award Areas refresh on delete', () => {
+  beforeEach(() => {
+    jest.spyOn(entriesModule, 'loadEntries').mockResolvedValue(undefined);
+    jest.spyOn(entriesModule, 'loadStats').mockResolvedValue(undefined);
+    jest.spyOn(utils, 'showToast').mockImplementation(() => {});
+    jest.spyOn(utils, 'confirmDialog').mockResolvedValue(true);
+    global.nomineeUploads = { loadAreasTable: jest.fn() };
+    global.window.nomineeUploads = global.nomineeUploads;
+  });
+
+  afterEach(() => {
+    entriesModule.loadEntries.mockRestore();
+    entriesModule.loadStats.mockRestore();
+    utils.showToast.mockRestore();
+    utils.confirmDialog.mockRestore();
+    if (apiClient.delete.mockRestore) apiClient.delete.mockRestore();
+    if (apiClient.deleteByFilters && apiClient.deleteByFilters.mockRestore) apiClient.deleteByFilters.mockRestore();
+    delete global.nomineeUploads;
+    delete global.window.nomineeUploads;
+  });
+
+  test('deleteEntry() refreshes the Award Areas table after a successful delete', async () => {
+    jest.spyOn(apiClient, 'delete').mockResolvedValue({ data: null, error: null });
+    await entriesModule.deleteEntry('entry-1');
+    expect(nomineeUploads.loadAreasTable).toHaveBeenCalled();
+  });
+
+  test('deleteEntry() does not refresh Award Areas when the delete itself fails', async () => {
+    jest.spyOn(apiClient, 'delete').mockRejectedValue(new Error('network error'));
+    await entriesModule.deleteEntry('entry-1');
+    expect(nomineeUploads.loadAreasTable).not.toHaveBeenCalled();
+  });
+
+  test('deleteEntry() does not throw when nomineeUploads is not loaded', async () => {
+    delete global.nomineeUploads;
+    delete global.window.nomineeUploads;
+    jest.spyOn(apiClient, 'delete').mockResolvedValue({ data: null, error: null });
+    await expect(entriesModule.deleteEntry('entry-1')).resolves.not.toThrow();
+  });
+
+  test('executeBulkAction("delete") refreshes the Award Areas table after a successful bulk delete', async () => {
+    entriesModule.selectedEntryIds = new Set(['entry-1', 'entry-2']);
+    jest.spyOn(apiClient, 'deleteByFilters').mockResolvedValue({ data: null, error: null });
+    await entriesModule.executeBulkAction('delete');
+    expect(nomineeUploads.loadAreasTable).toHaveBeenCalled();
+  });
+
+  test('executeBulkAction("delete") does not refresh Award Areas when the bulk delete itself fails', async () => {
+    entriesModule.selectedEntryIds = new Set(['entry-1']);
+    jest.spyOn(apiClient, 'deleteByFilters').mockRejectedValue(new Error('network error'));
+    await entriesModule.executeBulkAction('delete');
+    expect(nomineeUploads.loadAreasTable).not.toHaveBeenCalled();
+  });
+
+  test('executeBulkAction("status") does not touch Award Areas — entry counts are unaffected by a status change', async () => {
+    entriesModule.allEntries = [{ id: 'entry-1', status: 'submitted' }];
+    entriesModule.selectedEntryIds = new Set(['entry-1']);
+    jest.spyOn(apiClient, 'updateByFilters').mockResolvedValue({ data: null, error: null });
+    await entriesModule.executeBulkAction('status', 'shortlisted');
+    expect(nomineeUploads.loadAreasTable).not.toHaveBeenCalled();
+    apiClient.updateByFilters.mockRestore();
+  });
+});

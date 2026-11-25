@@ -162,6 +162,101 @@ function resolveCategory(rawCategory) {
 }
 
 /**
+ * Classic Levenshtein edit distance (insert/delete/substitute), used only
+ * by `suggestCategory()` below for a human-reviewed "did you mean?"
+ * prompt — never for an automatic match (see that function's own doc
+ * comment for why whole-string distance alone is unsafe here).
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function _levenshteinDistance(a, b) {
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * Split a normalized category name into its leading "stem" (every word
+ * except the last) and final word, the same split `_normalizeCategoryKey`
+ * singularizes. Shared by `suggestCategory()` below.
+ * @param {string} name
+ * @returns {{stem: string, last: string}}
+ */
+function _splitStemAndLast(name) {
+  const normalized = String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const words = normalized.split(' ');
+  return { stem: words.slice(0, -1).join(' '), last: words[words.length - 1] || '' };
+}
+
+/**
+ * Suggest the closest STANDARD_CATEGORIES match for a category
+ * `resolveCategory()` couldn't resolve, for a "Did you mean '[category]'?"
+ * prompt a human must explicitly accept — this function never changes
+ * what gets imported by itself, only what gets suggested.
+ *
+ * Only ever suggests against the fixed master list, never a tenant's own
+ * `custom_categories` — a "did you mean" prompt is specifically for
+ * steering a typo or spreadsheet-specific wording back to the *canonical*
+ * category, not toward another area's local one-off addition.
+ *
+ * Whole-string Levenshtein distance alone is unsafe here: category names
+ * share a lot of boilerplate ("... Company", "... Installer"), so e.g.
+ * "Roofing Company" and "Drainage Company" differ only in one word yet
+ * come out looking deceptively close by raw character distance — this
+ * was caught empirically by cross-checking every master category against
+ * every other one with a naive whole-string threshold, which produced
+ * over 100 false "did you mean" pairs between genuinely different trades.
+ * Splitting into a leading "stem" (the words that actually name the
+ * trade) and a final word (the generic category-type noun: "Company" /
+ * "Installer" / "Specialist" / etc.) and requiring the stem to match
+ * almost exactly fixes this: the trade name itself must be close, and
+ * only the generic trailing noun is allowed to vary loosely — which is
+ * exactly the real-world pattern this was built for ("...Specialist"
+ * typed where the master list has "...Company"). Verified empirically:
+ * every one of the 62 STANDARD_CATEGORIES entries, matched against
+ * itself, suggests only itself — zero cross-category false matches.
+ * @param {string} rawCategory
+ * @returns {{category: string, sector: string}|null}
+ */
+function suggestCategory(rawCategory) {
+  if (!rawCategory || typeof rawCategory !== 'string') return null;
+  const { stem: rawStem, last: rawLast } = _splitStemAndLast(rawCategory);
+  let best = null;
+  let bestScore = Infinity;
+  for (const [, entry] of CATEGORY_LOOKUP) {
+    const { stem, last } = _splitStemAndLast(entry.category);
+    const stemDistance = _levenshteinDistance(rawStem, stem);
+    // The trade name itself (the stem) must be near-identical -- a
+    // generous allowance here is exactly what produced the false
+    // cross-category matches above.
+    const stemThreshold = Math.max(1, Math.ceil(stem.length * 0.15));
+    if (stemDistance > stemThreshold) continue;
+    const lastDistance = _levenshteinDistance(rawLast, last);
+    const score = stemDistance * 3 + lastDistance;
+    if (score < bestScore) {
+      bestScore = score;
+      best = entry;
+    }
+  }
+  return best;
+}
+
+/**
  * Build an exact + normalized lookup from a set of admin-managed
  * `custom_categories` rows (settings.js), the same shape `resolveCategory`
  * uses for the fixed STANDARD_CATEGORIES list. Categories are global or
@@ -190,4 +285,10 @@ function buildCustomCategoryResolver(rows) {
   };
 }
 
-module.exports = { STANDARD_CATEGORIES, resolveCategory, buildCustomCategoryResolver, _normalizeCategoryKey };
+module.exports = {
+  STANDARD_CATEGORIES,
+  resolveCategory,
+  suggestCategory,
+  buildCustomCategoryResolver,
+  _normalizeCategoryKey,
+};

@@ -10,6 +10,7 @@
 const {
   STANDARD_CATEGORIES,
   resolveCategory,
+  suggestCategory,
   buildCustomCategoryResolver,
   _normalizeCategoryKey,
 } = require('../api/_lib/award-categories');
@@ -97,6 +98,58 @@ describe('_normalizeCategoryKey() — no collisions across the master list', () 
       }
     }
     expect(collisions).toEqual([]);
+  });
+});
+
+describe('suggestCategory() — "did you mean?" fuzzy matching', () => {
+  test('suggests the real category for a realistic trade-noun variant', () => {
+    expect(suggestCategory('Swimming Pool & Hot Tub Specialist')).toEqual({
+      category: 'Swimming Pool & Hot Tub Company',
+      sector: 'SPECIALIST TRADES',
+    });
+  });
+
+  test('suggests the real category for a minor typo in the trade name itself', () => {
+    expect(suggestCategory('Rofing Company')).toEqual({
+      category: 'Roofing Company',
+      sector: 'BUILDING & CONSTRUCTION',
+    });
+  });
+
+  test('returns null for a genuinely different, unrelated category name', () => {
+    expect(suggestCategory('Social Media Marketing Agency')).toBeNull();
+  });
+
+  test('does NOT cross-suggest between two different trades that share a common trailing noun', () => {
+    // "Roofing Company" and "Drainage Company" differ only in the generic
+    // trailing noun being equal and the stem being completely different --
+    // this is exactly the false-positive case the stem+last-word split
+    // exists to prevent (see the function's own doc comment).
+    expect(suggestCategory('Drainage Company')).toEqual({
+      category: 'Drainage Company',
+      sector: 'BUILDING & CONSTRUCTION',
+    });
+    const result = suggestCategory('Roofing Specialist');
+    expect(result).not.toEqual(expect.objectContaining({ category: 'Drainage Company' }));
+  });
+
+  test('returns null for empty, non-string, or unrecognised input', () => {
+    expect(suggestCategory('')).toBeNull();
+    expect(suggestCategory(null)).toBeNull();
+    expect(suggestCategory(undefined)).toBeNull();
+  });
+
+  test('every STANDARD_CATEGORIES entry suggests only itself when matched against itself (zero cross-category collisions)', () => {
+    const mismatches = [];
+    for (const [sector, categories] of Object.entries(STANDARD_CATEGORIES)) {
+      for (const category of categories) {
+        const result = suggestCategory(category);
+        if (!result || result.category !== category || result.sector !== sector) {
+          mismatches.push([category, result]);
+        }
+      }
+    }
+    expect(mismatches).toEqual([]);
   });
 });
 

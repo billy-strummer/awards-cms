@@ -22,7 +22,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { verifyAuth, hasMinimumRole, getUserRole, ROLE_HIERARCHY } = require('./_lib/auth');
 const { assertEnv } = require('./_lib/env');
 const { isValidColumnList, validateSegmentRules } = require('./_lib/validate');
-const { resolveCategory, buildCustomCategoryResolver } = require('./_lib/award-categories');
+const { resolveCategory, suggestCategory, buildCustomCategoryResolver } = require('./_lib/award-categories');
 const { findMatchingOrganisation, escapeLikePattern } = require('./_lib/organisation-matching');
 const { createTestDataFixtures } = require('./_lib/test-data-fixtures');
 
@@ -1333,6 +1333,15 @@ async function executeNomineeUpload(body, user) {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Spreadsheets routinely use "WEBSITE FORM" (and similar placeholders like
+// "N/A") in the email column to mean "this organisation was contacted via
+// the public entry form, not a known email address" -- not a data-entry
+// mistake. Treating it as an invalid email would block the whole row on
+// something that isn't actually an error; treating it as blank (with a
+// visible note on the organisation) reflects what the spreadsheet means.
+const WEBSITE_FORM_EMAIL_RE = /^(website\s*form|n\s*\/?\s*a\.?|none|unknown|tbc)$/i;
+const WEBSITE_FORM_CONTACT_NOTE = 'Contact via website form (no email address provided at import).';
+
 /**
  * Award Areas CSV import — the CMS's single pipeline for bulk-importing
  * nominees into a specific Area (county/city/London borough). Every row
@@ -1400,24 +1409,45 @@ async function executeAwardAreaImport(body, user) {
   );
   const customCategoryResolver = buildCustomCategoryResolver(applicableCustomCategories);
 
+  // Staff-confirmed "Did you mean '[master category]'?" acceptances from a
+  // previous validate call, keyed by the exact raw CSV text that prompted
+  // the suggestion. The mapped-to name always came from suggestCategory()
+  // (a real STANDARD_CATEGORIES entry), so routing it back through
+  // resolveCategory() below resolves cleanly -- this never bypasses
+  // validation, it just lets an explicitly-confirmed correction take effect
+  // without the admin having to edit and re-upload the spreadsheet itself.
+  const categoryMapping =
+    body.categoryMapping && typeof body.categoryMapping === 'object' && !Array.isArray(body.categoryMapping)
+      ? body.categoryMapping
+      : {};
+
   // ── Validate every row ──────────────────────────────────────────
   const errors = [];
   const seenCompanyNames = new Map(); // normalised name -> first row number
   const validatedRows = [];
-  const unknownCategorySet = new Set(); // distinct unrecognised category strings, for a one-line summary + auto-create
+  const unknownCategorySet = new Set(); // distinct still-unresolved category strings, for a one-line summary + suggestions
+  let websiteFormContactCount = 0; // rows whose email placeholder ("WEBSITE FORM", "N/A", ...) was treated as blank
 
   rows.forEach((raw, idx) => {
     const rowNum = idx + 1;
     const companyName = String(raw.company_name || '').trim();
     const category = String(raw.category || '').trim();
-    const email = String(raw.email || '').trim();
+    const rawEmail = String(raw.email || '').trim();
+    // A placeholder like "WEBSITE FORM" or "N/A" means "no email on file",
+    // not "this email is invalid" -- treat it as blank rather than failing
+    // validation, but remember it so the organisation gets a visible note.
+    const isWebsiteFormContact = !!rawEmail && WEBSITE_FORM_EMAIL_RE.test(rawEmail);
+    const email = isWebsiteFormContact ? '' : rawEmail;
 
     if (!companyName) errors.push({ row: rowNum, field: 'company_name', message: 'Missing organisation name' });
     if (!category) errors.push({ row: rowNum, field: 'category', message: 'Missing award category' });
 
     let resolvedCategory = null;
     if (category) {
-      resolvedCategory = resolveCategory(category) || customCategoryResolver.resolve(category);
+      resolvedCategory =
+        resolveCategory(category) ||
+        customCategoryResolver.resolve(category) ||
+        (categoryMapping[category] ? resolveCategory(categoryMapping[category]) : null);
       if (!resolvedCategory) {
         unknownCategorySet.add(category);
         errors.push({
@@ -1431,6 +1461,7 @@ async function executeAwardAreaImport(body, user) {
     if (email && !EMAIL_RE.test(email)) {
       errors.push({ row: rowNum, field: 'email', message: `Invalid email address "${email}"` });
     }
+    if (isWebsiteFormContact) websiteFormContactCount++;
 
     // Rank is optional (blank = null); when present it must be a positive
     // whole number — the real files only ever carry 1/2/3, but we don't
@@ -1469,6 +1500,7 @@ async function executeAwardAreaImport(body, user) {
       category,
       resolvedCategory,
       email: email || null,
+      contactViaWebsiteForm: isWebsiteFormContact,
       contactName: raw.contact_name ? String(raw.contact_name).trim().slice(0, 255) : null,
       phone: raw.phone ? String(raw.phone).trim().slice(0, 50) : null,
       website: raw.website ? String(raw.website).trim().slice(0, 500) : null,
@@ -1486,7 +1518,16 @@ async function executeAwardAreaImport(body, user) {
       errors,
       rowCount: rows.length,
       area,
-      unknownCategories: [...unknownCategorySet].sort(),
+      // One entry per distinct still-unresolved category, each with the
+      // closest STANDARD_CATEGORIES "Did you mean?" suggestion if one is
+      // confident enough (null otherwise) -- never auto-applied, only
+      // ever a prompt the client surfaces for a human to accept or reject.
+      unknownCategories: [...unknownCategorySet].sort().map((name) => ({ name, suggestion: suggestCategory(name) })),
+      // Rows whose email column was a placeholder like "WEBSITE FORM" or
+      // "N/A" -- not an error, just surfaced so staff know these
+      // organisations will be marked as contacted via the website form
+      // rather than having a real email on file.
+      websiteFormContactCount,
     };
   }
 
@@ -1620,6 +1661,11 @@ async function executeAwardAreaImport(body, user) {
       tenant_id: tenantId,
       address: r.address,
       catchment_area: r.catchmentArea,
+      // Visible to staff on the organisation record (organisations.js's
+      // detail view) so "no email on file" doesn't read as a data gap --
+      // it's the spreadsheet explicitly saying this organisation was
+      // reached through the public entry form instead.
+      notes: r.contactViaWebsiteForm ? WEBSITE_FORM_CONTACT_NOTE : null,
     };
 
     if (!orgId) {
@@ -1744,6 +1790,7 @@ async function executeAwardAreaImport(body, user) {
       organisationsReplaced: orgsReplaced,
       skipped: orgsSkipped,
       alreadyEntered: rowResults.filter((r) => r.action === 'entry_exists').length,
+      websiteFormContactCount,
     },
     rowResults,
   };

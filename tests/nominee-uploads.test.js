@@ -83,6 +83,13 @@ win.apiClient = {
   _getTenantId: () => 'default',
 };
 
+// Minimal STANDARD_CATEGORIES mock -- mirrors config.js's global, which
+// _buildMasterCategoryOptions() reads to build the "did you mean" dropdown.
+win.STANDARD_CATEGORIES = {
+  'SPECIALIST TRADES': ['Swimming Pool & Hot Tub Company', 'Locksmith'],
+  'BUILDING & CONSTRUCTION': ['Roofing Company', 'Drainage Company'],
+};
+
 // Minimal bootstrap mock -- openUploadModal()/openImportModal() show a
 // real Bootstrap modal in the app; jsdom has no such thing.
 win.bootstrap = {
@@ -591,11 +598,16 @@ describe('nomineeUploads - category validation rendering', () => {
     if (win.apiClient.post.mockRestore) win.apiClient.post.mockRestore();
   });
 
-  test('renders a deduplicated category summary with an auto-create button, filtering those rows out of the detail table', () => {
+  test('renders a deduplicated category summary with a "did you mean" suggestion, filtering those rows out of the detail table', () => {
     uploads._renderValidation({
       valid: false,
       rowCount: 48,
-      unknownCategories: ['Swimming Pool & Hot Tub Specialist'],
+      unknownCategories: [
+        {
+          name: 'Swimming Pool & Hot Tub Specialist',
+          suggestion: { category: 'Swimming Pool & Hot Tub Company', sector: 'SPECIALIST TRADES' },
+        },
+      ],
       errors: Array.from({ length: 48 }, (_, i) => ({
         row: i + 1,
         field: 'category',
@@ -606,19 +618,25 @@ describe('nomineeUploads - category validation rendering', () => {
     const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
     expect(html).toContain('1 unknown award category');
     expect(html).toContain('Swimming Pool &amp; Hot Tub Specialist');
-    expect(html).toContain('Somerset');
-    // The 48 duplicate per-row category errors are summarised above (once),
-    // not repeated in the detail table below -- the whole point of this fix.
-    expect((html.match(/<li>Swimming Pool/g) || []).length).toBe(1);
+    // The "did you mean" suggestion is surfaced and pre-selected in the
+    // dropdown -- never silently applied on its own.
+    expect(html).toContain('Did you mean');
+    expect(html).toContain('Swimming Pool &amp; Hot Tub Company');
+    const select = win.document.querySelector('.nominee-category-resolution-select');
+    expect(select).not.toBeNull();
+    expect(select.getAttribute('data-raw-category')).toBe('Swimming Pool & Hot Tub Specialist');
+    expect(select.querySelector('option[selected]').value).toBe('Swimming Pool & Hot Tub Company');
+    // The 48 duplicate per-row category errors are summarised above (once
+    // per distinct unknown category), not repeated in the detail table below.
     expect(html).not.toContain('<td class="small text-danger">');
-    expect(win.document.getElementById('nomineeAutoCreateCategoriesBtn')).not.toBeNull();
+    expect(win.document.getElementById('nomineeApplyCategoryResolutionsBtn')).not.toBeNull();
   });
 
   test('keeps non-category errors in the detail table alongside the category summary', () => {
     uploads._renderValidation({
       valid: false,
       rowCount: 2,
-      unknownCategories: ['Mystery Trade'],
+      unknownCategories: [{ name: 'Mystery Trade', suggestion: null }],
       errors: [
         { row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' },
         { row: 2, field: 'company_name', message: 'Missing organisation name' },
@@ -627,10 +645,11 @@ describe('nomineeUploads - category validation rendering', () => {
     const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
     // The company_name error is still shown row-by-row...
     expect(html).toContain('Missing organisation name');
-    // ...but the category error is represented once, in the summary, not
-    // also repeated as its own row in the detail table below.
+    // ...but the category error is represented once, in the summary (with no
+    // "did you mean" since suggestion is null), not also repeated as its own
+    // row in the detail table below.
     expect(html).toContain('Mystery Trade');
-    expect((html.match(/<li>Mystery Trade/g) || []).length).toBe(1);
+    expect(html).not.toContain('Did you mean');
     expect(html).not.toContain('Unknown award category &quot;Mystery Trade&quot;');
   });
 
@@ -643,7 +662,7 @@ describe('nomineeUploads - category validation rendering', () => {
     });
     const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
     expect(html).toContain('Invalid email address');
-    expect(win.document.getElementById('nomineeAutoCreateCategoriesBtn')).toBeNull();
+    expect(win.document.getElementById('nomineeApplyCategoryResolutionsBtn')).toBeNull();
   });
 
   test('renders the success state unchanged when valid', () => {
@@ -652,8 +671,64 @@ describe('nomineeUploads - category validation rendering', () => {
     expect(html).toContain('All 10 rows validated');
   });
 
-  describe('_autoCreateCategories()', () => {
-    test('creates the categories, shows a success toast, and re-runs validation', async () => {
+  test('surfaces a websiteFormContactCount note alongside an otherwise-valid result', () => {
+    uploads._renderValidation({ valid: true, rowCount: 5, websiteFormContactCount: 2 });
+    const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
+    expect(html).toContain('All 5 rows validated');
+    expect(html).toContain('2 organisations had');
+    expect(html).toContain('WEBSITE FORM');
+  });
+
+  test('surfaces a websiteFormContactCount note alongside other errors too', () => {
+    uploads._renderValidation({
+      valid: false,
+      rowCount: 2,
+      websiteFormContactCount: 1,
+      unknownCategories: [],
+      errors: [{ row: 1, field: 'company_name', message: 'Missing organisation name' }],
+    });
+    const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
+    expect(html).toContain('1 organisation had');
+    expect(html).toContain('Missing organisation name');
+  });
+
+  describe('_applyCategoryResolutions()', () => {
+    function renderOneUnknown(name, suggestion) {
+      uploads._renderValidation({
+        valid: false,
+        rowCount: 1,
+        unknownCategories: [{ name, suggestion }],
+        errors: [{ row: 1, field: 'category', message: `Unknown award category "${name}"` }],
+      });
+    }
+
+    test('accepting a master-category selection adds it to categoryMapping and re-checks', async () => {
+      const postSpy = jest.spyOn(win.apiClient, 'post').mockImplementation((op) => {
+        if (op === 'award_area_import') {
+          return Promise.resolve({ valid: true, rowCount: 0, unknownCategories: [], errors: [] });
+        }
+        return Promise.resolve({});
+      });
+
+      renderOneUnknown('Swimming Pool & Hot Tub Specialist', {
+        category: 'Swimming Pool & Hot Tub Company',
+        sector: 'SPECIALIST TRADES',
+      });
+      // The suggestion is pre-selected by _renderValidation itself -- Apply
+      // just reads the (already-correct) current dropdown value.
+      await uploads._applyCategoryResolutions();
+
+      expect(postSpy).not.toHaveBeenCalledWith('award_area_create_categories', expect.anything());
+      expect(postSpy).toHaveBeenCalledWith(
+        'award_area_import',
+        expect.objectContaining({
+          mode: 'validate',
+          categoryMapping: { 'Swimming Pool & Hot Tub Specialist': 'Swimming Pool & Hot Tub Company' },
+        })
+      );
+    });
+
+    test('choosing "create as a new category" calls award_area_create_categories, shows a toast, and re-checks', async () => {
       const postSpy = jest.spyOn(win.apiClient, 'post').mockImplementation((op) => {
         if (op === 'award_area_create_categories') {
           return Promise.resolve({ created: ['Mystery Trade'], skipped: [] });
@@ -665,13 +740,10 @@ describe('nomineeUploads - category validation rendering', () => {
       });
       const toastSpy = jest.spyOn(win.utils, 'showToast');
 
-      uploads._renderValidation({
-        valid: false,
-        rowCount: 1,
-        unknownCategories: ['Mystery Trade'],
-        errors: [{ row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' }],
-      });
-      await uploads._autoCreateCategories(['Mystery Trade']);
+      renderOneUnknown('Mystery Trade', null);
+      const select = win.document.querySelector('.nominee-category-resolution-select');
+      select.value = '__create__';
+      await uploads._applyCategoryResolutions();
 
       expect(postSpy).toHaveBeenCalledWith('award_area_create_categories', {
         areaId: 'a1',
@@ -682,26 +754,43 @@ describe('nomineeUploads - category validation rendering', () => {
       toastSpy.mockRestore();
     });
 
+    test('leaving the placeholder selected skips that category -- no mapping added, no create call', async () => {
+      const postSpy = jest.spyOn(win.apiClient, 'post').mockImplementation((op) => {
+        if (op === 'award_area_import') {
+          return Promise.resolve({ valid: true, rowCount: 0, unknownCategories: [], errors: [] });
+        }
+        return Promise.resolve({});
+      });
+
+      renderOneUnknown('Mystery Trade', null);
+      // No suggestion, so the placeholder ("") stays selected.
+      await uploads._applyCategoryResolutions();
+
+      expect(postSpy).not.toHaveBeenCalledWith('award_area_create_categories', expect.anything());
+      expect(postSpy).toHaveBeenCalledWith(
+        'award_area_import',
+        expect.objectContaining({ mode: 'validate', categoryMapping: {} })
+      );
+    });
+
     test('shows an error toast and re-enables the button when creation fails', async () => {
       jest.spyOn(win.apiClient, 'post').mockRejectedValue(new Error('boom'));
       const toastSpy = jest.spyOn(win.utils, 'showToast');
 
-      uploads._renderValidation({
-        valid: false,
-        rowCount: 1,
-        unknownCategories: ['Mystery Trade'],
-        errors: [{ row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' }],
-      });
-      await uploads._autoCreateCategories(['Mystery Trade']);
+      renderOneUnknown('Mystery Trade', null);
+      const select = win.document.querySelector('.nominee-category-resolution-select');
+      select.value = '__create__';
+      await uploads._applyCategoryResolutions();
 
-      expect(toastSpy).toHaveBeenCalledWith('boom', 'error', 'Could Not Create Categories');
-      expect(win.document.getElementById('nomineeAutoCreateCategoriesBtn').disabled).toBe(false);
+      expect(toastSpy).toHaveBeenCalledWith('boom', 'error', 'Could Not Apply Category Changes');
+      expect(win.document.getElementById('nomineeApplyCategoryResolutionsBtn').disabled).toBe(false);
       toastSpy.mockRestore();
     });
 
-    test('does nothing when there is no current area or no category names', async () => {
+    test('does nothing when there is no current area', async () => {
       const postSpy = jest.spyOn(win.apiClient, 'post');
-      await uploads._autoCreateCategories([]);
+      uploads.openUploadModal('no-such-area-id'); // clears _currentArea
+      await uploads._applyCategoryResolutions();
       expect(postSpy).not.toHaveBeenCalled();
     });
   });

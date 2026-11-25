@@ -991,6 +991,97 @@ describe('Data Proxy API', () => {
       }
     });
 
+    test.each(['WEBSITE FORM', 'website form', 'N/A', 'n/a', 'none'])(
+      'treats a "%s" email placeholder as blank, not an invalid email',
+      async (placeholder) => {
+        const req = importReq({
+          rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company', email: placeholder }],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+        expect(res.body.valid).toBe(true);
+        expect(res.body.errors).toEqual([]);
+        expect(res.body.websiteFormContactCount).toBe(1);
+      }
+    );
+
+    test('still rejects a genuinely malformed email, not just placeholders', async () => {
+      const req = importReq({
+        rows: [{ company_name: 'Acme Ltd', category: 'Roofing Company', email: 'not-an-email' }],
+      });
+      const res = createRes();
+      await handler(req, res);
+      expect(res.body.valid).toBe(false);
+      expect(res.body.errors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'email', message: expect.stringContaining('not-an-email') }),
+        ])
+      );
+      expect(res.body.websiteFormContactCount).toBe(0);
+    });
+
+    test('a "WEBSITE FORM" email creates the organisation with a blank email and a visible contact-method note', async () => {
+      const recordedInserts = [];
+      function recordingChain(resolveWith) {
+        const chain = {};
+        ['select', 'update', 'delete', 'order', 'range', 'in', 'or', 'neq', 'gt', 'gte', 'lt', 'lte', 'like'].forEach(
+          (m) => {
+            chain[m] = (...args) => {
+              void args;
+              return chain;
+            };
+          }
+        );
+        chain.insert = (payload) => {
+          recordedInserts.push(payload);
+          return chain;
+        };
+        chain.eq = () => chain;
+        chain.ilike = () => chain;
+        chain.limit = () => chain;
+        chain.maybeSingle = () => Promise.resolve(resolveWith);
+        chain.single = () => Promise.resolve({ data: { id: 'new-org-1' }, error: null });
+        chain.then = (resolve) => resolve(resolveWith);
+        return chain;
+      }
+
+      const originalMockFromImpl = mockFrom.getMockImplementation();
+      mockFrom.mockImplementation((table) => {
+        if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+        if (table === 'areas') {
+          return recordingChain({
+            data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+            error: null,
+          });
+        }
+        if (table === 'organisations') return recordingChain({ data: null, error: null });
+        if (table === 'award_years') return recordingChain({ data: { id: 'award-1' }, error: null });
+        if (table === 'entries') return recordingChain({ data: null, error: null });
+        return recordingChain({ data: null, error: null });
+      });
+
+      try {
+        const req = importReq({
+          mode: 'import',
+          rows: [{ company_name: 'Acme Roofing Ltd', category: 'Roofing Company', email: 'WEBSITE FORM' }],
+        });
+        const res = createRes();
+        await handler(req, res);
+        expect(res.statusCode).toBe(200);
+        expect(res.body.totals.websiteFormContactCount).toBe(1);
+
+        const orgInsert = recordedInserts.find((p) => p.company_name === 'Acme Roofing Ltd');
+        expect(orgInsert.email).toBeNull();
+        expect(orgInsert.notes).toBe('Contact via website form (no email address provided at import).');
+
+        const entryInsert = recordedInserts.find((p) => p.organisation_id === 'new-org-1');
+        expect(entryInsert.contact_email).toBeNull();
+      } finally {
+        mockFrom.mockImplementation(originalMockFromImpl);
+      }
+    });
+
     test('stamps a requested year, not the server current year, on the new award and entry', async () => {
       const recordedInserts = [];
       function recordingChain(resolveWith) {
@@ -1442,7 +1533,7 @@ describe('Data Proxy API', () => {
           await handler(req, res);
           expect(res.statusCode).toBe(200);
           expect(res.body.valid).toBe(false);
-          expect(res.body.unknownCategories).toEqual(['Local Only Trade']);
+          expect(res.body.unknownCategories).toEqual([{ name: 'Local Only Trade', suggestion: null }]);
         } finally {
           mockFrom.mockImplementation(originalMockFromImpl);
         }
@@ -1474,9 +1565,44 @@ describe('Data Proxy API', () => {
           await handler(req, res);
           expect(res.statusCode).toBe(200);
           expect(res.body.valid).toBe(false);
-          expect(res.body.unknownCategories).toEqual(['Swimming Pool & Hot Tub Specialist']);
+          expect(res.body.unknownCategories).toEqual([
+            {
+              name: 'Swimming Pool & Hot Tub Specialist',
+              suggestion: { category: 'Swimming Pool & Hot Tub Company', sector: 'SPECIALIST TRADES' },
+            },
+          ]);
           // Row-level detail is still preserved -- one error per row, just not duplicated in the summary.
           expect(res.body.errors.filter((e) => e.field === 'category').length).toBe(48);
+        } finally {
+          mockFrom.mockImplementation(originalMockFromImpl);
+        }
+      });
+
+      test('a confirmed categoryMapping resolves rows that would otherwise be unknown', async () => {
+        const originalMockFromImpl = mockFrom.getMockImplementation();
+        mockFrom.mockImplementation((table) => {
+          if (table === 'user_roles') return recordingChain({ data: { role: 'admin' }, error: null, count: 1 });
+          if (table === 'areas') {
+            return recordingChain({
+              data: { id: 'area-1', display_name: 'Somerset', country: 'England', area_type: 'county' },
+              error: null,
+            });
+          }
+          if (table === 'custom_categories') return recordingChain({ data: [], error: null });
+          return recordingChain({ data: null, error: null });
+        });
+
+        try {
+          const req = importReq({
+            mode: 'validate',
+            rows: [{ company_name: 'Acme Ltd', category: 'Swimming Pool & Hot Tub Specialist' }],
+            categoryMapping: { 'Swimming Pool & Hot Tub Specialist': 'Swimming Pool & Hot Tub Company' },
+          });
+          const res = createRes();
+          await handler(req, res);
+          expect(res.statusCode).toBe(200);
+          expect(res.body.valid).toBe(true);
+          expect(res.body.unknownCategories).toEqual([]);
         } finally {
           mockFrom.mockImplementation(originalMockFromImpl);
         }

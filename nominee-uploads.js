@@ -34,6 +34,7 @@ const nomineeUploads = (() => {
   let _duplicateStrategy = 'skip';
   let _lastValidation = null; // result of the last server validate call
   let _currentBatchId = null; // batch id returned by the first chunk of the current import, reused by every later chunk
+  let _categoryMapping = {}; // raw CSV category text -> accepted canonical master category name, accumulated across re-validations
   let _recentImportsArea = null; // area object the Recent Imports modal is currently showing
   let _recentImportsBatches = []; // batches loaded for _recentImportsArea
   let _lastRollbackPreview = null; // result of the last preview call, consumed by the confirm step
@@ -610,6 +611,7 @@ const nomineeUploads = (() => {
         rows: _rowsForServer(),
         year: _selectedYear(),
         tenantId: apiClient._getTenantId(),
+        categoryMapping: _categoryMapping,
       });
       _lastValidation = result;
       _renderValidation(result);
@@ -626,8 +628,13 @@ const nomineeUploads = (() => {
     const container = document.getElementById('nomineeValidationContainer');
     if (!container) return;
 
+    const websiteFormNote = result.websiteFormContactCount
+      ? `<div class="alert alert-info py-2 small mb-2"><i class="bi bi-info-circle-fill me-1"></i>${result.websiteFormContactCount} organisation${result.websiteFormContactCount === 1 ? '' : 's'} had <strong>"WEBSITE FORM"</strong> (or a similar placeholder) in the email column — treated as no email on file, with a note added so staff know to use the website form instead.</div>`
+      : '';
+
     if (result.valid) {
       container.innerHTML = `
+        ${websiteFormNote}
         <div class="alert alert-success py-2 d-flex align-items-center gap-2 small mb-0">
           <i class="bi bi-check-circle-fill"></i><span>All ${result.rowCount} rows validated — ready to import into <strong>${utils.escapeHtml(_currentArea.display_name)}</strong>.</span>
         </div>`;
@@ -646,14 +653,13 @@ const nomineeUploads = (() => {
       ? `
       <div class="alert alert-warning py-2 small mb-2">
         <i class="bi bi-exclamation-triangle-fill me-1"></i>
-        <strong>${unknownCategories.length} unknown award categor${unknownCategories.length === 1 ? 'y' : 'ies'}</strong> found across this file:
-        <ul class="mb-2 mt-1">
-          ${unknownCategories.map((c) => `<li>${utils.escapeHtml(c)}</li>`).join('')}
-        </ul>
-        <button type="button" class="btn btn-sm btn-outline-dark" id="nomineeAutoCreateCategoriesBtn">
-          <i class="bi bi-magic me-1"></i>Auto-create ${unknownCategories.length === 1 ? 'this category' : 'these categories'} for ${utils.escapeHtml(_currentArea.display_name)}
+        <strong>${unknownCategories.length} unknown award categor${unknownCategories.length === 1 ? 'y' : 'ies'}</strong> found across this file. Map each to a real category below, then re-check — nothing has been imported yet.
+        <div class="mt-2">
+          ${unknownCategories.map((c) => _renderUnknownCategoryRow(c)).join('')}
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-dark" id="nomineeApplyCategoryResolutionsBtn">
+          <i class="bi bi-arrow-repeat me-1"></i>Apply &amp; Re-check
         </button>
-        <div class="form-text mt-1">Creates each as a custom category scoped to this area (sector "Specialist Trades" by default — reassign it later in Settings if needed), then re-checks the file.</div>
       </div>`
       : '';
 
@@ -665,6 +671,7 @@ const nomineeUploads = (() => {
       .join('');
 
     container.innerHTML = `
+      ${websiteFormNote}
       ${categorySummary}
       <div class="alert alert-danger py-2 small mb-2">
         <i class="bi bi-exclamation-triangle-fill me-1"></i>${result.errors.length} error${result.errors.length > 1 ? 's' : ''} found — fix these in your CSV and upload again. Nothing has been imported.
@@ -680,32 +687,97 @@ const nomineeUploads = (() => {
           : ''
       }`;
 
-    const autoCreateBtn = document.getElementById('nomineeAutoCreateCategoriesBtn');
-    if (autoCreateBtn) autoCreateBtn.addEventListener('click', () => _autoCreateCategories(unknownCategories));
+    const applyBtn = document.getElementById('nomineeApplyCategoryResolutionsBtn');
+    if (applyBtn) applyBtn.addEventListener('click', _applyCategoryResolutions);
   }
 
-  async function _autoCreateCategories(categoryNames) {
-    if (!_currentArea || !categoryNames || categoryNames.length === 0) return;
-    const btn = document.getElementById('nomineeAutoCreateCategoriesBtn');
+  // Renders one unknown category's row: its "Did you mean?" suggestion (if
+  // any — tied to the real, canonical Master Categories list, never a
+  // one-off per-area addition) pre-selected in a dropdown of every master
+  // category, with "create a new category for this area" as a deliberately
+  // last-resort option rather than the default action.
+  function _renderUnknownCategoryRow(unknownCategory) {
+    const name = unknownCategory.name;
+    const suggestion = unknownCategory.suggestion;
+    const didYouMean = suggestion
+      ? `<div class="mb-1">Did you mean <strong>${utils.escapeHtml(suggestion.category)}</strong>?</div>`
+      : '';
+    return `
+      <div class="border rounded p-2 mb-2 bg-white">
+        <div class="mb-1"><span class="text-muted">Unrecognised category:</span> <strong>${utils.escapeHtml(name)}</strong></div>
+        ${didYouMean}
+        <select class="form-select form-select-sm nominee-category-resolution-select" data-raw-category="${utils.escapeHtml(name)}">
+          ${_buildMasterCategoryOptions(suggestion ? suggestion.category : null)}
+        </select>
+      </div>`;
+  }
+
+  // Builds <option>s for every Master Category, grouped by sector, from the
+  // same STANDARD_CATEGORIES list config.js already exposes globally (the
+  // single canonical source this app and the public site both use) —
+  // deliberately not this area's own custom_categories, which are local
+  // one-off additions, not the master list a "Did you mean?" prompt should
+  // be steering staff back toward.
+  function _buildMasterCategoryOptions(preselectCategory) {
+    const sectors = window.STANDARD_CATEGORIES || {};
+    const optgroups = Object.entries(sectors)
+      .map(([sector, categories]) => {
+        const options = categories
+          .map(
+            (c) =>
+              `<option value="${utils.escapeHtml(c)}" ${c === preselectCategory ? 'selected' : ''}>${utils.escapeHtml(c)}</option>`
+          )
+          .join('');
+        return `<optgroup label="${utils.escapeHtml(sector)}">${options}</optgroup>`;
+      })
+      .join('');
+    return `<option value="">— Select the correct category —</option>${optgroups}<option value="__create__">+ Create as a new category for this area</option>`;
+  }
+
+  // Reads every unknown-category row's current dropdown selection: a real
+  // master category becomes a confirmed rename (categoryMapping, applied
+  // server-side on the next validate/import call); "__create__" becomes a
+  // genuinely new, area-scoped custom category; left on the placeholder,
+  // that category is simply skipped and stays unresolved for now.
+  async function _applyCategoryResolutions() {
+    if (!_currentArea) return;
+    const selects = document.querySelectorAll('.nominee-category-resolution-select');
+    const categoriesToCreate = [];
+    selects.forEach((select) => {
+      const rawCategory = select.getAttribute('data-raw-category');
+      const value = select.value;
+      if (!rawCategory || !value) return;
+      if (value === '__create__') {
+        categoriesToCreate.push(rawCategory);
+      } else {
+        _categoryMapping[rawCategory] = value;
+      }
+    });
+
+    const btn = document.getElementById('nomineeApplyCategoryResolutionsBtn');
     const original = btn ? btn.innerHTML : '';
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating…';
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking…';
     }
     try {
-      const result = await apiClient.post('award_area_create_categories', {
-        areaId: _currentArea.id,
-        categoryNames,
-      });
-      const createdCount = (result.created || []).length;
-      const skippedCount = (result.skipped || []).length;
-      utils.showToast(
-        `${createdCount} categor${createdCount === 1 ? 'y' : 'ies'} created${skippedCount > 0 ? `, ${skippedCount} already existed` : ''}.`,
-        'success'
-      );
+      if (categoriesToCreate.length > 0) {
+        const createResult = await apiClient.post('award_area_create_categories', {
+          areaId: _currentArea.id,
+          categoryNames: categoriesToCreate,
+        });
+        const createdCount = (createResult.created || []).length;
+        const skippedCount = (createResult.skipped || []).length;
+        if (createdCount > 0 || skippedCount > 0) {
+          utils.showToast(
+            `${createdCount} categor${createdCount === 1 ? 'y' : 'ies'} created${skippedCount > 0 ? `, ${skippedCount} already existed` : ''}.`,
+            'success'
+          );
+        }
+      }
       await _runValidation();
     } catch (err) {
-      utils.showToast(err.message || 'Unknown error', 'error', 'Could Not Create Categories');
+      utils.showToast(err.message || 'Unknown error', 'error', 'Could Not Apply Category Changes');
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = original;
@@ -783,6 +855,7 @@ const nomineeUploads = (() => {
           // finding and deleting up to IMPORT_CHUNK_SIZE-many separate
           // batches to undo one logical upload).
           batchId: _currentBatchId,
+          categoryMapping: _categoryMapping,
         });
         _currentBatchId = result.batchId || _currentBatchId;
         area = result.area;
@@ -1040,6 +1113,7 @@ const nomineeUploads = (() => {
     _duplicateStrategy = 'skip';
     _lastValidation = null;
     _currentBatchId = null;
+    _categoryMapping = {};
 
     const fileInput = document.getElementById('nomineeFileInput');
     if (fileInput) {
@@ -1149,7 +1223,9 @@ const nomineeUploads = (() => {
     _confirmRollback,
     _runValidation,
     _renderValidation,
-    _autoCreateCategories,
+    _renderUnknownCategoryRow,
+    _buildMasterCategoryOptions,
+    _applyCategoryResolutions,
   };
 })();
 

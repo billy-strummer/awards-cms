@@ -1132,6 +1132,63 @@ describe('Entries Module - Render Content', () => {
     expect(tbody.innerHTML).toContain('bi-pencil');
     expect(tbody.innerHTML).toContain('bi-trash');
   });
+
+  test('renderEntries shows each entry\'s Area/Region and Sector when "All Areas" is in effect (no area filter applied)', () => {
+    // currentFilters.area is left unset here -- the "All Areas" view -- and
+    // filteredEntries spans multiple areas/sectors, matching how the table
+    // behaves with the Area filter dropdown left on its default option.
+    entriesModule.currentFilters.area = '';
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    // Area/Region, resolved from each entry's own awards.county.
+    expect(tbody.innerHTML).toContain('Kent');
+    expect(tbody.innerHTML).toContain('London');
+    expect(tbody.innerHTML).toContain('Surrey');
+    expect(tbody.innerHTML).toContain('Essex');
+    // Sector, title-cased.
+    expect(tbody.innerHTML).toContain('Mep');
+    expect(tbody.innerHTML).toContain('Construction');
+    expect(tbody.innerHTML).toContain('Energy');
+  });
+
+  test('renderEntries still shows Area/Region and Sector when a specific area filter is applied', () => {
+    entriesModule.currentFilters.area = 'Kent';
+    entriesModule.filteredEntries = sampleEntries.filter((e) => e.awards?.county === 'Kent');
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    expect(tbody.innerHTML).toContain('Kent');
+    expect(tbody.innerHTML).not.toContain('Surrey');
+    entriesModule.currentFilters.area = '';
+  });
+
+  test("renderEntries falls back to the entry's own county_city/sector columns when no awards join is present", () => {
+    entriesModule.filteredEntries = [
+      {
+        ...sampleEntries[0],
+        id: 'entry-no-award-join',
+        awards: null,
+        county_city: 'Somerset',
+        sector: 'specialist trades',
+      },
+    ];
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    expect(tbody.innerHTML).toContain('Somerset');
+    expect(tbody.innerHTML).toContain('Specialist Trades');
+  });
+
+  test('renderEntries shows a dash placeholder when an entry has neither an awards join nor its own Area/Sector data', () => {
+    entriesModule.filteredEntries = [
+      { ...sampleEntries[0], id: 'entry-no-area-sector', awards: null, county_city: null, sector: null },
+    ];
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    const cells = Array.from(tbody.querySelectorAll('tr:not(#entriesEmptyRow) td'));
+    // Columns: checkbox(0), Entry #/Rank(1), Company(2), Category(3),
+    // Area/Region(4), Sector(5).
+    expect(cells[4].textContent.trim()).toBe('-');
+    expect(cells[5].textContent.trim()).toBe('-');
+  });
 });
 
 describe('Entries Module - XSS Prevention', () => {
@@ -1831,6 +1888,24 @@ describe('Entries Module - exportEntries CSV', () => {
     spy.mockRestore();
     window.URL = origURL;
   });
+
+  test('exportEntries CSV includes an Area / Region and a Sector column, resolved per entry', async () => {
+    const origURL = window.URL;
+    const origBlob = global.Blob;
+    let capturedCsv;
+    window.URL = { createObjectURL: jest.fn(() => 'blob://mock'), revokeObjectURL: jest.fn() };
+    global.Blob = function (parts) {
+      capturedCsv = parts[0];
+      return {};
+    };
+    await entriesModule.exportEntries();
+    expect(capturedCsv).toContain('"Area / Region"');
+    expect(capturedCsv).toContain('"Sector"');
+    expect(capturedCsv).toContain('"Kent"');
+    expect(capturedCsv).toContain('"MEP"');
+    window.URL = origURL;
+    global.Blob = origBlob;
+  });
 });
 
 describe('Entries Module - exportEntriesExcel', () => {
@@ -2106,6 +2181,44 @@ describe('Entries Module - saveEntryEdit() priority rank', () => {
   });
 });
 
+describe('Entries Module - editEntry() modal context', () => {
+  afterEach(() => {
+    document.getElementById('editEntryModal')?.remove();
+    jest.restoreAllMocks();
+  });
+
+  test('surfaces Area / Region, Category, Sector and Award Year prominently', async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({ data: [sampleEntries[0]] }); // awards: { award_name: 'Best Plumber', sector: 'MEP', county: 'Kent' }, year: 2026
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
+
+    await entriesModule.editEntry('entry-1');
+
+    const modal = document.getElementById('editEntryModal');
+    expect(modal).not.toBeNull();
+    expect(modal.innerHTML).toContain('Area / Region:');
+    expect(modal.innerHTML).toContain('Kent');
+    expect(modal.innerHTML).toContain('Category:');
+    expect(modal.innerHTML).toContain('Best Plumber');
+    expect(modal.innerHTML).toContain('Sector:');
+    expect(modal.innerHTML).toContain('Mep');
+    expect(modal.innerHTML).toContain('Award Year:');
+    expect(modal.innerHTML).toContain('2026');
+  });
+
+  test("falls back to the entry's own county_city/sector when no awards join is present", async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [{ ...sampleEntries[0], awards: null, county_city: 'Somerset', sector: 'specialist trades' }],
+    });
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
+
+    await entriesModule.editEntry('entry-1');
+
+    const modal = document.getElementById('editEntryModal');
+    expect(modal.innerHTML).toContain('Somerset');
+    expect(modal.innerHTML).toContain('Specialist Trades');
+  });
+});
+
 describe('Entries Module - showEntryDetailsModal priority rank display', () => {
   afterEach(() => {
     document.getElementById('entryDetailsModal')?.remove();
@@ -2122,6 +2235,31 @@ describe('Entries Module - showEntryDetailsModal priority rank display', () => {
     entriesModule.showEntryDetailsModal({ ...sampleEntries[0], priority_rank: null });
     const modal = document.getElementById('entryDetailsModal');
     expect(modal.innerHTML).toContain('N/A');
+  });
+
+  test('surfaces Area / Region, Category, Sector and Award Year prominently', () => {
+    entriesModule.showEntryDetailsModal(sampleEntries[0]); // awards: { award_name: 'Best Plumber', sector: 'MEP', county: 'Kent' }, year: 2026
+    const modal = document.getElementById('entryDetailsModal');
+    expect(modal.innerHTML).toContain('Category:');
+    expect(modal.innerHTML).toContain('Best Plumber');
+    expect(modal.innerHTML).toContain('Sector:');
+    expect(modal.innerHTML).toContain('Mep');
+    expect(modal.innerHTML).toContain('Area / Region:');
+    expect(modal.innerHTML).toContain('Kent');
+    expect(modal.innerHTML).toContain('Award Year:');
+    expect(modal.innerHTML).toContain('2026');
+  });
+
+  test("falls back to the entry's own county_city/sector when no awards join is present", () => {
+    entriesModule.showEntryDetailsModal({
+      ...sampleEntries[0],
+      awards: null,
+      county_city: 'Somerset',
+      sector: 'specialist trades',
+    });
+    const modal = document.getElementById('entryDetailsModal');
+    expect(modal.innerHTML).toContain('Somerset');
+    expect(modal.innerHTML).toContain('Specialist Trades');
   });
 });
 

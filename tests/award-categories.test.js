@@ -7,6 +7,9 @@
  * Run with: npx jest tests/award-categories.test.js
  */
 
+const fs = require('fs');
+const path = require('path');
+
 const {
   STANDARD_CATEGORIES,
   resolveCategory,
@@ -14,6 +17,21 @@ const {
   buildCustomCategoryResolver,
   _normalizeCategoryKey,
 } = require('../api/_lib/award-categories');
+
+/**
+ * Extracts config.js's own STANDARD_CATEGORIES object literal as plain data,
+ * without loading config.js itself (a browser script that touches
+ * `document`/`window` at the top level, so it can't just be `require()`d
+ * from a plain Node test). Used only to assert the two copies stay in sync
+ * -- see the "stays in sync with config.js" describe block below.
+ */
+function readConfigJsStandardCategories() {
+  const src = fs.readFileSync(path.join(__dirname, '../config.js'), 'utf8');
+  const match = src.match(/const STANDARD_CATEGORIES = \{[\s\S]*?\n\};/);
+  if (!match) throw new Error('Could not find STANDARD_CATEGORIES in config.js');
+  // eslint-disable-next-line no-new-func
+  return new Function(`${match[0]}\nreturn STANDARD_CATEGORIES;`)();
+}
 
 describe('resolveCategory() — exact match (unchanged behaviour)', () => {
   test('matches an exact, correctly-cased category', () => {
@@ -120,6 +138,13 @@ describe('suggestCategory() — "did you mean?" fuzzy matching', () => {
     expect(suggestCategory('Social Media Marketing Agency')).toBeNull();
   });
 
+  test('suggests the real, correctly-pluralised "Security Systems Installer" (regression: this list previously had it as the singular "Security System Installer", a typo that caused the suggestion to never pre-select in the client dropdown)', () => {
+    expect(suggestCategory('Security System Installer')).toEqual({
+      category: 'Security Systems Installer',
+      sector: 'ENERGY, TECH & SUSTAINABILITY',
+    });
+  });
+
   test('does NOT cross-suggest between two different trades that share a common trailing noun', () => {
     // "Roofing Company" and "Drainage Company" differ only in the generic
     // trailing noun being equal and the stem being completely different --
@@ -150,6 +175,26 @@ describe('suggestCategory() — "did you mean?" fuzzy matching', () => {
       }
     }
     expect(mismatches).toEqual([]);
+  });
+});
+
+describe('STANDARD_CATEGORIES stays in sync with config.js', () => {
+  // Regression test: this file's own doc comment says it's a "server-side
+  // mirror of config.js's STANDARD_CATEGORIES ... kept in sync manually" --
+  // a 2026-11-25 live-testing report found 7 entries had drifted out of sync
+  // (e.g. this list's "Security System Installer" vs config.js's real
+  // "Security Systems Installer", the one actually used by the live public
+  // submission form and home page). A spreadsheet row using the real,
+  // correct category name would then fail to exact-match here, and even
+  // suggestCategory()'s "did you mean" suggestion would point at the wrong
+  // (server-only) text, which the client's dropdown -- built from config.js
+  // -- could never pre-select, since it simply isn't one of its options.
+  test('every sector and category name matches config.js exactly', () => {
+    const configCategories = readConfigJsStandardCategories();
+    expect(Object.keys(STANDARD_CATEGORIES).sort()).toEqual(Object.keys(configCategories).sort());
+    for (const sector of Object.keys(configCategories)) {
+      expect(STANDARD_CATEGORIES[sector]).toEqual(configCategories[sector]);
+    }
   });
 });
 

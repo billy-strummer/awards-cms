@@ -642,12 +642,7 @@ const nomineeUploads = (() => {
     }
 
     const unknownCategories = result.unknownCategories || [];
-    // Every "unknown category" row-level error is already represented once
-    // in the summary below -- repeating all of them in the per-row table
-    // too is exactly the "48 duplicate errors burying the real issue"
-    // problem this is fixing. Other error kinds (missing name, bad email,
-    // etc.) are still genuinely row-specific and stay in that table.
-    const otherErrors = unknownCategories.length ? result.errors.filter((e) => e.field !== 'category') : result.errors;
+    const errors = result.errors || [];
 
     const categorySummary = unknownCategories.length
       ? `
@@ -663,7 +658,12 @@ const nomineeUploads = (() => {
       </div>`
       : '';
 
-    const rows = otherErrors
+    // Every row-level error -- including category ones, which the summary
+    // above also groups by distinct category for a one-click fix -- is
+    // always listed here too, with its row/field/reason, so staff can see
+    // and fix every bad row in the spreadsheet rather than guessing from a
+    // single count. This table must never be empty while errors.length > 0.
+    const rows = errors
       .map(
         (e) =>
           `<tr><td class="small text-muted">${e.row}</td><td class="small">${utils.escapeHtml(e.field)}</td><td class="small text-danger">${utils.escapeHtml(e.message)}</td></tr>`
@@ -673,22 +673,37 @@ const nomineeUploads = (() => {
     container.innerHTML = `
       ${websiteFormNote}
       ${categorySummary}
-      <div class="alert alert-danger py-2 small mb-2">
-        <i class="bi bi-exclamation-triangle-fill me-1"></i>${result.errors.length} error${result.errors.length > 1 ? 's' : ''} found — fix these in your CSV and upload again. Nothing has been imported.
+      <div class="alert alert-danger py-2 small mb-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span><i class="bi bi-exclamation-triangle-fill me-1"></i>${errors.length} error${errors.length > 1 ? 's' : ''} found — fix these in your CSV and upload again. Nothing has been imported.</span>
+        <button type="button" class="btn btn-sm btn-outline-dark" id="nomineeCopyErrorsBtn">
+          <i class="bi bi-clipboard me-1"></i>Copy Error List
+        </button>
       </div>
-      ${
-        otherErrors.length > 0
-          ? `<div class="table-responsive" style="max-height:220px;overflow-y:auto;">
+      <div class="table-responsive" style="max-height:220px;overflow-y:auto;">
         <table class="table table-sm table-bordered mb-0">
           <thead class="table-light sticky-top"><tr><th class="small">Row</th><th class="small">Field</th><th class="small">Error</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>`
-          : ''
-      }`;
+      </div>`;
 
     const applyBtn = document.getElementById('nomineeApplyCategoryResolutionsBtn');
     if (applyBtn) applyBtn.addEventListener('click', _applyCategoryResolutions);
+
+    const copyBtn = document.getElementById('nomineeCopyErrorsBtn');
+    if (copyBtn) copyBtn.addEventListener('click', () => _copyErrorList(errors));
+  }
+
+  // Builds a CSV-formatted list of every row-level error (Row,Field,Error)
+  // and copies it to the clipboard, so staff can paste it alongside their
+  // spreadsheet and work through all the flagged rows without re-reading
+  // the on-screen table one row at a time.
+  function _copyErrorList(errors) {
+    const escapeCSV = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const lines = ['Row,Field,Error', ...errors.map((e) => [e.row, e.field, e.message].map(escapeCSV).join(','))];
+    utils.copyToClipboard(
+      lines.join('\n'),
+      `Copied ${errors.length} error${errors.length === 1 ? '' : 's'} to clipboard.`
+    );
   }
 
   // Renders one unknown category's row: its "Did you mean?" suggestion (if
@@ -1226,6 +1241,7 @@ const nomineeUploads = (() => {
     _renderUnknownCategoryRow,
     _buildMasterCategoryOptions,
     _applyCategoryResolutions,
+    _copyErrorList,
   };
 })();
 

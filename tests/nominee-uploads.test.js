@@ -62,6 +62,7 @@ win.utils = {
   escapeHtml: (s) => String(s || ''),
   showToast: () => {},
   confirmDialog: async () => true,
+  copyToClipboard: () => {},
   // Simplified re-implementation of the real utils.showEnhancedEmptyState,
   // enough to assert on message/clear-filters-button wiring without
   // pulling in the whole utils.js module.
@@ -598,7 +599,7 @@ describe('nomineeUploads - category validation rendering', () => {
     if (win.apiClient.post.mockRestore) win.apiClient.post.mockRestore();
   });
 
-  test('renders a deduplicated category summary with a "did you mean" suggestion, filtering those rows out of the detail table', () => {
+  test('renders a deduplicated category summary with a "did you mean" suggestion AND lists every row-level error in the detail table', () => {
     uploads._renderValidation({
       valid: false,
       rowCount: 48,
@@ -626,10 +627,15 @@ describe('nomineeUploads - category validation rendering', () => {
     expect(select).not.toBeNull();
     expect(select.getAttribute('data-raw-category')).toBe('Swimming Pool & Hot Tub Specialist');
     expect(select.querySelector('option[selected]').value).toBe('Swimming Pool & Hot Tub Company');
-    // The 48 duplicate per-row category errors are summarised above (once
-    // per distinct unknown category), not repeated in the detail table below.
-    expect(html).not.toContain('<td class="small text-danger">');
+    // Regression (live-testing report): the red "N errors found" banner must
+    // never be left with an empty detail table underneath it -- every one of
+    // the 48 row-level errors is listed, even though they're all category
+    // errors and the category summary above already groups them once.
+    expect(html).toContain('48 errors found');
+    const dangerCells = win.document.querySelectorAll('td.small.text-danger');
+    expect(dangerCells.length).toBe(48);
     expect(win.document.getElementById('nomineeApplyCategoryResolutionsBtn')).not.toBeNull();
+    expect(win.document.getElementById('nomineeCopyErrorsBtn')).not.toBeNull();
   });
 
   test('keeps non-category errors in the detail table alongside the category summary', () => {
@@ -645,12 +651,13 @@ describe('nomineeUploads - category validation rendering', () => {
     const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
     // The company_name error is still shown row-by-row...
     expect(html).toContain('Missing organisation name');
-    // ...but the category error is represented once, in the summary (with no
-    // "did you mean" since suggestion is null), not also repeated as its own
-    // row in the detail table below.
+    // ...and the category error (no "did you mean" since suggestion is
+    // null) is shown both in the summary above AND as its own row below.
     expect(html).toContain('Mystery Trade');
     expect(html).not.toContain('Did you mean');
-    expect(html).not.toContain('Unknown award category &quot;Mystery Trade&quot;');
+    expect(html).toContain('Unknown award category "Mystery Trade"');
+    const dangerCells = win.document.querySelectorAll('td.small.text-danger');
+    expect(dangerCells.length).toBe(2);
   });
 
   test('renders the original plain error table when there are no unknown categories', () => {
@@ -663,6 +670,35 @@ describe('nomineeUploads - category validation rendering', () => {
     const html = win.document.getElementById('nomineeValidationContainer').innerHTML;
     expect(html).toContain('Invalid email address');
     expect(win.document.getElementById('nomineeApplyCategoryResolutionsBtn')).toBeNull();
+  });
+
+  test('_copyErrorList copies a CSV-formatted Row,Field,Error list to the clipboard', () => {
+    const copySpy = jest.spyOn(win.utils, 'copyToClipboard').mockImplementation(() => {});
+    uploads._copyErrorList([
+      { row: 1, field: 'category', message: 'Unknown award category "Mystery Trade"' },
+      { row: 2, field: 'company_name', message: 'Missing organisation name' },
+    ]);
+    expect(copySpy).toHaveBeenCalledTimes(1);
+    const [text, successMsg] = copySpy.mock.calls[0];
+    expect(text).toBe(
+      'Row,Field,Error\n"1","category","Unknown award category ""Mystery Trade"""\n"2","company_name","Missing organisation name"'
+    );
+    expect(successMsg).toContain('2 errors');
+    copySpy.mockRestore();
+  });
+
+  test('clicking "Copy Error List" copies every currently-rendered error', () => {
+    const copySpy = jest.spyOn(win.utils, 'copyToClipboard').mockImplementation(() => {});
+    uploads._renderValidation({
+      valid: false,
+      rowCount: 1,
+      unknownCategories: [],
+      errors: [{ row: 1, field: 'email', message: 'Invalid email address "x"' }],
+    });
+    win.document.getElementById('nomineeCopyErrorsBtn').dispatchEvent(new win.Event('click'));
+    expect(copySpy).toHaveBeenCalledTimes(1);
+    expect(copySpy.mock.calls[0][0]).toContain('Invalid email address');
+    copySpy.mockRestore();
   });
 
   test('renders the success state unchanged when valid', () => {

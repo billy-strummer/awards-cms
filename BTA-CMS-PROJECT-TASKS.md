@@ -3803,4 +3803,38 @@ No database migration in this task — `organisations.notes` (migration 003) and
 
 ### XX.6 — Git/worktree state
 
-Branch `claude/category-suggestions-and-website-form-email` created off post-#381-merge `main`. Changes committed and pushed; PR to be opened into `main` and held unmerged pending review, per instruction.
+Branch `claude/category-suggestions-and-website-form-email` created off post-#381-merge `main`. Opened as PR #382, held unmerged for review as instructed, then merged into `main` per explicit authorization (merge commit `492c5a8`); local branch deleted, `main` confirmed clean and matching `origin/main`.
+
+## XXI. Fix missing row-error table under category errors + fix a 7-entry `STANDARD_CATEGORIES` drift between the server-side mirror and the real master list (2026-11-25)
+
+Per explicit instruction, live testing of PR #382's work surfaced a rendering bug (a red "39 errors found" banner with no error table underneath it) and a specific "Did you mean?" pre-select failure for "Security Systems Installer" — investigated and fixed both, and found the pre-select failure was one symptom of a wider, previously-undetected data bug.
+
+### XXI.1 — Missing row-error table when every error is a category error
+
+**Root cause, traced in `nominee-uploads.js`'s `_renderValidation()`:** PR #381 had filtered every `field === 'category'` error out of the per-row detail table whenever `unknownCategories.length > 0`, on the reasoning that the category summary above already represents them once each. That reasoning holds when a file has a *mix* of category and non-category errors, but breaks completely when **every** error in the file is a category error (as in the reported 39/48-row cases): the filtered `otherErrors` list is then empty, so the detail table is skipped entirely — the red "N errors found" banner is left with literally nothing rendered underneath it, exactly as reported. **Fixed** by no longer filtering the detail table at all: every row-level error (row, field, message) is now always listed there, including category ones — the category summary above still groups the distinct unknown category names with their own "Did you mean?" selector, but as a convenience on top of the full list, not a replacement for it. This matches the explicit instruction that row-level errors must always render "even when unknown categories are also present."
+
+### XXI.2 — "Copy Error List" so staff can fix 39 rows without guessing
+
+Added a "Copy Error List" button next to the error-count banner, wired to a new `_copyErrorList()` that builds a `Row,Field,Error` CSV string (one line per error, correctly quote-escaped) and copies it via the existing `utils.copyToClipboard()` helper (unchanged, already used elsewhere in the codebase, e.g. `assignments.js`'s "Copy All Emails"). Staff can now paste the full list of flagged rows directly alongside their spreadsheet instead of reading them off a small scrollable table one at a time.
+
+### XXI.3 — "Security Systems Installer" never pre-selecting: a 7-entry category-name drift, not a client bug
+
+**Traced the reported symptom first:** `_buildMasterCategoryOptions()`'s pre-select logic (`c === preselectCategory`) was already correct and unchanged — the real cause was that `suggestCategory()`'s suggestion and the client's dropdown options were being built from **two different, drifted copies of the master category list**. `api/_lib/award-categories.js` (created fresh in PR #381, whose own doc comment says it's a "server-side mirror of config.js's STANDARD_CATEGORIES ... kept in sync manually") had **7 entries that didn't match config.js** (the real list, also duplicated identically in `submit-entry.js`, `submit-entry-payment.js`, `home-data.js`, and `scripts/award-categories-config.js` — cross-checked all five to confirm config.js is the correct, canonical version): `'Structural Engineers'` vs the real `'Structural Engineering Company'`, `'Structural Steelworks'` vs `'Structural Steelworks Company'`, `'Timber Windows Installer'` vs `'Timber Window Installer'`, `'Carpet Fitters'` vs `'Carpet Fitter'`, `'Security System Installer'` vs `'Security Systems Installer'`, `'Female Tradesperson of the Year'` vs `'Tradeswoman of the Year'`, and `'Male Tradesperson of the Year'` vs `'Tradesman of the Year'`. For "Security Systems Installer" specifically: a CSV row referencing the real, correct name failed exact/normalized matching against the server's wrong copy, `suggestCategory()` then suggested the server's *own* wrong text back, and the client's dropdown (built from the real `window.STANDARD_CATEGORIES`) had no matching `<option>` to pre-select — exactly the reported behaviour. **Fixed** by correcting all 7 entries in `api/_lib/award-categories.js` to match config.js exactly (sector groupings were already correct; only the 7 name strings had drifted). Confirmed in the rebuilt bundle: `dist/app.min.js` now contains only `"Security Systems Installer"`, not the old wrong text.
+
+This was a data-correctness bug, not scoped to the one category reported — fixing only "Security Systems Installer" while leaving the other 6 broken would have left the same class of bug live for Structural Engineering, Structural Steelworks, Timber Window, Carpet Fitter, and both Industry Leadership gender-award categories.
+
+### XXI.4 — Tests added
+
+`tests/nominee-uploads.test.js`: rewrote the test that had asserted the old (now-removed) "category errors filtered out of the table" behaviour to instead assert all 48 rows render (`querySelectorAll('td.small.text-danger').length === 48`); updated the mixed-errors test similarly; added 2 new tests for `_copyErrorList()` (CSV-formatted clipboard copy with correct quote-escaping, and the button's click wiring copying the currently-rendered errors); added `copyToClipboard` to the test harness's `win.utils` mock (previously undefined, which would have made `jest.spyOn` fail).
+
+`tests/award-categories.test.js`: a new `STANDARD_CATEGORIES stays in sync with config.js` describe block reads config.js's own `STANDARD_CATEGORIES` object literal directly from source (via a scoped `new Function()` eval of just that matched block, since config.js is a browser script that touches `document`/`window` at module scope and can't be plain-`require()`d from a pure Node test) and asserts every sector and category name matches exactly — this is the regression guard against the drift class found here, not just the one reported entry. Also added a direct `suggestCategory('Security System Installer')` regression test asserting it now correctly suggests the real `'Security Systems Installer'`.
+
+### XXI.5 — Verification
+
+Lint: clean (`npm run lint`, exit 0). Full suite: **93/93 suites, 7,253/7,253 tests pass** (`npm test`) — up from 93/93 suites, 7,249 tests on `main` (+4 net new tests; no new suite). Build: clean (`npm run build`); confirmed directly in `dist/app.min.js` that only the corrected `"Security Systems Installer"` text survives and `nomineeCopyErrorsBtn` is present.
+
+No database migration in this task — both fixes are purely in-memory/rendering logic and a hardcoded JS constant; no schema or data touched.
+
+### XXI.6 — Git/worktree state
+
+Branch `claude/fix-category-error-rendering` created off post-#382-merge `main`. Changes committed and pushed; PR to be opened into `main` and held unmerged pending review, per instruction.

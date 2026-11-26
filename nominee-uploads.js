@@ -30,6 +30,8 @@ const nomineeUploads = (() => {
   let _addressColumn = null;
   let _catchmentColumn = null;
   let _rankColumn = null;
+  let _locationColumn = null; // the file's own Area/Region/County/Location column, if any — cross-checked against the selected area, never sent to the server
+  let _locationMismatchOverridden = false; // true once staff explicitly confirm "keep all rows anyway" for the current file
   let _currentFilename = '';
   let _duplicateStrategy = 'skip';
   let _lastValidation = null; // result of the last server validate call
@@ -530,6 +532,99 @@ const nomineeUploads = (() => {
     }
   }
 
+  // Normalizes a Location-column value (or an area's display_name) for
+  // comparison: lowercases, treats "&" and "and" as equivalent, strips a
+  // handful of common administrative prefixes real spreadsheets use for
+  // London boroughs/cities/counties ("London Borough of Hackney" should
+  // match the area "Hackney"), then collapses punctuation/whitespace. Not
+  // a guarantee of a real location match -- just enough to avoid false
+  // "mismatch" warnings on legitimate regional-naming variants.
+  function _normalizeLocationForCompare(value) {
+    if (!value) return '';
+    return String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/^(london\s+borough\s+of|royal\s+borough\s+of|borough\s+of|city\s+of|county\s+of)\s+/, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // Finds every row whose Location-column value (if the column was
+  // detected and the cell is non-blank) doesn't match the selected area --
+  // blank cells are never flagged, since plenty of real files simply don't
+  // fill this in for every row. Returns null when there's nothing to check
+  // (no location column detected, or no area selected yet).
+  function _computeLocationMismatches() {
+    if (!_locationColumn || !_currentArea) return null;
+    const targetKey = _normalizeLocationForCompare(_currentArea.display_name);
+    const mismatchedRows = new Set();
+    const distinctNames = new Set();
+    _parsedRows.forEach((row) => {
+      const raw = (row[_locationColumn] || '').trim();
+      if (!raw) return; // blank cells are never flagged
+      if (_normalizeLocationForCompare(raw) !== targetKey) {
+        mismatchedRows.add(row);
+        distinctNames.add(raw);
+      }
+    });
+    return { mismatchedRows, distinctNames: [...distinctNames].sort() };
+  }
+
+  // Renders the non-blocking Location-mismatch warning banner: lets staff
+  // either remove the flagged rows from this upload, or explicitly confirm
+  // they should stay (e.g. the file is correct and the naming is just an
+  // unrecognised regional variant). Like _renderSheetNameNotice(), this
+  // never blocks validation or import on its own.
+  function _renderLocationMismatchNotice() {
+    const el = document.getElementById('nomineeLocationMismatchNotice');
+    if (!el) return;
+    const result = _computeLocationMismatches();
+    if (!result || result.mismatchedRows.size === 0 || _locationMismatchOverridden) {
+      el.innerHTML = '';
+      return;
+    }
+    const count = result.mismatchedRows.size;
+    el.innerHTML = `
+      <div class="alert alert-warning py-2 small mb-0">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        <strong>${count} row${count === 1 ? '' : 's'}</strong> ${count === 1 ? 'has a' : 'have a'} Location that doesn't match the selected area "<strong>${utils.escapeHtml(_currentArea.display_name)}</strong>": ${result.distinctNames.map((n) => `"${utils.escapeHtml(n)}"`).join(', ')}.
+        <div class="mt-2 d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-outline-danger" id="nomineeRemoveLocationMismatchesBtn">
+            <i class="bi bi-trash me-1"></i>Remove ${count} mismatched row${count === 1 ? '' : 's'}
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="nomineeKeepLocationMismatchesBtn">
+            Keep all rows — this is correct
+          </button>
+        </div>
+      </div>`;
+    const removeBtn = document.getElementById('nomineeRemoveLocationMismatchesBtn');
+    if (removeBtn) removeBtn.addEventListener('click', _removeLocationMismatchedRows);
+    const keepBtn = document.getElementById('nomineeKeepLocationMismatchesBtn');
+    if (keepBtn) keepBtn.addEventListener('click', _keepLocationMismatchedRows);
+  }
+
+  // Drops the flagged rows from this upload entirely and re-validates --
+  // the admin decided they genuinely belong to a different area and
+  // shouldn't be imported alongside the rest of this file.
+  async function _removeLocationMismatchedRows() {
+    const result = _computeLocationMismatches();
+    if (!result) return;
+    _parsedRows = _parsedRows.filter((row) => !result.mismatchedRows.has(row));
+    _renderPreview();
+    _renderLocationMismatchNotice();
+    await _runValidation();
+  }
+
+  // Explicitly confirms the flagged rows should stay as-is for this
+  // upload (e.g. the Location text is a legitimate variant this check
+  // didn't recognise) -- dismisses the banner without touching any row.
+  function _keepLocationMismatchedRows() {
+    _locationMismatchOverridden = true;
+    _renderLocationMismatchNotice();
+  }
+
   async function _handleFile(file) {
     _currentFilename = file.name;
     const detectedYear = _detectYearFromFilename(file.name);
@@ -574,8 +669,11 @@ const nomineeUploads = (() => {
     ]);
     _catchmentColumn = _detectColumn(headers, ['catchment area', 'catchment', 'service area']);
     _rankColumn = _detectColumn(headers, ['rank', 'priority', 'priority rank']);
+    _locationColumn = _detectColumn(headers, ['location', 'area', 'area name', 'area / region', 'region', 'county']);
+    _locationMismatchOverridden = false;
 
     _renderSheetNameNotice(sheetName);
+    _renderLocationMismatchNotice();
 
     const step1 = document.getElementById('nomineeStep1');
     const step2 = document.getElementById('nomineeStep2');
@@ -1124,6 +1222,8 @@ const nomineeUploads = (() => {
     _addressColumn = null;
     _catchmentColumn = null;
     _rankColumn = null;
+    _locationColumn = null;
+    _locationMismatchOverridden = false;
     _currentFilename = '';
     _duplicateStrategy = 'skip';
     _lastValidation = null;
@@ -1143,6 +1243,9 @@ const nomineeUploads = (() => {
 
     const sheetNotice = document.getElementById('nomineeSheetNameNotice');
     if (sheetNotice) sheetNotice.innerHTML = '';
+
+    const locationNotice = document.getElementById('nomineeLocationMismatchNotice');
+    if (locationNotice) locationNotice.innerHTML = '';
 
     const valContainer = document.getElementById('nomineeValidationContainer');
     if (valContainer) valContainer.innerHTML = '';
@@ -1242,6 +1345,12 @@ const nomineeUploads = (() => {
     _buildMasterCategoryOptions,
     _applyCategoryResolutions,
     _copyErrorList,
+    _handleFile,
+    _normalizeLocationForCompare,
+    _computeLocationMismatches,
+    _renderLocationMismatchNotice,
+    _removeLocationMismatchedRows,
+    _keepLocationMismatchedRows,
   };
 })();
 

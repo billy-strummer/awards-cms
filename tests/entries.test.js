@@ -1189,6 +1189,40 @@ describe('Entries Module - Render Content', () => {
     expect(cells[4].textContent.trim()).toBe('-');
     expect(cells[5].textContent.trim()).toBe('-');
   });
+
+  test("renderEntries falls back to the entry's organisation when neither the award join nor the entry's own county_city/sector are set", () => {
+    entriesModule.filteredEntries = [
+      {
+        ...sampleEntries[0],
+        id: 'entry-org-fallback',
+        awards: null,
+        county_city: null,
+        sector: null,
+        organisations: { company_name: 'Acme Plumbing Ltd', county_city: 'Devon', sector: 'plumbing' },
+      },
+    ];
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    expect(tbody.innerHTML).toContain('Devon');
+    expect(tbody.innerHTML).toContain('Plumbing');
+  });
+
+  test('renderEntries parses the Category back out of entry_title as a last resort when no other category data is set', () => {
+    entriesModule.filteredEntries = [
+      {
+        ...sampleEntries[0],
+        id: 'entry-title-category-fallback',
+        awards: null,
+        award_category: null,
+        entry_title: 'Acme Plumbing Ltd — Plumbing Company',
+      },
+    ];
+    entriesModule.renderEntries();
+    const tbody = document.getElementById('entriesTableBody');
+    const cells = Array.from(tbody.querySelectorAll('tr:not(#entriesEmptyRow) td'));
+    // Category is the 4th column (index 3).
+    expect(cells[3].textContent.trim()).toBe('Plumbing Company');
+  });
 });
 
 describe('Entries Module - XSS Prevention', () => {
@@ -2217,6 +2251,94 @@ describe('Entries Module - editEntry() modal context', () => {
     expect(modal.innerHTML).toContain('Somerset');
     expect(modal.innerHTML).toContain('Specialist Trades');
   });
+
+  test("falls back to the entry's organisation when neither the award join nor the entry's own county_city/sector are set", async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [
+        {
+          ...sampleEntries[0],
+          awards: null,
+          county_city: null,
+          sector: null,
+          award_category: null,
+          organisations: { id: 'org-1', company_name: 'Acme Plumbing Ltd', county_city: 'Devon', sector: 'plumbing' },
+        },
+      ],
+    });
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
+
+    await entriesModule.editEntry('entry-1');
+
+    const modal = document.getElementById('editEntryModal');
+    expect(modal.innerHTML).toContain('Devon');
+    expect(modal.innerHTML).toContain('Plumbing');
+  });
+
+  test('parses the Category back out of entry_title as a last resort when no other category data is set', async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({
+      data: [
+        {
+          ...sampleEntries[0],
+          awards: null,
+          award_category: null,
+          entry_title: 'Acme Plumbing Ltd — Plumbing Company',
+        },
+      ],
+    });
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([]);
+
+    await entriesModule.editEntry('entry-1');
+
+    const modal = document.getElementById('editEntryModal');
+    expect(modal.innerHTML).toContain('Plumbing Company');
+  });
+
+  test('populates the Award select with every fetched award when the current award is among them', async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({ data: [sampleEntries[0]] }); // award_id: 'award-1'
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([
+      { id: 'award-1', award_name: 'Best Plumber' },
+      { id: 'award-2', award_name: 'Top Builder' },
+    ]);
+
+    await entriesModule.editEntry('entry-1');
+
+    const select = document.getElementById('editEntryAward');
+    const options = Array.from(select.querySelectorAll('option'));
+    expect(options.map((o) => o.value)).toEqual(['', 'award-1', 'award-2']);
+    expect(options.find((o) => o.value === 'award-1').selected).toBe(true);
+  });
+
+  test(
+    "regression: when the entry's award_id does not match any fetched award (orphaned/deleted award), " +
+      'the select is never left on the empty placeholder -- it injects and pre-selects a synthetic option ' +
+      "for the entry's own known category, so saving unchanged preserves award_id instead of nulling it out",
+    async () => {
+      jest.spyOn(apiClient, 'select').mockResolvedValue({ data: [sampleEntries[0]] }); // award_id: 'award-1'
+      // Note: 'award-1' is deliberately absent from this list.
+      jest.spyOn(apiClient, 'selectAll').mockResolvedValue([{ id: 'award-2', award_name: 'Top Builder' }]);
+
+      await entriesModule.editEntry('entry-1');
+
+      const select = document.getElementById('editEntryAward');
+      // The placeholder must never be the effectively-selected option.
+      expect(select.querySelector('option[value=""]').selected).toBe(false);
+      const injected = select.querySelector('option[value="award-1"]');
+      expect(injected).not.toBeNull();
+      expect(injected.selected).toBe(true);
+      expect(injected.textContent).toContain('Best Plumber'); // the entry's own resolved category
+    }
+  );
+
+  test('does not inject a synthetic award option when the entry has no award_id at all', async () => {
+    jest.spyOn(apiClient, 'select').mockResolvedValue({ data: [{ ...sampleEntries[0], award_id: null }] });
+    jest.spyOn(apiClient, 'selectAll').mockResolvedValue([{ id: 'award-2', award_name: 'Top Builder' }]);
+
+    await entriesModule.editEntry('entry-1');
+
+    const select = document.getElementById('editEntryAward');
+    const options = Array.from(select.querySelectorAll('option'));
+    expect(options.map((o) => o.value)).toEqual(['', 'award-2']);
+  });
 });
 
 describe('Entries Module - showEntryDetailsModal priority rank display', () => {
@@ -2260,6 +2382,30 @@ describe('Entries Module - showEntryDetailsModal priority rank display', () => {
     const modal = document.getElementById('entryDetailsModal');
     expect(modal.innerHTML).toContain('Somerset');
     expect(modal.innerHTML).toContain('Specialist Trades');
+  });
+
+  test("falls back to the entry's organisation when neither the award join nor the entry's own county_city/sector are set", () => {
+    entriesModule.showEntryDetailsModal({
+      ...sampleEntries[0],
+      awards: null,
+      county_city: null,
+      sector: null,
+      organisations: { company_name: 'Acme Plumbing Ltd', county_city: 'Devon', sector: 'plumbing' },
+    });
+    const modal = document.getElementById('entryDetailsModal');
+    expect(modal.innerHTML).toContain('Devon');
+    expect(modal.innerHTML).toContain('Plumbing');
+  });
+
+  test('parses the Category back out of entry_title as a last resort when no other category data is set', () => {
+    entriesModule.showEntryDetailsModal({
+      ...sampleEntries[0],
+      awards: null,
+      award_category: null,
+      entry_title: 'Acme Plumbing Ltd — Plumbing Company',
+    });
+    const modal = document.getElementById('entryDetailsModal');
+    expect(modal.innerHTML).toContain('Plumbing Company');
   });
 });
 

@@ -32,6 +32,54 @@ function getEntryStatusOptions(currentStatus) {
     .join('');
 }
 
+/**
+ * Resolve an entry's Area/Region display name. Prefers the joined award's
+ * own `county` (set from the area's display_name when the award was
+ * created/imported), then the entry's own `county_city` (set directly for
+ * both area-import and public-submission entries), then its organisation's
+ * `county_city` as a last resort -- an entry whose `award_id` is missing or
+ * points to a since-deleted/merged award, and whose own `county_city` was
+ * never backfilled, still has a real, known location via its organisation.
+ * @param {object} entry
+ * @returns {string}
+ */
+function resolveEntryArea(entry) {
+  if (!entry) return '';
+  return entry.awards?.county || entry.county_city || entry.organisations?.county_city || '';
+}
+
+/**
+ * Resolve an entry's Sector display name, same precedence as
+ * resolveEntryArea(): the joined award's own `sector`, then the entry's own
+ * `sector` column, then its organisation's `sector` as a last resort.
+ * @param {object} entry
+ * @returns {string}
+ */
+function resolveEntrySector(entry) {
+  if (!entry) return '';
+  return entry.awards?.sector || entry.sector || entry.organisations?.sector || '';
+}
+
+/**
+ * Resolve an entry's Category/Award name. Prefers the joined award's own
+ * `award_name`, then the entry's own free-text `award_category` column.
+ * As a last resort -- when an entry's `award_id` is missing or orphaned
+ * (points to a since-deleted/renamed award) AND `award_category` was never
+ * backfilled -- parses the category back out of `entry_title`, which every
+ * Award Areas import entry creates in the fixed "<Company> — <Category>"
+ * form (see executeAwardAreaImport in api/data-proxy.js).
+ * @param {object} entry
+ * @returns {string}
+ */
+function resolveEntryCategory(entry) {
+  if (!entry) return '';
+  if (entry.awards?.award_name) return entry.awards.award_name;
+  if (entry.award_category) return entry.award_category;
+  const title = entry.entry_title || '';
+  const dashIdx = title.lastIndexOf(' — ');
+  return dashIdx >= 0 ? title.slice(dashIdx + 3).trim() : '';
+}
+
 const entriesModule = {
   allEntries: [],
   filteredEntries: [],
@@ -63,7 +111,7 @@ const entriesModule = {
   async initialize() {
     try {
       utils.showLoading();
-      utils.showSkeletonLoading('entriesTableBody', 10);
+      utils.showSkeletonLoading('entriesTableBody', 12);
 
       // Load filter options
       await this.loadFilterOptions();
@@ -117,7 +165,7 @@ const entriesModule = {
       console.error('Error initializing entries module:', error);
       utils.showErrorWithRetry(error, 'loading entries', () => this.initialize());
       // Don't leave the skeleton-loading rows up forever — the toast above fades out
-      utils.showEnhancedEmptyState('entriesTableBody', 10, {
+      utils.showEnhancedEmptyState('entriesTableBody', 12, {
         icon: 'bi-exclamation-circle',
         message: "Couldn't load entries",
         description: 'Check your connection and try again.',
@@ -266,7 +314,7 @@ const entriesModule = {
 
     const result = await apiClient.select('entries', {
       select:
-        '*, organisations(company_name, logo_url), awards:award_years(award_name, sector, county), entry_files(count)',
+        '*, organisations(company_name, logo_url, county_city, sector), awards:award_years(award_name, sector, county), entry_files(count)',
       filters,
       search: search ? { term: search, columns: ['entry_title', 'entry_number'] } : undefined,
       sort: { column: this._sortField, ascending: this._sortDir === 'asc' },
@@ -385,7 +433,7 @@ const entriesModule = {
         this.currentFilters.selfNom ||
         this.currentFilters.search
       );
-      utils.showEnhancedEmptyState('entriesTableBody', 10, {
+      utils.showEnhancedEmptyState('entriesTableBody', 12, {
         icon: 'bi-inbox',
         message: hasFilters ? 'No entries match your filters' : 'No entries yet',
         description: hasFilters
@@ -416,7 +464,9 @@ const entriesModule = {
     tbody.innerHTML = pageEntries
       .map((entry) => {
         const companyName = entry.organisations?.company_name || 'Unknown Organisation';
-        const awardName = entry.awards?.award_name || entry.award_category || 'Unknown';
+        const awardName = resolveEntryCategory(entry) || 'Unknown';
+        const areaName = resolveEntryArea(entry);
+        const sectorName = resolveEntrySector(entry);
         const _statusBadge = this.getStatusBadge(entry.status);
         const paymentBadge = this.getPaymentBadge(entry.payment_status);
         const selfNomBadge = entry.is_self_nomination
@@ -455,6 +505,8 @@ const entriesModule = {
           <td><strong>${utils.escapeHtml(entry.entry_number)}</strong>${entry.priority_rank != null ? ` <span class="badge bg-light text-dark border" title="Priority Rank from upload"><i class="bi bi-sort-numeric-down me-1"></i>${entry.priority_rank}</span>` : ''}</td>
           <td>${utils.escapeHtml(companyName)}</td>
           <td>${utils.escapeHtml(awardName)}</td>
+          <td>${areaName ? utils.escapeHtml(areaName) : '<span class="text-muted">-</span>'}</td>
+          <td>${sectorName ? utils.escapeHtml(utils.toTitleCase(sectorName)) : '<span class="text-muted">-</span>'}</td>
           <td>
             <div class="text-truncate" style="max-width: 250px;" title="${(entry.entry_title || '').replace(/<[^>]*>/g, '').replace(/"/g, '&quot;')}">
               ${utils.escapeHtml(entry.entry_title)}
@@ -728,7 +780,7 @@ const entriesModule = {
       if (this.currentFilters.search) {
         const searchLower = this.currentFilters.search;
         const companyName = (entry.organisations?.company_name || '').toLowerCase();
-        const awardName = (entry.awards?.award_name || entry.award_category || '').toLowerCase();
+        const awardName = resolveEntryCategory(entry).toLowerCase();
         const entryTitle = (entry.entry_title || '').toLowerCase();
         const entryNumber = (entry.entry_number || '').toLowerCase();
 
@@ -1007,9 +1059,7 @@ const entriesModule = {
       utils.trackRecentlyViewed(
         'entry',
         entryId,
-        (entry.organisations?.company_name || 'Entry') +
-          ' - ' +
-          (entry.awards?.award_name || entry.award_category || 'Award')
+        (entry.organisations?.company_name || 'Entry') + ' - ' + (resolveEntryCategory(entry) || 'Award')
       );
 
       // Show entry details modal
@@ -1086,16 +1136,16 @@ const entriesModule = {
                     <div class="card-body">
                       <table class="table table-sm table-borderless mb-0">
                         <tr>
-                          <td class="text-muted">Award:</td>
-                          <td><strong>${utils.escapeHtml(entry.awards?.award_name || entry.award_category || 'N/A')}</strong></td>
+                          <td class="text-muted">Category:</td>
+                          <td><strong>${utils.escapeHtml(resolveEntryCategory(entry) || 'N/A')}</strong></td>
                         </tr>
                         <tr>
                           <td class="text-muted">Sector:</td>
-                          <td>${utils.escapeHtml(utils.toTitleCase(entry.awards?.sector || entry.sector) || 'N/A')}</td>
+                          <td>${utils.escapeHtml(utils.toTitleCase(resolveEntrySector(entry)) || 'N/A')}</td>
                         </tr>
                         <tr>
-                          <td class="text-muted">Area:</td>
-                          <td>${utils.escapeHtml(entry.awards?.county || entry.county_city || 'N/A')}</td>
+                          <td class="text-muted">Area / Region:</td>
+                          <td>${utils.escapeHtml(resolveEntryArea(entry) || 'N/A')}</td>
                         </tr>
                         <tr>
                           <td class="text-muted">Priority Rank:</td>
@@ -1106,7 +1156,7 @@ const entriesModule = {
                           <td>${entry.is_self_nomination ? '<span class="badge bg-info">Self-Nomination</span>' : '<span class="badge bg-secondary">Standard Entry</span>'}</td>
                         </tr>
                         <tr>
-                          <td class="text-muted">Year:</td>
+                          <td class="text-muted">Award Year:</td>
                           <td>${utils.escapeHtml(String(entry.year || 'N/A'))}</td>
                         </tr>
                       </table>
@@ -1818,15 +1868,20 @@ const entriesModule = {
   async editEntry(entryId) {
     try {
       const entryResult = await apiClient.select('entries', {
-        select: '*, organisations(id, company_name), awards:award_years(id, award_name)',
+        select:
+          '*, organisations(id, company_name, county_city, sector), awards:award_years(id, award_name, sector, county)',
         filters: { id: { op: 'eq', value: entryId } },
         pageSize: 1,
       });
       const entry = entryResult.data && entryResult.data[0];
       if (!entry) throw new Error('Entry not found');
 
+      const editAreaName = resolveEntryArea(entry);
+      const editSectorName = resolveEntrySector(entry);
+      const editCategoryName = resolveEntryCategory(entry);
+
       /* selectAll: justified — small reference tables for edit modal dropdowns */
-      const [awards, orgs] = await Promise.all([
+      const [fetchedAwards, orgs] = await Promise.all([
         apiClient.selectAll('awards', {
           select: 'id, award_name',
           sort: { column: 'award_name', ascending: true },
@@ -1836,6 +1891,24 @@ const entriesModule = {
           sort: { column: 'company_name', ascending: true },
         }),
       ]);
+
+      // Guard against the dropdown showing no selection at all for an entry
+      // whose award_id is set but doesn't match any row in the fetched list
+      // (the award was since renamed/merged/deleted, or the fetch itself
+      // came back empty/incomplete) -- without this, the <select> would
+      // default to the blank "Select award..." placeholder, and saving the
+      // form unchanged would silently overwrite award_id with null (see
+      // saveEntryEdit()'s `document.getElementById('editEntryAward').value
+      // || null`), destroying the entry's category link. Injecting the
+      // entry's own already-known category as a selected option, under its
+      // real award_id, means saving unchanged always preserves it exactly.
+      const awards = fetchedAwards || [];
+      if (entry.award_id && !awards.some((a) => a.id === entry.award_id)) {
+        awards.unshift({
+          id: entry.award_id,
+          award_name: `${editCategoryName || 'Current category'} (not in the award list below)`,
+        });
+      }
 
       const modalHtml = `
         <div class="modal fade" id="editEntryModal" tabindex="-1" data-bs-backdrop="static" data-current-status="${utils.escapeHtml(entry.status || '')}">
@@ -1851,6 +1924,12 @@ const entriesModule = {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
               </div>
               <div class="modal-body">
+                <div class="alert alert-light border small mb-3 d-flex flex-wrap gap-4">
+                  <div><span class="text-muted">Area / Region:</span> <strong>${utils.escapeHtml(editAreaName || 'N/A')}</strong></div>
+                  <div><span class="text-muted">Category:</span> <strong>${utils.escapeHtml(editCategoryName || 'N/A')}</strong></div>
+                  <div><span class="text-muted">Sector:</span> <strong>${utils.escapeHtml(utils.toTitleCase(editSectorName) || 'N/A')}</strong></div>
+                  <div><span class="text-muted">Award Year:</span> <strong>${utils.escapeHtml(String(entry.year || 'N/A'))}</strong></div>
+                </div>
                 <form id="editEntryForm">
                   <!-- Basic Info -->
                   <div class="card mb-3">
@@ -1868,7 +1947,7 @@ const entriesModule = {
                       </div>
                       <div class="row">
                         <div class="col-md-6 mb-3">
-                          <label class="form-label">Award</label>
+                          <label class="form-label">Award / Category</label>
                           <select class="form-select" id="editEntryAward">
                             <option value="">Select award...</option>
                             ${(awards || []).map((a) => `<option value="${a.id}" ${a.id === entry.award_id ? 'selected' : ''}>${utils.escapeHtml(a.award_name)}</option>`).join('')}
@@ -1899,7 +1978,7 @@ const entriesModule = {
                           </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                          <label class="form-label">Year</label>
+                          <label class="form-label">Award Year</label>
                           <input type="number" class="form-control" id="editEntryYear" value="${entry.year || new Date().getFullYear()}">
                         </div>
                       </div>
@@ -2253,7 +2332,9 @@ const entriesModule = {
       const headers = [
         'Entry Number',
         'Company',
-        'Award',
+        'Award Category',
+        'Area / Region',
+        'Sector',
         'Entry Title',
         'Status',
         'Payment Status',
@@ -2271,7 +2352,9 @@ const entriesModule = {
       const rows = entriesToExport.map((entry) => [
         entry.entry_number || '',
         entry.organisations?.company_name || '',
-        entry.awards?.award_name || entry.award_category || '',
+        resolveEntryCategory(entry),
+        resolveEntryArea(entry),
+        resolveEntrySector(entry),
         entry.entry_title || '',
         entry.status || '',
         entry.payment_status || '',

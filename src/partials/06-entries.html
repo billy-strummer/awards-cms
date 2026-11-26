@@ -220,7 +220,9 @@
                       <span class="u-pointer ms-2" data-action="entriesModule.sortEntries" data-args="[&quot;priority_rank&quot;]" title="Sort by Priority Rank (from the upload spreadsheet)">/ Rank <i data-sort-icon-entries="priority_rank" class="bi bi-arrow-down-up text-muted ms-1 small"></i></span>
                     </th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;company&quot;]" aria-sort="none">Company <i data-sort-icon-entries="company" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
-                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]" aria-sort="none">Award <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;award&quot;]" title="Award Category" aria-sort="none">Category <i data-sort-icon-entries="award" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;county_city&quot;]" aria-sort="none">Area / Region <i data-sort-icon-entries="county_city" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
+                    <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;sector&quot;]" aria-sort="none">Sector <i data-sort-icon-entries="sector" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col">Entry Title</th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;status&quot;]" aria-sort="none">Status <i data-sort-icon-entries="status" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
                     <th scope="col" class="u-pointer" data-action="entriesModule.sortEntries" data-args="[&quot;score&quot;]" title="Average judging score submitted by assigned judges" aria-sort="none">Score <i data-sort-icon-entries="score" class="bi bi-arrow-down-up text-muted ms-1 small"></i></th>
@@ -231,7 +233,7 @@
                 </thead>
                 <tbody id="entriesTableBody">
                   <tr id="entriesEmptyRow" class="d-none">
-                    <td colspan="10" class="text-center py-5 text-muted">
+                    <td colspan="12" class="text-center py-5 text-muted">
                       <i class="bi bi-inbox display-6 d-block mb-2 opacity-50" aria-hidden="true"></i>
                       <p class="mb-1">No entries yet.</p>
                       <a href="#" class="small" data-action="dashboardModule.navigateToSection" data-id="awards">Set up awards</a> to start receiving entries.

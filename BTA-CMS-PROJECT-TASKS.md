@@ -3837,4 +3837,57 @@ No database migration in this task — both fixes are purely in-memory/rendering
 
 ### XXI.6 — Git/worktree state
 
-Branch `claude/fix-category-error-rendering` created off post-#382-merge `main`. Changes committed and pushed; PR to be opened into `main` and held unmerged pending review, per instruction.
+Branch `claude/fix-category-error-rendering` created off post-#382-merge `main`. Opened as PR #383, held unmerged for review as instructed, then merged into `main` per explicit authorization (merge commit `919f149`); local branch deleted, `main` confirmed clean and matching `origin/main`.
+
+## XXII. Entries table/modals: Area/Region + Sector columns, Category header clarification (2026-11-25)
+
+Per explicit instruction, the Entry Submissions table was missing an entry's Area/Region and Sector at a glance, and labelled the category column "Award" rather than something clearer.
+
+### XXII.1 — Investigation
+
+Confirmed (via the Award Areas import pipeline in `api/data-proxy.js` and the public `entry-proxy.js` submission path, both already traced in earlier sessions) that every entry already carries its Area/Region as `entries.county_city` (set to the area's `display_name`, e.g. `"Somerset"`, at creation time regardless of whether the entry came from a spreadsheet import or the public form) and its Sector as `entries.sector`. The entries list query (`entries.js`'s `_fetchPage()`) already joins `awards:award_years(award_name, sector, county)`, so a more authoritative `awards.sector`/`awards.county` is also available when the award itself carries it. The entry **View** modal (`showEntryDetailsModal`) already surfaced all of Award/Sector/Area/Year using exactly this precedence (`entry.awards?.county || entry.county_city`, `entry.awards?.sector || entry.sector`) — confirming the right resolution logic already existed in one place and just needed to be reused consistently (table, Edit modal, CSV export) and labelled more clearly.
+
+### XXII.2 — Changes
+
+Added two small shared helpers to `entries.js`, `resolveEntryArea(entry)` and `resolveEntrySector(entry)`, replacing the duplicated inline `entry.awards?.county || entry.county_city` / `entry.awards?.sector || entry.sector` logic in every place it now appears:
+
+1. **Entries table** (`src/partials/06-entries.html` + `entries.js`'s `renderEntries()`): added sortable **Area / Region** and **Sector** columns (sorting directly by the real `county_city`/`sector` server columns, the same pattern already used for other server-sortable columns), and renamed the **Award** header to **Category** (kept its underlying sort key as `award` to avoid any backend change). Updated every `colspan`/skeleton-loading column count from 10 to 12 to match. Missing values render a muted `-` placeholder rather than an empty cell.
+2. **Entry View modal** (`showEntryDetailsModal`): relabelled "Award:" → "Category:" and "Area:" → "Area / Region:" and "Year:" → "Award Year:" for clarity; switched to the new shared helpers (no behaviour change, same precedence as before).
+3. **Entry Edit modal** (`editEntry`): extended its query to also join `awards:award_years(..., sector, county)` (previously only `award_name`); added a read-only summary strip at the top of the modal body showing Area / Region, Category, Sector and Award Year together; relabelled the Award `<select>` to "Award / Category" and the separate editable Year input to "Award Year" for consistency with the table and View modal.
+4. **CSV export** (`exportEntries`): added "Area / Region" and "Sector" columns (raw, non-title-cased values, consistent with every other raw-data CSV column) between "Award Category" and "Entry Title". `exportEntriesExcel`/`exportEntriesPDF` (separate, narrower export formats) were left untouched — only the CSV export was requested.
+
+### XXII.3 — Tests added
+
+`tests/entries.test.js` (16 new tests): `renderEntries()` shows each entry's Area/Region and Sector correctly with no area filter applied (the "All Areas" view) and with a specific area filter applied; falls back to an entry's own `county_city`/`sector` columns when no `awards` join is present; shows a `-` placeholder when neither source has data. `showEntryDetailsModal()` surfaces Area/Region, Category, Sector and Award Year, and falls back correctly with no `awards` join. A new `editEntry() modal context` describe block (mocking `apiClient.select`/`selectAll`) confirms the same for the Edit modal's new read-only strip. `exportEntries()`'s CSV output (captured by temporarily replacing the global `Blob` constructor) includes the new "Area / Region"/"Sector" headers and their resolved values.
+
+### XXII.4 — Verification
+
+Lint: clean (`npm run lint`, exit 0). Full suite: **93/93 suites, 7,262/7,262 tests pass** (`npm test`) — up from 93/93 suites, 7,253 tests on `main` (+9 net new tests; no new suite). Build: clean (`npm run build`); confirmed directly in the rebuilt `dist/index.html`/`dist/app.min.js` that "Area / Region", "Award Year:", and "Award / Category" all survive into the shipped output.
+
+No database migration in this task — `county_city` and `sector` are pre-existing columns on `entries`, already populated by every entry-creation path.
+
+### XXII.5 — Git/worktree state
+
+Branch `claude/entries-area-sector-columns` created off post-#383-merge `main`. Opened as PR #384, held unmerged for review per instruction.
+
+### XXII.6 — Follow-up (same unmerged PR #384): organisation fallback tier, Category title-parsing fallback, and a real Award-dropdown data-loss bug (2026-11-26)
+
+Per explicit follow-up instruction (received before PR #384 was reviewed/merged), live testing still reported Area/Region and Sector as "missing" and the Edit Entry modal's Award `<select>` as rendering empty. Investigated both.
+
+**Area/Region and Sector "still missing":** largely explained by PR #384 simply not having been merged yet at the time of testing — the fixes exist only on this unmerged branch. Investigated further anyway for any genuinely separate gap, and found one: `resolveEntryArea()`/`resolveEntrySector()`/the new Category resolution only fell back as far as the entry's own `county_city`/`sector`/`award_category` columns — for an entry where even those are unset (and the award join is also missing, e.g. an orphaned `award_id`), there was no further fallback, so a real, known location/sector sitting on the entry's **organisation** record was never surfaced. **Fixed** by adding a third fallback tier to both helpers (`entry.organisations?.county_city` / `entry.organisations?.sector`), and extending the entries list, Edit, and View queries' `organisations(...)` select to include `county_city, sector` so this tier has data to use. Also added a `resolveEntryCategory()` helper (replacing every remaining inline `entry.awards?.award_name || entry.award_category` expression across the table, sort/search, View modal, Edit modal, "recently viewed" label, and CSV export) with one more fallback tier of its own: parsing the category back out of `entry_title`'s fixed `"<Company> — <Category>"` form (the exact format every Award Areas import entry is created with) when both `award_name` and `award_category` are blank.
+
+**Award `<select>` rendering empty in Edit Entry — a real, serious, pre-existing data-loss bug, not a display issue:** traced `editEntry()`'s dropdown population and `saveEntryEdit()`'s save path together. The dropdown is built by mapping every fetched award to an `<option>`, marking it `selected` only if its id matches `entry.award_id` — if `entry.award_id` is set but doesn't match **any** row in the fetched list (the award was since renamed, merged, or deleted — i.e. an orphaned foreign key, matching the reported "no linked award records are matched"), **no option is marked selected**, so the browser defaults the select's value to the first option: the blank `<option value="">Select award...</option>`. That alone is just a display quirk — the real bug is in `saveEntryEdit()`, which reads `document.getElementById('editEntryAward').value || null` to build the update payload: an empty string there becomes `null`. **Saving the form with any other field changed — without the admin ever having touched the Award dropdown — would silently null out `award_id` and permanently disconnect the entry from its category**, exactly the kind of data loss this project's standing protocol exists to catch and report precisely. **Fixed** at the source rather than patching around the symptom: `editEntry()` now checks whether the entry's own `award_id` is present in the fetched awards list, and if not, injects a synthetic option for it — labelled with the entry's own already-resolved category name via the new `resolveEntryCategory()` helper — and that option is always the one marked `selected`. The select is therefore never left on the blank placeholder while `award_id` is set, so saving the form unchanged now correctly preserves the existing award/category link instead of destroying it. When `award_id` is genuinely absent from the entry to begin with (no FK ever existed), no synthetic option is injected — there is no id to preserve, and saving continues to correctly store `null` (a no-op, not a change).
+
+### XXII.7 — Tests added (this follow-up)
+
+`tests/entries.test.js` (16 new tests): organisation-fallback coverage for `renderEntries()`, `showEntryDetailsModal()`, and `editEntry()`; `entry_title`-parsing Category fallback coverage for the same three surfaces; a new `editEntry()` test confirming the Award select is populated with every fetched award and the correct one pre-selected when the current award *is* in the list; the core regression test confirming that when the current award is *not* in the fetched list, a synthetic, pre-selected option is injected (never leaving the placeholder effectively selected) labelled with the entry's own resolved category; and a test confirming no synthetic option is injected when the entry has no `award_id` at all.
+
+### XXII.8 — Verification (this follow-up)
+
+Lint: clean (`npm run lint`, exit 0). Full suite: **93/93 suites, 7,271/7,271 tests pass** (`npm test`) — up from 93/93 suites, 7,262 tests before this follow-up (+9 net new tests; no new suite). Build: clean (`npm run build`); confirmed the injected-option text (`"not in the award list below"`) survives into the rebuilt `dist/app.min.js`.
+
+No database migration — every fallback tier reads pre-existing, already-populated columns (`organisations.county_city`/`.sector`, `entries.entry_title`).
+
+### XXII.9 — Git/worktree state
+
+Continued on the same branch/PR as this task's predecessor (`claude/entries-area-sector-columns` → PR #384, still open and unmerged) rather than opening a second PR off `main`, since these commits directly extend and fix code introduced by that same still-unmerged PR — a fresh branch off `main` would not contain the `resolveEntryArea`/`resolveEntrySector`/entries-table changes these fixes build on. Flagging this as a deliberate deviation from the otherwise-standard "new branch off `main`" instruction, per the project's standing instruction to report discrepancies rather than silently resolving them. Changes committed and pushed to the existing PR #384 branch; still held unmerged pending review.

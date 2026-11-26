@@ -35,6 +35,13 @@ const dom = new JSDOM(
       <select id="nomineeUploadAreaPicker"></select>
     </div>
     <input type="file" id="nomineeFileInput">
+    <div id="nomineeStep1"></div>
+    <div id="nomineeStep2" class="d-none">
+      <div id="nomineeSheetNameNotice"></div>
+      <div id="nomineeLocationMismatchNotice"></div>
+      <div id="nomineePreviewStats"></div>
+      <div id="nomineePreviewContainer"></div>
+    </div>
     <div id="nomineeUploadConfirmBtn"></div>
     <div id="nomineeValidationContainer"></div>
   </div>
@@ -829,6 +836,181 @@ describe('nomineeUploads - category validation rendering', () => {
       await uploads._applyCategoryResolutions();
       expect(postSpy).not.toHaveBeenCalled();
     });
+  });
+});
+
+// -----------------------------------------------------------------------
+// Location-column cross-check — a spreadsheet's own Area/Region/County/
+// Location column (ignored entirely before this feature) is now compared
+// against the area the admin selected, as a non-blocking warning only.
+// -----------------------------------------------------------------------
+describe('nomineeUploads - _normalizeLocationForCompare()', () => {
+  test('lowercases and trims', () => {
+    expect(uploads._normalizeLocationForCompare('  Somerset  ')).toBe('somerset');
+  });
+
+  test('treats "&" and "and" as equivalent', () => {
+    expect(uploads._normalizeLocationForCompare('Bath & North East Somerset')).toBe(
+      uploads._normalizeLocationForCompare('Bath and North East Somerset')
+    );
+  });
+
+  test('strips common administrative prefixes', () => {
+    expect(uploads._normalizeLocationForCompare('London Borough of Hackney')).toBe('hackney');
+    expect(uploads._normalizeLocationForCompare('Royal Borough of Kingston upon Thames')).toBe('kingston upon thames');
+    expect(uploads._normalizeLocationForCompare('Borough of Poole')).toBe('poole');
+    expect(uploads._normalizeLocationForCompare('City of London')).toBe('london');
+    expect(uploads._normalizeLocationForCompare('County of Northampton')).toBe('northampton');
+  });
+
+  test('ignores punctuation differences', () => {
+    expect(uploads._normalizeLocationForCompare('St. Albans')).toBe(uploads._normalizeLocationForCompare('St Albans'));
+  });
+
+  test('returns an empty string for blank/falsy input', () => {
+    expect(uploads._normalizeLocationForCompare('')).toBe('');
+    expect(uploads._normalizeLocationForCompare(null)).toBe('');
+    expect(uploads._normalizeLocationForCompare(undefined)).toBe('');
+  });
+});
+
+describe('nomineeUploads - Location-column mismatch warning', () => {
+  const areas = [{ id: 'a1', display_name: 'Somerset', country: 'England', area_type: 'county', sort_order: 1 }];
+
+  function csvFile(csvText) {
+    return { name: 'nominees.csv', text: async () => csvText };
+  }
+
+  beforeEach(async () => {
+    jest.spyOn(win.apiClient, 'select').mockResolvedValue({ data: areas, error: null });
+    jest.spyOn(win.apiClient, 'selectAll').mockResolvedValue([]);
+    await uploads.loadAreasTable();
+    uploads.openUploadModal('a1');
+  });
+
+  afterEach(() => {
+    win.apiClient.select.mockRestore();
+    win.apiClient.selectAll.mockRestore();
+    if (win.apiClient.post.mockRestore) win.apiClient.post.mockRestore();
+  });
+
+  test('_computeLocationMismatches returns null when no Location column is detected', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 1 });
+    await uploads._handleFile(csvFile('Company Name,Category\nAcme,Roofing Company'));
+    expect(uploads._computeLocationMismatches()).toBeNull();
+  });
+
+  test('flags a row whose Location column does not match the selected area, ignoring blank cells', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 3 });
+    await uploads._handleFile(
+      csvFile(
+        'Company Name,Category,Location\n' +
+          'Acme,Roofing Company,Somerset\n' + // matches
+          'Beta Ltd,Plumbing Company,Northampton\n' + // mismatch
+          'Gamma Co,Electrical Company,\n' // blank -- never flagged
+      )
+    );
+    const result = uploads._computeLocationMismatches();
+    expect(result).not.toBeNull();
+    expect(result.mismatchedRows.size).toBe(1);
+    expect(result.distinctNames).toEqual(['Northampton']);
+  });
+
+  test('does not flag a row whose Location is a recognised regional variant of the selected area', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 1 });
+    await uploads._handleFile(csvFile('Company Name,Category,Area\nAcme,Roofing Company,County of Somerset'));
+    const result = uploads._computeLocationMismatches();
+    expect(result.mismatchedRows.size).toBe(0);
+  });
+
+  test('renders a warning banner with the mismatch count, the distinct Location names, and both action buttons', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 2 });
+    await uploads._handleFile(
+      csvFile(
+        'Company Name,Category,Region\n' + 'Acme,Roofing Company,Northampton\n' + 'Beta Ltd,Plumbing Company,Kent'
+      )
+    );
+    const html = win.document.getElementById('nomineeLocationMismatchNotice').innerHTML;
+    expect(html).toContain('2 rows');
+    expect(html).toContain('Northampton');
+    expect(html).toContain('Kent');
+    expect(html).toContain("doesn't match the selected area");
+    expect(html).toContain('Somerset');
+    expect(win.document.getElementById('nomineeRemoveLocationMismatchesBtn')).not.toBeNull();
+    expect(win.document.getElementById('nomineeKeepLocationMismatchesBtn')).not.toBeNull();
+  });
+
+  test('renders nothing when every Location matches (or is blank)', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 1 });
+    await uploads._handleFile(csvFile('Company Name,Category,County\nAcme,Roofing Company,Somerset'));
+    expect(win.document.getElementById('nomineeLocationMismatchNotice').innerHTML).toBe('');
+  });
+
+  test('_removeLocationMismatchedRows drops exactly the mismatched rows and re-validates', async () => {
+    const postSpy = jest
+      .spyOn(win.apiClient, 'post')
+      .mockResolvedValue({ valid: true, rowCount: 1, unknownCategories: [], errors: [] });
+    await uploads._handleFile(
+      csvFile(
+        'Company Name,Category,Location\n' + 'Acme,Roofing Company,Somerset\n' + 'Beta Ltd,Plumbing Company,Northampton'
+      )
+    );
+    postSpy.mockClear();
+
+    await uploads._removeLocationMismatchedRows();
+
+    // Nothing left to flag -- the mismatched row is gone.
+    expect(uploads._computeLocationMismatches().mismatchedRows.size).toBe(0);
+    expect(win.document.getElementById('nomineeLocationMismatchNotice').innerHTML).toBe('');
+    // Re-validated against the server with the mismatched row removed.
+    expect(postSpy).toHaveBeenCalledWith('award_area_import', expect.objectContaining({ mode: 'validate' }));
+  });
+
+  test('_keepLocationMismatchedRows dismisses the banner without touching any row', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 2 });
+    await uploads._handleFile(
+      csvFile(
+        'Company Name,Category,Location\n' + 'Acme,Roofing Company,Somerset\n' + 'Beta Ltd,Plumbing Company,Northampton'
+      )
+    );
+
+    uploads._keepLocationMismatchedRows();
+
+    // The row is still flagged under the hood...
+    expect(uploads._computeLocationMismatches().mismatchedRows.size).toBe(1);
+    // ...but the banner is dismissed, and re-rendering it after this point stays dismissed.
+    expect(win.document.getElementById('nomineeLocationMismatchNotice').innerHTML).toBe('');
+    uploads._renderLocationMismatchNotice();
+    expect(win.document.getElementById('nomineeLocationMismatchNotice').innerHTML).toBe('');
+  });
+
+  test('clicking the "Remove" button in the rendered banner removes the mismatched rows', async () => {
+    jest
+      .spyOn(win.apiClient, 'post')
+      .mockResolvedValue({ valid: true, rowCount: 1, unknownCategories: [], errors: [] });
+    await uploads._handleFile(
+      csvFile(
+        'Company Name,Category,Location\n' + 'Acme,Roofing Company,Somerset\n' + 'Beta Ltd,Plumbing Company,Northampton'
+      )
+    );
+
+    win.document.getElementById('nomineeRemoveLocationMismatchesBtn').dispatchEvent(new win.Event('click'));
+    await Promise.resolve(); // let the async click handler settle
+
+    expect(uploads._computeLocationMismatches().mismatchedRows.size).toBe(0);
+  });
+
+  test('clicking the "Keep all rows" button in the rendered banner dismisses it', async () => {
+    jest.spyOn(win.apiClient, 'post').mockResolvedValue({ valid: true, rowCount: 2 });
+    await uploads._handleFile(
+      csvFile(
+        'Company Name,Category,Location\n' + 'Acme,Roofing Company,Somerset\n' + 'Beta Ltd,Plumbing Company,Northampton'
+      )
+    );
+
+    win.document.getElementById('nomineeKeepLocationMismatchesBtn').dispatchEvent(new win.Event('click'));
+
+    expect(win.document.getElementById('nomineeLocationMismatchNotice').innerHTML).toBe('');
   });
 });
 
